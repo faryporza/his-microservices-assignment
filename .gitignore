@@ -12,6 +12,12 @@ coverage/
 
 # Skill & Guidelines
 SKILL.md
+.agents/
+skills-lock.json
+
+# Test Reports & Temporary Docs
+TEST_RESULTS.md
+docs/
 
 # Logs
 logs/

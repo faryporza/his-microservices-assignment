@@ -3,8 +3,10 @@
 /node_modules
 /build
 
-# Skill
+# Skill & Test Reports
 SKILL.md
+TEST_RESULTS.md
+.agents/
 
 # Logs
 logs
