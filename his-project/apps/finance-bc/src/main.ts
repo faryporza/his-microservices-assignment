@@ -5,4 +5,4 @@ async function bootstrap() {
   const app = await NestFactory.create(FinanceBcModule);
   await app.listen(process.env.FINANCE_PORT ?? 3002);
 }
-bootstrap();
+void bootstrap();
