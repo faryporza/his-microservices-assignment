@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -45,6 +46,19 @@ export class InvoicesService {
       where: { visitId },
       order: { createdAt: 'DESC' },
     });
+  }
+
+  async pay(id: string): Promise<Invoice> {
+    const invoice = await this.findById(id);
+    if (invoice.status === InvoiceStatus.PAID) {
+      throw new ConflictException(
+        `Invoice with ID '${id}' has already been paid`,
+      );
+    }
+
+    invoice.status = InvoiceStatus.PAID;
+    invoice.paidAt = new Date();
+    return this.invoiceRepository.save(invoice);
   }
 
   private normalizeAmount(amount: string | number): string {

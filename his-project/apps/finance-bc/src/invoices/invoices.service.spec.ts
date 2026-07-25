@@ -1,4 +1,8 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { Invoice, InvoiceStatus } from './entities/invoice.entity';
 import { InvoicesService } from './invoices.service';
@@ -57,5 +61,32 @@ describe('InvoicesService', () => {
     await expect(service.findById('missing-id')).rejects.toBeInstanceOf(
       NotFoundException,
     );
+  });
+
+  it('pays a pending invoice once and records the payment time', async () => {
+    const invoice = {
+      id: 'invoice-id',
+      status: InvoiceStatus.PENDING,
+      paidAt: null,
+    } as Invoice;
+    repository.findOne.mockResolvedValue(invoice);
+    repository.save.mockResolvedValue(invoice);
+
+    await expect(service.pay('invoice-id')).resolves.toMatchObject({
+      status: InvoiceStatus.PAID,
+    });
+    expect(invoice.paidAt).toBeInstanceOf(Date);
+  });
+
+  it('does not allow a paid invoice to be paid again', async () => {
+    repository.findOne.mockResolvedValue({
+      id: 'invoice-id',
+      status: InvoiceStatus.PAID,
+    } as Invoice);
+
+    await expect(service.pay('invoice-id')).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    expect(repository.save).not.toHaveBeenCalled();
   });
 });

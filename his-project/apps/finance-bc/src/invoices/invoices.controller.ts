@@ -1,4 +1,4 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, Patch } from '@nestjs/common';
 import { InvoicesService } from './invoices.service';
 
 @Controller('invoices')
@@ -18,5 +18,10 @@ export class InvoicesController {
   @Get(':visitId')
   findByVisitId(@Param('visitId') visitId: string) {
     return this.invoicesService.findByVisitId(visitId);
+  }
+
+  @Patch(':id/pay')
+  pay(@Param('id') id: string) {
+    return this.invoicesService.pay(id);
   }
 }
