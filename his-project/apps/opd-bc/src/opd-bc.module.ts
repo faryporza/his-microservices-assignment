@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { OpdBcController } from './opd-bc.controller';
 import { OpdBcService } from './opd-bc.service';
+import { PatientsModule } from './patients/patients.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { OpdBcService } from './opd-bc.service';
         synchronize: true,
       }),
     }),
+    PatientsModule,
   ],
   controllers: [OpdBcController],
   providers: [OpdBcService],
