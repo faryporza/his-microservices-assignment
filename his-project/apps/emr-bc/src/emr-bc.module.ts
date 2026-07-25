@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { EmrBcController } from './emr-bc.controller';
 import { EmrBcService } from './emr-bc.service';
+import { MedicalRecordsModule } from './records/medical-records.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { EmrBcService } from './emr-bc.service';
         synchronize: true,
       }),
     }),
+    MedicalRecordsModule,
   ],
   controllers: [EmrBcController],
   providers: [EmrBcService],
