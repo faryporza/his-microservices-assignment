@@ -1,14 +1,14 @@
 {
   "$schema": "https://json.schemastore.org/nest-cli",
   "collection": "@nestjs/schematics",
-  "sourceRoot": "apps/his-project/src",
+  "sourceRoot": "apps/opd-bc/src",
   "compilerOptions": {
     "deleteOutDir": true,
     "webpack": true,
-    "tsConfigPath": "apps/his-project/tsconfig.app.json"
+    "tsConfigPath": "apps/opd-bc/tsconfig.app.json"
   },
   "monorepo": true,
-  "root": "apps/his-project",
+  "root": "apps/opd-bc",
   "projects": {
     "common": {
       "type": "library",
@@ -44,15 +44,6 @@
       "sourceRoot": "apps/finance-bc/src",
       "compilerOptions": {
         "tsConfigPath": "apps/finance-bc/tsconfig.app.json"
-      }
-    },
-    "his-project": {
-      "type": "application",
-      "root": "apps/his-project",
-      "entryFile": "main",
-      "sourceRoot": "apps/his-project/src",
-      "compilerOptions": {
-        "tsConfigPath": "apps/his-project/tsconfig.app.json"
       }
     },
     "opd-bc": {
