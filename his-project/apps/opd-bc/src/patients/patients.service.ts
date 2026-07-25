@@ -15,7 +15,9 @@ export class PatientsService {
     private readonly patientRepository: Repository<Patient>,
   ) {}
 
+  // สร้าง patient ใหม่
   async create(createPatientDto: CreatePatientDto): Promise<Patient> {
+    // ตรวจสอบว่า HN และ ID Card ซ้ำหรือไม่
     const existingHn = await this.patientRepository.findOne({
       where: { hn: createPatientDto.hn },
     });
@@ -36,10 +38,12 @@ export class PatientsService {
     return await this.patientRepository.save(patient);
   }
 
+  // ดึงข้อมูล patient ทั้งหมด
   async findAll(): Promise<Patient[]> {
     return await this.patientRepository.find();
   }
 
+  // ดึงข้อมูล patient ตาม id
   async findOne(id: string): Promise<Patient> {
     const patient = await this.patientRepository.findOne({ where: { id } });
     if (!patient) {

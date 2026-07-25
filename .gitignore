@@ -10,6 +10,9 @@ coverage/
 .env.*
 !.env.example
 
+# Skill & Guidelines
+SKILL.md
+
 # Logs
 logs/
 *.log
