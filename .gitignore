@@ -15,9 +15,8 @@ SKILL.md
 .agents/
 skills-lock.json
 
-# Test Reports & Temporary Docs
+# Test Reports
 TEST_RESULTS.md
-docs/
 
 # Logs
 logs/
