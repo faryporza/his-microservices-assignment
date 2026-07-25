@@ -4,7 +4,9 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  OneToMany,
 } from 'typeorm';
+import { Visit } from '../../visits/entities/visit.entity';
 
 @Entity('patients')
 export class Patient {
@@ -22,6 +24,9 @@ export class Patient {
 
   @Column({ name: 'id_card', unique: true })
   idCard!: string;
+
+  @OneToMany(() => Visit, (visit) => visit.patient)
+  visits!: Visit[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;
