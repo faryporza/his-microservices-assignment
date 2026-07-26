@@ -2,18 +2,28 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Inject,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { ClientProxy } from '@nestjs/microservices';
 import { MedicalRecord, RecordStatus } from './entities/medical-record.entity';
 import { CreateMedicalRecordDto } from './dto/create-medical-record.dto';
 import { UpdateMedicalRecordDto } from './dto/update-medical-record.dto';
+import {
+  TREATMENT_COMPLETED_EVENT_NAME,
+  TREATMENT_COMPLETED_EVENT_VERSION,
+  TreatmentCompletedEvent,
+} from '@app/contracts';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class MedicalRecordsService {
   constructor(
     @InjectRepository(MedicalRecord)
     private readonly medicalRecordRepository: Repository<MedicalRecord>,
+    @Inject('RMQ_CLIENT')
+    private readonly client: ClientProxy,
   ) {}
 
   async create(createDto: CreateMedicalRecordDto): Promise<MedicalRecord> {
@@ -59,7 +69,35 @@ export class MedicalRecordsService {
       throw new BadRequestException('Treatment cost cannot be negative');
     }
 
+    const previousStatus = record.status;
+
     Object.assign(record, updateDto);
-    return await this.medicalRecordRepository.save(record);
+    const saved = await this.medicalRecordRepository.save(record);
+
+    if (
+      previousStatus !== RecordStatus.COMPLETED &&
+      saved.status === RecordStatus.COMPLETED
+    ) {
+      const event: TreatmentCompletedEvent = {
+        metadata: {
+          eventId: randomUUID(),
+          eventName: TREATMENT_COMPLETED_EVENT_NAME,
+          version: TREATMENT_COMPLETED_EVENT_VERSION,
+          occurredAt: new Date().toISOString(),
+        },
+        payload: {
+          visitId: saved.visitId,
+          recordId: saved.id,
+          treatmentCost:
+            saved.treatmentCost != null
+              ? String(saved.treatmentCost)
+              : '0.00',
+        },
+      };
+
+      this.client.emit(TREATMENT_COMPLETED_EVENT_NAME, event);
+    }
+
+    return saved;
   }
 }

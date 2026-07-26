@@ -1,9 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ClientsModule } from '@nestjs/microservices';
 import { EmrBcController } from './emr-bc.controller';
 import { EmrBcService } from './emr-bc.service';
 import { MedicalRecordsModule } from './records/medical-records.module';
+import { CommonModule } from '@app/common';
+import { RmqService } from '@app/common';
 
 @Module({
   imports: [
@@ -25,6 +28,16 @@ import { MedicalRecordsModule } from './records/medical-records.module';
         synchronize: true,
       }),
     }),
+    ClientsModule.registerAsync([
+      {
+        name: 'RMQ_CLIENT',
+        imports: [CommonModule],
+        inject: [RmqService],
+        useFactory: (rmqService: RmqService) =>
+          rmqService.createClientOptions(),
+      },
+    ]),
+    CommonModule,
     MedicalRecordsModule,
   ],
   controllers: [EmrBcController],

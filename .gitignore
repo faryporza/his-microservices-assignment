@@ -12,8 +12,10 @@ coverage/
 
 # Skill & Guidelines
 SKILL.md
-.agents/
 skills-lock.json
+.agents/ --- IGNORE ---
+AGENTS.md
+.agents
 
 # Test Reports
 TEST_RESULTS.md

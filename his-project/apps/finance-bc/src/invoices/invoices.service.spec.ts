@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Repository } from 'typeorm';
+import { ClientProxy } from '@nestjs/microservices';
 import { Invoice, InvoiceStatus } from './entities/invoice.entity';
 import { InvoicesService } from './invoices.service';
 
@@ -14,7 +15,10 @@ describe('InvoicesService', () => {
     findOne: jest.fn(),
     save: jest.fn(),
   } as unknown as jest.Mocked<Repository<Invoice>>;
-  const service = new InvoicesService(repository);
+  const client = {
+    emit: jest.fn(),
+  } as unknown as jest.Mocked<ClientProxy>;
+  const service = new InvoicesService(repository, client);
 
   beforeEach(() => jest.clearAllMocks());
 
@@ -66,6 +70,7 @@ describe('InvoicesService', () => {
   it('pays a pending invoice once and records the payment time', async () => {
     const invoice = {
       id: 'invoice-id',
+      visitId: 'visit-id',
       status: InvoiceStatus.PENDING,
       paidAt: null,
     } as Invoice;
@@ -76,11 +81,22 @@ describe('InvoicesService', () => {
       status: InvoiceStatus.PAID,
     });
     expect(invoice.paidAt).toBeInstanceOf(Date);
+    expect(client.emit).toHaveBeenCalledWith(
+      'invoice.paid',
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          visitId: 'visit-id',
+          invoiceId: 'invoice-id',
+          status: 'PAID',
+        }),
+      }),
+    );
   });
 
   it('does not allow a paid invoice to be paid again', async () => {
     repository.findOne.mockResolvedValue({
       id: 'invoice-id',
+      visitId: 'visit-id',
       status: InvoiceStatus.PAID,
     } as Invoice);
 
@@ -88,5 +104,6 @@ describe('InvoicesService', () => {
       ConflictException,
     );
     expect(repository.save).not.toHaveBeenCalled();
+    expect(client.emit).not.toHaveBeenCalled();
   });
 });
