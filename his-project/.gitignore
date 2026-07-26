@@ -6,9 +6,6 @@
 # Skill & Test Reports
 SKILL.md
 TEST_RESULTS.md
-.agents/
-.claude/
-CLAUDE.md
 # Logs
 logs
 *.log
