@@ -3,17 +3,27 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  Inject,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { ClientProxy } from '@nestjs/microservices';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { Invoice, InvoiceStatus } from './entities/invoice.entity';
+import {
+  INVOICE_PAID_EVENT_NAME,
+  INVOICE_PAID_EVENT_VERSION,
+  InvoicePaidEvent,
+} from '@app/contracts';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class InvoicesService {
   constructor(
     @InjectRepository(Invoice)
     private readonly invoiceRepository: Repository<Invoice>,
+    @Inject('RMQ_CLIENT')
+    private readonly client: ClientProxy,
   ) {}
 
   // Intended for the treatment.completed consumer, not a public REST endpoint.
@@ -58,7 +68,25 @@ export class InvoicesService {
 
     invoice.status = InvoiceStatus.PAID;
     invoice.paidAt = new Date();
-    return this.invoiceRepository.save(invoice);
+    const saved = await this.invoiceRepository.save(invoice);
+
+    const event: InvoicePaidEvent = {
+      metadata: {
+        eventId: randomUUID(),
+        eventName: INVOICE_PAID_EVENT_NAME,
+        version: INVOICE_PAID_EVENT_VERSION,
+        occurredAt: new Date().toISOString(),
+      },
+      payload: {
+        visitId: saved.visitId,
+        invoiceId: saved.id,
+        status: 'PAID',
+      },
+    };
+
+    this.client.emit(INVOICE_PAID_EVENT_NAME, event);
+
+    return saved;
   }
 
   private normalizeAmount(amount: string | number): string {

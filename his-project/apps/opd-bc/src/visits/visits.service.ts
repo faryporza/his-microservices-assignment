@@ -1,9 +1,16 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { ClientProxy } from '@nestjs/microservices';
 import { Visit, VisitStatus } from './entities/visit.entity';
 import { Patient } from '../patients/entities/patient.entity';
 import { CreateVisitDto } from './dto/create-visit.dto';
+import {
+  VISIT_CREATED_EVENT_NAME,
+  VISIT_CREATED_EVENT_VERSION,
+  VisitCreatedEvent,
+} from '@app/contracts';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class VisitsService {
@@ -12,6 +19,8 @@ export class VisitsService {
     private readonly visitRepository: Repository<Visit>,
     @InjectRepository(Patient)
     private readonly patientRepository: Repository<Patient>,
+    @Inject('RMQ_CLIENT')
+    private readonly client: ClientProxy,
   ) {}
 
   // สร้าง visit ใหม่
@@ -30,7 +39,25 @@ export class VisitsService {
       status: VisitStatus.OPEN,
     });
 
-    return await this.visitRepository.save(visit);
+    const saved = await this.visitRepository.save(visit);
+
+    const event: VisitCreatedEvent = {
+      metadata: {
+        eventId: randomUUID(),
+        eventName: VISIT_CREATED_EVENT_NAME,
+        version: VISIT_CREATED_EVENT_VERSION,
+        occurredAt: new Date().toISOString(),
+      },
+      payload: {
+        visitId: saved.id,
+        patientId: saved.patientId,
+        timestamp: saved.visitDate.toISOString(),
+      },
+    };
+
+    this.client.emit(VISIT_CREATED_EVENT_NAME, event);
+
+    return saved;
   }
 
   // ดึงข้อมูล visit ทั้งหมด

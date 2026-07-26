@@ -1,9 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ClientsModule } from '@nestjs/microservices';
 import { FinanceBcController } from './finance-bc.controller';
 import { FinanceBcService } from './finance-bc.service';
 import { InvoicesModule } from './invoices/invoices.module';
+import { CommonModule } from '@app/common';
+import { RmqService } from '@app/common';
 
 @Module({
   imports: [
@@ -25,6 +28,16 @@ import { InvoicesModule } from './invoices/invoices.module';
         synchronize: true,
       }),
     }),
+    ClientsModule.registerAsync([
+      {
+        name: 'RMQ_CLIENT',
+        imports: [CommonModule],
+        inject: [RmqService],
+        useFactory: (rmqService: RmqService) =>
+          rmqService.createClientOptions(),
+      },
+    ]),
+    CommonModule,
     InvoicesModule,
   ],
   controllers: [FinanceBcController],
