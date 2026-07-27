@@ -10,6 +10,14 @@ coverage/
 .env.*
 !.env.example
 
+# Skill & Guidelines
+SKILL.md
+.agents/
+skills-lock.json
+
+# Test Reports
+TEST_RESULTS.md
+
 # Logs
 logs/
 *.log
