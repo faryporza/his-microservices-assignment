@@ -26,9 +26,9 @@ export class CreateMedicalRecordDto {
   @IsString()
   diagnosis!: string;
 
-  @IsOptional()
+  @IsNotEmpty({ message: 'treatmentNote is required' })
   @IsString()
-  treatmentNote?: string;
+  treatmentNote!: string;
 
   @IsNotEmpty({ message: 'treatmentCost is required' })
   @IsNumber({}, { message: 'treatmentCost must be a number' })
