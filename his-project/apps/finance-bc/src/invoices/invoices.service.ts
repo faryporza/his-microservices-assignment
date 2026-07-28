@@ -8,17 +8,37 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { Invoice, InvoiceStatus } from './entities/invoice.entity';
+import { ProcessedEvent } from '../messaging/entities/processed-event.entity';
 
 @Injectable()
 export class InvoicesService {
   constructor(
     @InjectRepository(Invoice)
     private readonly invoiceRepository: Repository<Invoice>,
+    @InjectRepository(ProcessedEvent)
+    private readonly processedEventRepository: Repository<ProcessedEvent>,
   ) {}
 
   // Intended for the treatment.completed consumer, not a public REST endpoint.
-  async createFromTreatment(createDto: CreateInvoiceDto): Promise<Invoice> {
+  async createFromTreatment(
+    eventId: string,
+    createDto: CreateInvoiceDto,
+  ): Promise<Invoice | null> {
+    const eventWasProcessed = await this.processedEventRepository.exists({
+      where: { eventId },
+    });
+    if (eventWasProcessed) {
+      return null;
+    }
+
     const totalAmount = this.normalizeAmount(createDto.totalAmount);
+    const existingInvoice = await this.invoiceRepository.findOne({
+      where: { visitId: createDto.visitId },
+    });
+    if (existingInvoice) {
+      await this.markEventProcessed(eventId);
+      return existingInvoice;
+    }
 
     const invoice = this.invoiceRepository.create({
       visitId: createDto.visitId,
@@ -26,7 +46,9 @@ export class InvoicesService {
       totalAmount,
       status: InvoiceStatus.PENDING,
     });
-    return this.invoiceRepository.save(invoice);
+    const savedInvoice = await this.invoiceRepository.save(invoice);
+    await this.markEventProcessed(eventId);
+    return savedInvoice;
   }
 
   async findAll(): Promise<Invoice[]> {
@@ -71,5 +93,10 @@ export class InvoicesService {
 
     const [whole, fraction = ''] = value.split('.');
     return `${whole}.${fraction.padEnd(2, '0')}`;
+  }
+
+  private async markEventProcessed(eventId: string): Promise<void> {
+    const processedEvent = this.processedEventRepository.create({ eventId });
+    await this.processedEventRepository.save(processedEvent);
   }
 }

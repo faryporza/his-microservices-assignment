@@ -6,6 +6,7 @@ import {
 import { Repository } from 'typeorm';
 import { Invoice, InvoiceStatus } from './entities/invoice.entity';
 import { InvoicesService } from './invoices.service';
+import { ProcessedEvent } from '../messaging/entities/processed-event.entity';
 
 describe('InvoicesService', () => {
   const repository = {
@@ -14,9 +15,22 @@ describe('InvoicesService', () => {
     findOne: jest.fn(),
     save: jest.fn(),
   } as unknown as jest.Mocked<Repository<Invoice>>;
-  const service = new InvoicesService(repository);
+  const processedEventRepository = {
+    create: jest.fn(),
+    exists: jest.fn(),
+    save: jest.fn(),
+  } as unknown as jest.Mocked<Repository<ProcessedEvent>>;
+  const service = new InvoicesService(repository, processedEventRepository);
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    processedEventRepository.exists.mockResolvedValue(false);
+    repository.findOne.mockResolvedValue(null);
+    processedEventRepository.create.mockImplementation(
+      (event) => event as ProcessedEvent,
+    );
+    processedEventRepository.save.mockImplementation(async (event) => event);
+  });
 
   it('creates a pending invoice with a two-decimal amount', async () => {
     const invoice = {
@@ -29,7 +43,7 @@ describe('InvoicesService', () => {
     repository.save.mockResolvedValue(invoice);
 
     await expect(
-      service.createFromTreatment({
+      service.createFromTreatment('event-id', {
         visitId: 'visit-id',
         recordId: 'record-id',
         totalAmount: '1500',
@@ -42,22 +56,66 @@ describe('InvoicesService', () => {
       totalAmount: '1500.00',
       status: InvoiceStatus.PENDING,
     });
+    expect(processedEventRepository.save).toHaveBeenCalledWith({
+      eventId: 'event-id',
+    });
   });
 
   it('rejects negative or invalid money amounts', async () => {
     await expect(
-      service.createFromTreatment({ visitId: 'visit-id', totalAmount: '-1' }),
+      service.createFromTreatment('event-id', {
+        visitId: 'visit-id',
+        totalAmount: '-1',
+      }),
     ).rejects.toBeInstanceOf(BadRequestException);
     await expect(
-      service.createFromTreatment({
+      service.createFromTreatment('event-id', {
         visitId: 'visit-id',
         totalAmount: '1.999',
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it('ignores an event that was already processed', async () => {
+    processedEventRepository.exists.mockResolvedValue(true);
+
+    await expect(
+      service.createFromTreatment('event-id', {
+        visitId: 'visit-id',
+        recordId: 'record-id',
+        totalAmount: 1500,
+      }),
+    ).resolves.toBeNull();
+
+    expect(repository.findOne).not.toHaveBeenCalled();
+    expect(repository.save).not.toHaveBeenCalled();
+  });
+
+  it('does not create a second primary invoice for the same visit', async () => {
+    const existingInvoice = {
+      id: 'invoice-id',
+      visitId: 'visit-id',
+      totalAmount: '1500.00',
+      status: InvoiceStatus.PENDING,
+    } as Invoice;
+    repository.findOne.mockResolvedValue(existingInvoice);
+
+    await expect(
+      service.createFromTreatment('another-event-id', {
+        visitId: 'visit-id',
+        recordId: 'record-id',
+        totalAmount: 1500,
+      }),
+    ).resolves.toBe(existingInvoice);
+
+    expect(repository.create).not.toHaveBeenCalled();
+    expect(repository.save).not.toHaveBeenCalled();
+    expect(processedEventRepository.save).toHaveBeenCalledWith({
+      eventId: 'another-event-id',
+    });
+  });
+
   it('returns 404 when an invoice does not exist', async () => {
-    repository.findOne.mockResolvedValue(null);
     await expect(service.findById('missing-id')).rejects.toBeInstanceOf(
       NotFoundException,
     );
