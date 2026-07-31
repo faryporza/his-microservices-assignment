@@ -1,13 +1,16 @@
-import { Injectable, NotFoundException, Inject } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { ClientProxy } from '@nestjs/microservices';
+import { firstValueFrom } from 'rxjs';
+import { IdempotencyService, RMQ_CLIENT } from '@app/common';
 import { Visit, VisitStatus } from './entities/visit.entity';
 import { Patient } from '../patients/entities/patient.entity';
 import { CreateVisitDto } from './dto/create-visit.dto';
 import {
   VISIT_CREATED_EVENT_NAME,
   VISIT_CREATED_EVENT_VERSION,
+  InvoicePaidEvent,
   VisitCreatedEvent,
 } from '@app/contracts';
 import { randomUUID } from 'crypto';
@@ -19,8 +22,9 @@ export class VisitsService {
     private readonly visitRepository: Repository<Visit>,
     @InjectRepository(Patient)
     private readonly patientRepository: Repository<Patient>,
-    @Inject('RMQ_CLIENT')
+    @Inject(RMQ_CLIENT)
     private readonly client: ClientProxy,
+    private readonly idempotency: IdempotencyService,
   ) {}
 
   // สร้าง visit ใหม่
@@ -55,7 +59,7 @@ export class VisitsService {
       },
     };
 
-    this.client.emit(VISIT_CREATED_EVENT_NAME, event);
+    await firstValueFrom(this.client.emit(VISIT_CREATED_EVENT_NAME, event));
 
     return saved;
   }
@@ -91,5 +95,36 @@ export class VisitsService {
       where: { patientId },
       relations: { patient: true },
     });
+  }
+
+  async processInvoicePaid(event: InvoicePaidEvent): Promise<void> {
+    await this.idempotency.process(
+      event.metadata.eventId,
+      event.metadata.eventName,
+      async (manager) => {
+        await this.closeAfterPayment(event.payload.visitId, manager);
+      },
+    );
+  }
+
+  async closeAfterPayment(
+    visitId: string,
+    manager?: EntityManager,
+  ): Promise<Visit> {
+    const repository = manager
+      ? manager.getRepository(Visit)
+      : this.visitRepository;
+    const visit = await repository.findOne({ where: { id: visitId } });
+
+    if (!visit) {
+      throw new NotFoundException(`Visit with ID '${visitId}' not found`);
+    }
+
+    if (visit.status === VisitStatus.CLOSED) {
+      return visit;
+    }
+
+    visit.status = VisitStatus.CLOSED;
+    return repository.save(visit);
   }
 }

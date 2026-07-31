@@ -6,14 +6,17 @@ import {
   Inject,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { ClientProxy } from '@nestjs/microservices';
+import { firstValueFrom } from 'rxjs';
+import { IdempotencyService, RMQ_CLIENT } from '@app/common';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { Invoice, InvoiceStatus } from './entities/invoice.entity';
 import {
   INVOICE_PAID_EVENT_NAME,
   INVOICE_PAID_EVENT_VERSION,
   InvoicePaidEvent,
+  TreatmentCompletedEvent,
 } from '@app/contracts';
 import { randomUUID } from 'crypto';
 
@@ -22,22 +25,10 @@ export class InvoicesService {
   constructor(
     @InjectRepository(Invoice)
     private readonly invoiceRepository: Repository<Invoice>,
-    @Inject('RMQ_CLIENT')
+    @Inject(RMQ_CLIENT)
     private readonly client: ClientProxy,
+    private readonly idempotency: IdempotencyService,
   ) {}
-
-  // Intended for the treatment.completed consumer, not a public REST endpoint.
-  async createFromTreatment(createDto: CreateInvoiceDto): Promise<Invoice> {
-    const totalAmount = this.normalizeAmount(createDto.totalAmount);
-
-    const invoice = this.invoiceRepository.create({
-      visitId: createDto.visitId,
-      recordId: createDto.recordId,
-      totalAmount,
-      status: InvoiceStatus.PENDING,
-    });
-    return this.invoiceRepository.save(invoice);
-  }
 
   async findAll(): Promise<Invoice[]> {
     return this.invoiceRepository.find({ order: { createdAt: 'DESC' } });
@@ -84,9 +75,53 @@ export class InvoicesService {
       },
     };
 
-    this.client.emit(INVOICE_PAID_EVENT_NAME, event);
+    await firstValueFrom(this.client.emit(INVOICE_PAID_EVENT_NAME, event));
 
     return saved;
+  }
+
+  async processTreatmentCompleted(
+    event: TreatmentCompletedEvent,
+  ): Promise<void> {
+    await this.idempotency.process(
+      event.metadata.eventId,
+      event.metadata.eventName,
+      async (manager) => {
+        await this.createFromTreatment(
+          {
+            visitId: event.payload.visitId,
+            recordId: event.payload.recordId,
+            totalAmount: event.payload.treatmentCost,
+          },
+          manager,
+        );
+      },
+    );
+  }
+
+  async createFromTreatment(
+    createDto: CreateInvoiceDto,
+    manager?: EntityManager,
+  ): Promise<Invoice> {
+    const repository = manager
+      ? manager.getRepository(Invoice)
+      : this.invoiceRepository;
+    const existingInvoice = await repository.findOne({
+      where: { visitId: createDto.visitId },
+    });
+
+    if (existingInvoice) {
+      return existingInvoice;
+    }
+
+    const totalAmount = this.normalizeAmount(createDto.totalAmount);
+    const invoice = repository.create({
+      visitId: createDto.visitId,
+      recordId: createDto.recordId,
+      totalAmount,
+      status: InvoiceStatus.PENDING,
+    });
+    return repository.save(invoice);
   }
 
   private normalizeAmount(amount: string | number): string {

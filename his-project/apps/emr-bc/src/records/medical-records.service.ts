@@ -5,8 +5,10 @@ import {
   Inject,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { ClientProxy } from '@nestjs/microservices';
+import { firstValueFrom } from 'rxjs';
+import { IdempotencyService, RMQ_CLIENT } from '@app/common';
 import { MedicalRecord, RecordStatus } from './entities/medical-record.entity';
 import { CreateMedicalRecordDto } from './dto/create-medical-record.dto';
 import { UpdateMedicalRecordDto } from './dto/update-medical-record.dto';
@@ -14,6 +16,7 @@ import {
   TREATMENT_COMPLETED_EVENT_NAME,
   TREATMENT_COMPLETED_EVENT_VERSION,
   TreatmentCompletedEvent,
+  VisitCreatedEvent,
 } from '@app/contracts';
 import { randomUUID } from 'crypto';
 
@@ -22,8 +25,9 @@ export class MedicalRecordsService {
   constructor(
     @InjectRepository(MedicalRecord)
     private readonly medicalRecordRepository: Repository<MedicalRecord>,
-    @Inject('RMQ_CLIENT')
+    @Inject(RMQ_CLIENT)
     private readonly client: ClientProxy,
+    private readonly idempotency: IdempotencyService,
   ) {}
 
   async create(createDto: CreateMedicalRecordDto): Promise<MedicalRecord> {
@@ -89,15 +93,51 @@ export class MedicalRecordsService {
           visitId: saved.visitId,
           recordId: saved.id,
           treatmentCost:
-            saved.treatmentCost != null
-              ? String(saved.treatmentCost)
-              : '0.00',
+            saved.treatmentCost != null ? String(saved.treatmentCost) : '0.00',
         },
       };
 
-      this.client.emit(TREATMENT_COMPLETED_EVENT_NAME, event);
+      await firstValueFrom(
+        this.client.emit(TREATMENT_COMPLETED_EVENT_NAME, event),
+      );
     }
 
     return saved;
+  }
+
+  async processVisitCreated(event: VisitCreatedEvent): Promise<void> {
+    await this.idempotency.process(
+      event.metadata.eventId,
+      event.metadata.eventName,
+      async (manager) => {
+        await this.createWaitingRecord(
+          event.payload.visitId,
+          event.payload.patientId,
+          manager,
+        );
+      },
+    );
+  }
+
+  async createWaitingRecord(
+    visitId: string,
+    patientId: string,
+    manager?: EntityManager,
+  ): Promise<MedicalRecord> {
+    const repository = manager
+      ? manager.getRepository(MedicalRecord)
+      : this.medicalRecordRepository;
+    const existingRecord = await repository.findOne({ where: { visitId } });
+
+    if (existingRecord) {
+      return existingRecord;
+    }
+
+    const record = repository.create({
+      visitId,
+      patientId,
+      status: RecordStatus.WAITING,
+    });
+    return repository.save(record);
   }
 }

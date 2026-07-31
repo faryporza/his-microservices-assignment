@@ -5,6 +5,8 @@ import {
 } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { ClientProxy } from '@nestjs/microservices';
+import { IdempotencyService } from '@app/common';
+import { of } from 'rxjs';
 import { Invoice, InvoiceStatus } from './entities/invoice.entity';
 import { InvoicesService } from './invoices.service';
 
@@ -18,9 +20,14 @@ describe('InvoicesService', () => {
   const client = {
     emit: jest.fn(),
   } as unknown as jest.Mocked<ClientProxy>;
-  const service = new InvoicesService(repository, client);
+  const idempotency = {} as IdempotencyService;
+  const service = new InvoicesService(repository, client, idempotency);
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    repository.findOne.mockReset();
+    client.emit.mockReturnValue(of(undefined));
+  });
 
   it('creates a pending invoice with a two-decimal amount', async () => {
     const invoice = {

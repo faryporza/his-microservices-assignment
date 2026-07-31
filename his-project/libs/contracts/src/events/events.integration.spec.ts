@@ -5,24 +5,35 @@
  * RabbitMQ instance.
  */
 
-import { ClientProxy } from '@nestjs/microservices';
-import { Repository } from 'typeorm';
+import { ClientProxy, RmqContext } from '@nestjs/microservices';
+import { EntityManager, Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
+import { of } from 'rxjs';
+import { IdempotencyService } from '@app/common';
 
 // OPD
 import { VisitsService as OpdVisitsService } from '../../../../apps/opd-bc/src/visits/visits.service';
-import { Visit, VisitStatus } from '../../../../apps/opd-bc/src/visits/entities/visit.entity';
+import {
+  Visit,
+  VisitStatus,
+} from '../../../../apps/opd-bc/src/visits/entities/visit.entity';
 import { Patient } from '../../../../apps/opd-bc/src/patients/entities/patient.entity';
 import { VisitsConsumer } from '../../../../apps/opd-bc/src/visits/visits.consumer';
 
 // EMR
 import { MedicalRecordsService } from '../../../../apps/emr-bc/src/records/medical-records.service';
-import { MedicalRecord, RecordStatus } from '../../../../apps/emr-bc/src/records/entities/medical-record.entity';
+import {
+  MedicalRecord,
+  RecordStatus,
+} from '../../../../apps/emr-bc/src/records/entities/medical-record.entity';
 import { MedicalRecordsConsumer } from '../../../../apps/emr-bc/src/records/medical-records.consumer';
 
 // Finance
 import { InvoicesService } from '../../../../apps/finance-bc/src/invoices/invoices.service';
-import { Invoice, InvoiceStatus } from '../../../../apps/finance-bc/src/invoices/entities/invoice.entity';
+import {
+  Invoice,
+  InvoiceStatus,
+} from '../../../../apps/finance-bc/src/invoices/entities/invoice.entity';
 import { InvoicesConsumer } from '../../../../apps/finance-bc/src/invoices/invoices.consumer';
 
 // Contracts
@@ -44,14 +55,47 @@ interface CapturedEvent {
   payload: unknown;
 }
 
-function createMockClient(): { client: jest.Mocked<ClientProxy>; events: CapturedEvent[] } {
+function createMockClient(): {
+  client: jest.Mocked<ClientProxy>;
+  events: CapturedEvent[];
+} {
   const events: CapturedEvent[] = [];
   const client = {
     emit: jest.fn((pattern: string, payload: unknown) => {
       events.push({ pattern, payload });
+      return of(undefined);
     }),
   } as unknown as jest.Mocked<ClientProxy>;
   return { client, events };
+}
+
+function createMockIdempotency<T extends { id?: string }>(
+  repository: jest.Mocked<Repository<T>>,
+): IdempotencyService {
+  const processed = new Set<string>();
+  return {
+    process: jest.fn(async (eventId, _eventName, businessLogic) => {
+      if (processed.has(eventId)) {
+        return { duplicate: true };
+      }
+
+      const manager = {
+        getRepository: () => repository,
+      } as unknown as EntityManager;
+      const value = await businessLogic(manager);
+      processed.add(eventId);
+      return { duplicate: false, value };
+    }),
+  } as unknown as IdempotencyService;
+}
+
+function createRmqContext(): RmqContext {
+  const message = { content: Buffer.from('{}') };
+  const channel = { ack: jest.fn(), nack: jest.fn() };
+  return {
+    getChannelRef: () => channel,
+    getMessage: () => message,
+  } as unknown as RmqContext;
 }
 
 // ---------------------------------------------------------------------------
@@ -124,19 +168,28 @@ describe('Event-driven data flow integration', () => {
       opdVisitRepo,
       opdPatientRepo,
       opd.client,
+      createMockIdempotency(opdVisitRepo),
     );
 
     // EMR setup
     emrRecordRepo = createMockRepo<MedicalRecord>();
     const emr = createMockClient();
     emrEvents = emr.events;
-    emrRecordsService = new MedicalRecordsService(emrRecordRepo, emr.client);
+    emrRecordsService = new MedicalRecordsService(
+      emrRecordRepo,
+      emr.client,
+      createMockIdempotency(emrRecordRepo),
+    );
 
     // Finance setup
     financeInvoiceRepo = createMockRepo<Invoice>();
     const fin = createMockClient();
     financeEvents = fin.events;
-    financeInvoicesService = new InvoicesService(financeInvoiceRepo, fin.client);
+    financeInvoicesService = new InvoicesService(
+      financeInvoiceRepo,
+      fin.client,
+      createMockIdempotency(financeInvoiceRepo),
+    );
   });
 
   // -----------------------------------------------------------------------
@@ -176,10 +229,13 @@ describe('Event-driven data flow integration', () => {
       expect(visitPayload.patientId).toBe(patientId);
 
       // Step 3: EMR consumer receives visit.created → creates a stub record
-      emrRecordRepo.create.mockImplementation((data: any) => ({
-        id: randomUUID(),
-        ...data,
-      }) as MedicalRecord);
+      emrRecordRepo.create.mockImplementation(
+        (data: any) =>
+          ({
+            id: randomUUID(),
+            ...data,
+          }) as MedicalRecord,
+      );
       let savedRecordId = '';
       emrRecordRepo.save.mockImplementation((record: MedicalRecord) => {
         savedRecordId = record.id;
@@ -187,7 +243,10 @@ describe('Event-driven data flow integration', () => {
       });
 
       const emrConsumer = new MedicalRecordsConsumer(emrRecordsService);
-      await emrConsumer.handleVisitCreated(visitEvent!.payload as VisitCreatedEvent);
+      await emrConsumer.handleVisitCreated(
+        visitEvent!.payload as VisitCreatedEvent,
+        createRmqContext(),
+      );
 
       // Verify stub record was created
       expect(emrRecordRepo.create).toHaveBeenCalledWith(
@@ -236,10 +295,13 @@ describe('Event-driven data flow integration', () => {
 
       // Step 5: Finance consumer receives treatment.completed → creates invoice
       let invoiceId = '';
-      financeInvoiceRepo.create.mockImplementation((data: any) => ({
-        id: randomUUID(),
-        ...data,
-      }) as Invoice);
+      financeInvoiceRepo.create.mockImplementation(
+        (data: any) =>
+          ({
+            id: randomUUID(),
+            ...data,
+          }) as Invoice,
+      );
       financeInvoiceRepo.save.mockImplementation((inv: Invoice) => {
         invoiceId = inv.id;
         return Promise.resolve(inv);
@@ -248,6 +310,7 @@ describe('Event-driven data flow integration', () => {
       const financeConsumer = new InvoicesConsumer(financeInvoicesService);
       await financeConsumer.handleTreatmentCompleted(
         treatmentEvent!.payload as TreatmentCompletedEvent,
+        createRmqContext(),
       );
 
       // Verify invoice was created
@@ -281,7 +344,8 @@ describe('Event-driven data flow integration', () => {
         (e) => e.pattern === INVOICE_PAID_EVENT_NAME,
       );
       expect(invoiceEvent).toBeDefined();
-      const invoicePayload = (invoiceEvent!.payload as InvoicePaidEvent).payload;
+      const invoicePayload = (invoiceEvent!.payload as InvoicePaidEvent)
+        .payload;
       expect(invoicePayload.visitId).toBe(visit.id);
       expect(invoicePayload.invoiceId).toBe(invoiceId);
       expect(invoicePayload.status).toBe('PAID');
@@ -299,9 +363,10 @@ describe('Event-driven data flow integration', () => {
         return Promise.resolve(v);
       });
 
-      const opdConsumer = new VisitsConsumer(opdVisitRepo);
+      const opdConsumer = new VisitsConsumer(opdVisitsService);
       await opdConsumer.handleInvoicePaid(
         invoiceEvent!.payload as InvoicePaidEvent,
+        createRmqContext(),
       );
 
       expect(savedVisit.status).toBe(VisitStatus.CLOSED);
@@ -325,20 +390,23 @@ describe('Event-driven data flow integration', () => {
       opdVisitRepo.findOne.mockResolvedValue(closedVisit);
       opdVisitRepo.save.mockResolvedValue(closedVisit);
 
-      const opdConsumer = new VisitsConsumer(opdVisitRepo);
-      await opdConsumer.handleInvoicePaid({
-        metadata: {
-          eventId: randomUUID(),
-          eventName: INVOICE_PAID_EVENT_NAME,
-          version: '1.0.0',
-          occurredAt: new Date().toISOString(),
+      const opdConsumer = new VisitsConsumer(opdVisitsService);
+      await opdConsumer.handleInvoicePaid(
+        {
+          metadata: {
+            eventId: randomUUID(),
+            eventName: INVOICE_PAID_EVENT_NAME,
+            version: '1.0.0',
+            occurredAt: new Date().toISOString(),
+          },
+          payload: {
+            visitId,
+            invoiceId: randomUUID(),
+            status: 'PAID',
+          },
         },
-        payload: {
-          visitId,
-          invoiceId: randomUUID(),
-          status: 'PAID',
-        },
-      });
+        createRmqContext(),
+      );
 
       // Should not call save since visit is already closed
       expect(opdVisitRepo.save).not.toHaveBeenCalled();
@@ -348,20 +416,23 @@ describe('Event-driven data flow integration', () => {
     it('should handle a non-existent visit gracefully', async () => {
       opdVisitRepo.findOne.mockResolvedValue(null);
 
-      const opdConsumer = new VisitsConsumer(opdVisitRepo);
-      await opdConsumer.handleInvoicePaid({
-        metadata: {
-          eventId: randomUUID(),
-          eventName: INVOICE_PAID_EVENT_NAME,
-          version: '1.0.0',
-          occurredAt: new Date().toISOString(),
+      const opdConsumer = new VisitsConsumer(opdVisitsService);
+      await opdConsumer.handleInvoicePaid(
+        {
+          metadata: {
+            eventId: randomUUID(),
+            eventName: INVOICE_PAID_EVENT_NAME,
+            version: '1.0.0',
+            occurredAt: new Date().toISOString(),
+          },
+          payload: {
+            visitId: 'non-existent',
+            invoiceId: randomUUID(),
+            status: 'PAID',
+          },
         },
-        payload: {
-          visitId: 'non-existent',
-          invoiceId: randomUUID(),
-          status: 'PAID',
-        },
-      });
+        createRmqContext(),
+      );
 
       // Should not throw and should not call save
       expect(opdVisitRepo.save).not.toHaveBeenCalled();

@@ -1,13 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ClientsModule } from '@nestjs/microservices';
 import { OpdBcController } from './opd-bc.controller';
 import { OpdBcService } from './opd-bc.service';
 import { PatientsModule } from './patients/patients.module';
 import { VisitsModule } from './visits/visits.module';
 import { CommonModule } from '@app/common';
-import { RmqService } from '@app/common';
 
 @Module({
   imports: [
@@ -29,15 +27,6 @@ import { RmqService } from '@app/common';
         synchronize: true,
       }),
     }),
-    ClientsModule.registerAsync([
-      {
-        name: 'RMQ_CLIENT',
-        imports: [CommonModule],
-        inject: [RmqService],
-        useFactory: (rmqService: RmqService) =>
-          rmqService.createClientOptions(),
-      },
-    ]),
     CommonModule,
     PatientsModule,
     VisitsModule,
