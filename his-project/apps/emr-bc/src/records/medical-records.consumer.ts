@@ -3,6 +3,7 @@ import { Ctx, EventPattern, Payload, RmqContext } from '@nestjs/microservices';
 import { MedicalRecordsService } from './medical-records.service';
 import {
   hasValidEventMetadata,
+  getEventIdForLog,
   isUuidV4,
   VISIT_CREATED_EVENT_NAME,
   VISIT_CREATED_EVENT_VERSION,
@@ -29,7 +30,9 @@ export class MedicalRecordsConsumer {
     const message = context.getMessage() as ConsumeMessage;
 
     if (!this.isVisitCreatedEvent(event)) {
-      this.logger.error('Discarding invalid visit.created event');
+      this.logger.error(
+        `Discarding invalid visit.created event ${getEventIdForLog(event)}`,
+      );
       channel.nack(message, false, false);
       return;
     }

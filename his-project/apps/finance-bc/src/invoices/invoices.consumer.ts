@@ -3,6 +3,7 @@ import { Ctx, EventPattern, Payload, RmqContext } from '@nestjs/microservices';
 import { InvoicesService } from './invoices.service';
 import {
   hasValidEventMetadata,
+  getEventIdForLog,
   isUuidV4,
   TREATMENT_COMPLETED_EVENT_NAME,
   TREATMENT_COMPLETED_EVENT_VERSION,
@@ -30,7 +31,9 @@ export class InvoicesConsumer {
     const message = context.getMessage() as ConsumeMessage;
 
     if (!this.isTreatmentCompletedEvent(event)) {
-      this.logger.error('Discarding invalid treatment.completed event');
+      this.logger.error(
+        `Discarding invalid treatment.completed event ${getEventIdForLog(event)}`,
+      );
       channel.nack(message, false, false);
       return;
     }
@@ -40,6 +43,9 @@ export class InvoicesConsumer {
       channel.ack(message);
     } catch (error: unknown) {
       if (error instanceof BadRequestException) {
+        this.logger.error(
+          `Discarding permanent treatment.completed event ${event.metadata.eventId}`,
+        );
         channel.nack(message, false, false);
         return;
       }

@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { RmqContext } from '@nestjs/microservices';
 import {
   VISIT_CREATED_EVENT_NAME,
@@ -48,10 +49,18 @@ describe('MedicalRecordsConsumer', () => {
   });
 
   it('NACKs invalid messages without requeueing', async () => {
-    await consumer.handleVisitCreated({ payload: {} }, context);
+    const log = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+    await consumer.handleVisitCreated(
+      { ...event, payload: { ...event.payload, visitId: 'invalid' } },
+      context,
+    );
 
     expect(service.processVisitCreated).not.toHaveBeenCalled();
     expect(channel.nack).toHaveBeenCalledWith(message, false, false);
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining(event.metadata.eventId),
+    );
+    log.mockRestore();
   });
 
   it('NACKs transient failures and requeues', async () => {

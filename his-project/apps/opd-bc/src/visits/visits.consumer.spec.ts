@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { RmqContext } from '@nestjs/microservices';
 import {
   INVOICE_PAID_EVENT_NAME,
@@ -47,6 +48,7 @@ describe('VisitsConsumer', () => {
   });
 
   it('NACKs invalid messages without requeueing', async () => {
+    const log = jest.spyOn(Logger.prototype, 'error').mockImplementation();
     await consumer.handleInvoicePaid(
       { ...event, payload: { ...event.payload, status: 'PENDING' } },
       context,
@@ -54,6 +56,10 @@ describe('VisitsConsumer', () => {
 
     expect(service.processInvoicePaid).not.toHaveBeenCalled();
     expect(channel.nack).toHaveBeenCalledWith(message, false, false);
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining(event.metadata.eventId),
+    );
+    log.mockRestore();
   });
 
   it('NACKs transient failures and requeues', async () => {

@@ -7,6 +7,22 @@ export function isUuidV4(value: unknown): value is string {
   return typeof value === 'string' && UUID_V4_PATTERN.test(value);
 }
 
+export function getEventIdForLog(event: unknown): string {
+  if (typeof event !== 'object' || event === null) {
+    return 'unknown';
+  }
+
+  const metadata = (event as { metadata?: unknown }).metadata;
+  if (typeof metadata !== 'object' || metadata === null) {
+    return 'unknown';
+  }
+
+  const eventId = (metadata as { eventId?: unknown }).eventId;
+  return typeof eventId === 'string' && eventId.length > 0
+    ? eventId
+    : 'unknown';
+}
+
 export function hasValidEventMetadata(
   value: unknown,
   eventName: string,

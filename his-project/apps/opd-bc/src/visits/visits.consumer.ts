@@ -2,6 +2,7 @@ import { Controller, Logger, NotFoundException } from '@nestjs/common';
 import { Ctx, EventPattern, Payload, RmqContext } from '@nestjs/microservices';
 import {
   hasValidEventMetadata,
+  getEventIdForLog,
   INVOICE_PAID_EVENT_NAME,
   INVOICE_PAID_EVENT_VERSION,
   InvoicePaidEvent,
@@ -30,7 +31,9 @@ export class VisitsConsumer {
     const message = context.getMessage() as ConsumeMessage;
 
     if (!this.isInvoicePaidEvent(event)) {
-      this.logger.error('Discarding invalid invoice.paid event');
+      this.logger.error(
+        `Discarding invalid invoice.paid event ${getEventIdForLog(event)}`,
+      );
       channel.nack(message, false, false);
       return;
     }
@@ -40,6 +43,9 @@ export class VisitsConsumer {
       channel.ack(message);
     } catch (error: unknown) {
       if (error instanceof NotFoundException) {
+        this.logger.error(
+          `Discarding permanent invoice.paid event ${event.metadata.eventId}`,
+        );
         channel.nack(message, false, false);
         return;
       }
