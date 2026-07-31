@@ -65,4 +65,20 @@ export class VisitsService {
       relations: { patient: true },
     });
   }
+
+  async closeAfterPayment(visitId: string): Promise<Visit> {
+    const visit = await this.visitRepository.findOne({
+      where: { id: visitId },
+    });
+    if (!visit) {
+      throw new NotFoundException(`Visit with ID '${visitId}' not found`);
+    }
+
+    if (visit.status === VisitStatus.CLOSED) {
+      return visit;
+    }
+
+    visit.status = VisitStatus.CLOSED;
+    return this.visitRepository.save(visit);
+  }
 }
