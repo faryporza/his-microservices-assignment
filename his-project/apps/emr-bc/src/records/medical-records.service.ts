@@ -12,6 +12,7 @@ import { IdempotencyService, RMQ_CLIENT } from '@app/common';
 import { MedicalRecord, RecordStatus } from './entities/medical-record.entity';
 import { CreateMedicalRecordDto } from './dto/create-medical-record.dto';
 import { UpdateMedicalRecordDto } from './dto/update-medical-record.dto';
+import { CompleteTreatmentDto } from './dto/complete-treatment.dto';
 import {
   TREATMENT_COMPLETED_EVENT_NAME,
   TREATMENT_COMPLETED_EVENT_VERSION,
@@ -117,6 +118,16 @@ export class MedicalRecordsService {
         );
       },
     );
+  }
+
+  async completeTreatment(
+    id: string,
+    completeTreatmentDto: CompleteTreatmentDto,
+  ): Promise<MedicalRecord> {
+    return this.update(id, {
+      ...completeTreatmentDto,
+      status: RecordStatus.COMPLETED,
+    });
   }
 
   async createWaitingRecord(

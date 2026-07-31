@@ -1,17 +1,11 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { createStrictValidationPipe, RmqService } from '@app/common';
 import { FinanceBcModule } from './finance-bc.module';
-import { RmqService } from '@app/common';
 import { RABBITMQ_QUEUES } from '@app/contracts';
 
 async function bootstrap() {
   const app = await NestFactory.create(FinanceBcModule);
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      transform: true,
-    }),
-  );
+  app.useGlobalPipes(createStrictValidationPipe());
 
   const rmqService = app.get(RmqService);
   app.connectMicroservice(

@@ -1,5 +1,13 @@
-import { Controller, Get, Param, Patch } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+} from '@nestjs/common';
 import { InvoicesService } from './invoices.service';
+import { PayInvoiceDto } from './dto/pay-invoice.dto';
 
 @Controller('invoices')
 export class InvoicesController {
@@ -11,17 +19,22 @@ export class InvoicesController {
   }
 
   @Get('id/:id')
-  findById(@Param('id') id: string) {
+  findById(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string) {
     return this.invoicesService.findById(id);
   }
 
   @Get(':visitId')
-  findByVisitId(@Param('visitId') visitId: string) {
+  findByVisitId(
+    @Param('visitId', new ParseUUIDPipe({ version: '4' })) visitId: string,
+  ) {
     return this.invoicesService.findByVisitId(visitId);
   }
 
   @Patch(':id/pay')
-  pay(@Param('id') id: string) {
+  pay(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Body() _payInvoiceDto: PayInvoiceDto,
+  ) {
     return this.invoicesService.pay(id);
   }
 }

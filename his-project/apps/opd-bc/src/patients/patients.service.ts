@@ -7,6 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Patient } from './entities/patient.entity';
 import { CreatePatientDto } from './dto/create-patient.dto';
+import { UpdatePatientDto } from './dto/update-patient.dto';
 
 @Injectable()
 export class PatientsService {
@@ -50,5 +51,37 @@ export class PatientsService {
       throw new NotFoundException(`Patient with ID '${id}' not found`);
     }
     return patient;
+  }
+
+  async update(
+    id: string,
+    updatePatientDto: UpdatePatientDto,
+  ): Promise<Patient> {
+    const patient = await this.findOne(id);
+
+    if (updatePatientDto.hn && updatePatientDto.hn !== patient.hn) {
+      const existingHn = await this.patientRepository.findOne({
+        where: { hn: updatePatientDto.hn },
+      });
+      if (existingHn) {
+        throw new ConflictException(
+          `HN '${updatePatientDto.hn}' already exists`,
+        );
+      }
+    }
+
+    if (updatePatientDto.idCard && updatePatientDto.idCard !== patient.idCard) {
+      const existingIdCard = await this.patientRepository.findOne({
+        where: { idCard: updatePatientDto.idCard },
+      });
+      if (existingIdCard) {
+        throw new ConflictException(
+          `ID Card '${updatePatientDto.idCard}' already exists`,
+        );
+      }
+    }
+
+    Object.assign(patient, updatePatientDto);
+    return this.patientRepository.save(patient);
   }
 }
