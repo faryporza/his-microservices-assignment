@@ -1,0 +1,16 @@
+import { NestFactory } from '@nestjs/core';
+import { createStrictValidationPipe, RmqService } from '@app/common';
+import { OpdBcModule } from './opd-bc.module';
+import { RABBITMQ_QUEUES } from '@app/contracts';
+
+async function bootstrap() {
+  const app = await NestFactory.create(OpdBcModule);
+  app.useGlobalPipes(createStrictValidationPipe());
+
+  const rmqService = app.get(RmqService);
+  app.connectMicroservice(rmqService.createServiceOptions(RABBITMQ_QUEUES.opd));
+  await app.startAllMicroservices();
+
+  await app.listen(process.env.OPD_PORT ?? 3000);
+}
+void bootstrap();

@@ -20,6 +20,21 @@
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": false,
     "strictBindCallApply": false,
-    "noFallthroughCasesInSwitch": false
+    "noFallthroughCasesInSwitch": false,
+    "types": ["jest", "node"],
+    "paths": {
+      "@app/common": [
+        "libs/common/src"
+      ],
+      "@app/common/*": [
+        "libs/common/src/*"
+      ],
+      "@app/contracts": [
+        "libs/contracts/src"
+      ],
+      "@app/contracts/*": [
+        "libs/contracts/src/*"
+      ]
+    }
   }
 }

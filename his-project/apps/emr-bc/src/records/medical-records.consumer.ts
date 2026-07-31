@@ -1,0 +1,72 @@
+import { Controller, Logger } from '@nestjs/common';
+import { Ctx, EventPattern, Payload, RmqContext } from '@nestjs/microservices';
+import { MedicalRecordsService } from './medical-records.service';
+import {
+  hasValidEventMetadata,
+  getEventIdForLog,
+  isUuidV4,
+  VISIT_CREATED_EVENT_NAME,
+  VISIT_CREATED_EVENT_VERSION,
+  VisitCreatedEvent,
+} from '@app/contracts';
+import type { Channel, ConsumeMessage } from 'amqplib';
+
+/**
+ * Consumes `visit.created` events from OPD and creates a medical record stub
+ * with status `WAITING` so the EMR workflow can begin.
+ */
+@Controller()
+export class MedicalRecordsConsumer {
+  private readonly logger = new Logger(MedicalRecordsConsumer.name);
+
+  constructor(private readonly service: MedicalRecordsService) {}
+
+  @EventPattern(VISIT_CREATED_EVENT_NAME)
+  async handleVisitCreated(
+    @Payload() event: unknown,
+    @Ctx() context: RmqContext,
+  ): Promise<void> {
+    const channel = context.getChannelRef() as Channel;
+    const message = context.getMessage() as ConsumeMessage;
+
+    if (!this.isVisitCreatedEvent(event)) {
+      this.logger.error(
+        `Discarding invalid visit.created event ${getEventIdForLog(event)}`,
+      );
+      channel.nack(message, false, false);
+      return;
+    }
+
+    try {
+      await this.service.processVisitCreated(event);
+      channel.ack(message);
+    } catch (error: unknown) {
+      this.logger.error(
+        `Failed to process visit.created ${event.metadata.eventId}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+      channel.nack(message, false, true);
+      throw error;
+    }
+  }
+
+  private isVisitCreatedEvent(event: unknown): event is VisitCreatedEvent {
+    if (typeof event !== 'object' || event === null) {
+      return false;
+    }
+
+    const candidate = event as Partial<VisitCreatedEvent>;
+    const payload = candidate.payload;
+    return (
+      hasValidEventMetadata(
+        candidate.metadata,
+        VISIT_CREATED_EVENT_NAME,
+        VISIT_CREATED_EVENT_VERSION,
+      ) &&
+      isUuidV4(payload?.visitId) &&
+      isUuidV4(payload.patientId) &&
+      typeof payload.timestamp === 'string' &&
+      !Number.isNaN(Date.parse(payload.timestamp))
+    );
+  }
+}
