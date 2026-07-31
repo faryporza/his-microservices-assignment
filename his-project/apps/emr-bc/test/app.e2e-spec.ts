@@ -58,5 +58,14 @@ describe('EmrBcController (e2e)', () => {
         status: 'COMPLETED',
       })
       .expect(400);
+
+    await request(app.getHttpServer() as App)
+      .patch(`/records/${randomUUID()}/complete`)
+      .send({
+        doctorId: 'doctor-1',
+        diagnosis: 'Flu',
+        treatmentCost: 100,
+      })
+      .expect(404);
   });
 });

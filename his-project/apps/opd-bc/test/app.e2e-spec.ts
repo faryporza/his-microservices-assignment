@@ -58,5 +58,10 @@ describe('OpdBcController (e2e)', () => {
       .patch(`/patients/${randomUUID()}`)
       .send({ unknownField: true })
       .expect(400);
+
+    await request(app.getHttpServer() as App)
+      .patch(`/patients/${randomUUID()}`)
+      .send({ firstName: 'Grace' })
+      .expect(404);
   });
 });

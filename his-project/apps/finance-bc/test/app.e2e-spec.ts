@@ -42,5 +42,10 @@ describe('FinanceBcController (e2e)', () => {
       .patch(`/invoices/${invoiceId}/pay`)
       .send({ status: 'PENDING' })
       .expect(400);
+
+    await request(app.getHttpServer() as App)
+      .patch(`/invoices/${invoiceId}/pay`)
+      .send({})
+      .expect(404);
   });
 });
