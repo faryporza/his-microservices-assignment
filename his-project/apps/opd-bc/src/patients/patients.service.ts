@@ -93,6 +93,13 @@ export class PatientsService {
     }
   }
 
+  async delete(id: string): Promise<void> {
+    const result = await this.patientRepository.delete(id);
+    if (!result.affected) {
+      throw new NotFoundException(`Patient with ID '${id}' not found`);
+    }
+  }
+
   private isUniqueViolation(error: unknown): boolean {
     return (
       typeof error === 'object' &&

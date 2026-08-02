@@ -1,7 +1,10 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -39,5 +42,11 @@ export class PatientsController {
     @Body() updatePatientDto: UpdatePatientDto,
   ) {
     return this.patientsService.update(id, updatePatientDto);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  delete(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string) {
+    return this.patientsService.delete(id);
   }
 }
