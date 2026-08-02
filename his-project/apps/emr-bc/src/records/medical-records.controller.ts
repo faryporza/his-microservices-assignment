@@ -2,7 +2,6 @@ import {
   Body,
   Controller,
   Get,
-  Headers,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -11,7 +10,6 @@ import {
 import { MedicalRecordsService } from './medical-records.service';
 import { CreateMedicalRecordDto } from './dto/create-medical-record.dto';
 import { UpdateMedicalRecordDto } from './dto/update-medical-record.dto';
-import { CompleteTreatmentDto } from './dto/complete-treatment.dto';
 
 @Controller('records')
 export class MedicalRecordsController {
@@ -45,18 +43,5 @@ export class MedicalRecordsController {
     @Body() updateDto: UpdateMedicalRecordDto,
   ) {
     return this.medicalRecordsService.update(id, updateDto);
-  }
-
-  @Patch(':id/complete')
-  completeTreatment(
-    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-    @Body() completeTreatmentDto: CompleteTreatmentDto,
-    @Headers('x-correlation-id') correlationId?: string,
-  ) {
-    return this.medicalRecordsService.completeTreatment(
-      id,
-      completeTreatmentDto,
-      correlationId,
-    );
   }
 }

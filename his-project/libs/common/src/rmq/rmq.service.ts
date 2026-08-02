@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { RmqOptions, Transport } from '@nestjs/microservices';
-import { RABBITMQ_EXCHANGE } from '@app/contracts';
 
 /**
  * Builds {@link RmqOptions} for the NestJS RabbitMQ microservice transport.
@@ -21,15 +20,12 @@ export class RmqService {
 
   /** The `amqp://` connection URL read from configuration. */
   getUrl(): string {
-    return this.config.get<string>(
-      'RABBITMQ_URL',
-      'amqp://guest:guest@localhost:5672',
-    );
+    return this.config.getOrThrow<string>('RABBITMQ_URL');
   }
 
   /** The durable topic exchange every service publishes to. */
   getExchange(): string {
-    return this.config.get<string>('RABBITMQ_EXCHANGE', RABBITMQ_EXCHANGE);
+    return this.config.getOrThrow<string>('RABBITMQ_EXCHANGE');
   }
 
   /**
@@ -62,7 +58,7 @@ export class RmqService {
    * Options for a *publishing* `ClientProxy`. Use with
    * `ClientsModule.registerAsync` or `ClientProxyFactory.create`.
    */
-  createClientOptions(queue = ''): RmqOptions {
+  createClientOptions(queue?: string): RmqOptions {
     return {
       transport: Transport.RMQ,
       options: {
@@ -70,7 +66,7 @@ export class RmqService {
         // The transport asserts this exchange as durable by default.
         exchange: this.getExchange(),
         exchangeType: 'topic',
-        queue,
+        ...(queue ? { queue } : {}),
         queueOptions: { durable: true },
         wildcards: true,
         persistent: true,

@@ -43,26 +43,21 @@ describe('EmrBcController (e2e)', () => {
       .expect(400);
   });
 
-  it('validates CompleteTreatmentDto before business logic', async () => {
+  it('validates the medical record update URI before business logic', async () => {
     await request(app.getHttpServer() as App)
-      .patch(`/records/${randomUUID()}/complete`)
-      .send({ diagnosis: 'Flu', treatmentCost: 100 })
+      .patch(`/records/${randomUUID()}`)
+      .send({ status: 'INVALID' })
       .expect(400);
 
     await request(app.getHttpServer() as App)
-      .patch(`/records/${randomUUID()}/complete`)
+      .patch(`/records/${randomUUID()}`)
+      .send({ unexpected: true })
+      .expect(400);
+
+    await request(app.getHttpServer() as App)
+      .patch(`/records/${randomUUID()}`)
       .send({
-        doctorId: 'doctor-1',
-        diagnosis: 'Flu',
-        treatmentCost: 100,
         status: 'COMPLETED',
-      })
-      .expect(400);
-
-    await request(app.getHttpServer() as App)
-      .patch(`/records/${randomUUID()}/complete`)
-      .send({
-        doctorId: 'doctor-1',
         diagnosis: 'Flu',
         treatmentCost: 100,
       })
