@@ -24,6 +24,9 @@ export class MedicalRecord {
   @Column({ type: 'varchar', name: 'patient_id', nullable: true })
   patientId?: string | null;
 
+  @Column({ type: 'varchar', name: 'correlation_id', nullable: true })
+  correlationId?: string | null;
+
   @Column({ type: 'text', nullable: true })
   diagnosis?: string | null;
 

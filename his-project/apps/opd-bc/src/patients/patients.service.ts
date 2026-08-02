@@ -23,20 +23,25 @@ export class PatientsService {
       where: { hn: createPatientDto.hn },
     });
     if (existingHn) {
-      throw new ConflictException(`HN '${createPatientDto.hn}' already exists`);
+      throw new ConflictException('HN already exists');
     }
 
     const existingIdCard = await this.patientRepository.findOne({
       where: { idCard: createPatientDto.idCard },
     });
     if (existingIdCard) {
-      throw new ConflictException(
-        `ID Card '${createPatientDto.idCard}' already exists`,
-      );
+      throw new ConflictException('ID Card already exists');
     }
 
     const patient = this.patientRepository.create(createPatientDto);
-    return await this.patientRepository.save(patient);
+    try {
+      return await this.patientRepository.save(patient);
+    } catch (error: unknown) {
+      if (this.isUniqueViolation(error)) {
+        throw new ConflictException('HN or ID Card already exists');
+      }
+      throw error;
+    }
   }
 
   // ดึงข้อมูล patient ทั้งหมด
@@ -64,9 +69,7 @@ export class PatientsService {
         where: { hn: updatePatientDto.hn },
       });
       if (existingHn) {
-        throw new ConflictException(
-          `HN '${updatePatientDto.hn}' already exists`,
-        );
+        throw new ConflictException('HN already exists');
       }
     }
 
@@ -75,13 +78,26 @@ export class PatientsService {
         where: { idCard: updatePatientDto.idCard },
       });
       if (existingIdCard) {
-        throw new ConflictException(
-          `ID Card '${updatePatientDto.idCard}' already exists`,
-        );
+        throw new ConflictException('ID Card already exists');
       }
     }
 
     Object.assign(patient, updatePatientDto);
-    return this.patientRepository.save(patient);
+    try {
+      return await this.patientRepository.save(patient);
+    } catch (error: unknown) {
+      if (this.isUniqueViolation(error)) {
+        throw new ConflictException('HN or ID Card already exists');
+      }
+      throw error;
+    }
+  }
+
+  private isUniqueViolation(error: unknown): boolean {
+    return (
+      typeof error === 'object' &&
+      error !== null &&
+      (error as { code?: unknown }).code === '23505'
+    );
   }
 }

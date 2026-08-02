@@ -1,9 +1,14 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
-import { IdempotencyService, RMQ_CLIENT } from '@app/common';
+import { IdempotencyService, RMQ_CLIENT, StructuredLogger } from '@app/common';
 import { Visit, VisitStatus } from './entities/visit.entity';
 import { Patient } from '../patients/entities/patient.entity';
 import { CreateVisitDto } from './dto/create-visit.dto';
@@ -17,6 +22,8 @@ import { randomUUID } from 'crypto';
 
 @Injectable()
 export class VisitsService {
+  private readonly logger = new StructuredLogger('opd-bc');
+
   constructor(
     @InjectRepository(Visit)
     private readonly visitRepository: Repository<Visit>,
@@ -28,7 +35,10 @@ export class VisitsService {
   ) {}
 
   // สร้าง visit ใหม่
-  async create(createVisitDto: CreateVisitDto): Promise<Visit> {
+  async create(
+    createVisitDto: CreateVisitDto,
+    correlationId?: string,
+  ): Promise<Visit> {
     const patient = await this.patientRepository.findOne({
       where: { id: createVisitDto.patientId },
     });
@@ -51,6 +61,7 @@ export class VisitsService {
         eventName: VISIT_CREATED_EVENT_NAME,
         version: VISIT_CREATED_EVENT_VERSION,
         occurredAt: new Date().toISOString(),
+        correlationId: correlationId ?? randomUUID(),
       },
       payload: {
         visitId: saved.id,
@@ -59,7 +70,26 @@ export class VisitsService {
       },
     };
 
-    await firstValueFrom(this.client.emit(VISIT_CREATED_EVENT_NAME, event));
+    try {
+      await firstValueFrom(this.client.emit(VISIT_CREATED_EVENT_NAME, event));
+      this.logger.log({
+        eventName: event.metadata.eventName,
+        eventId: event.metadata.eventId,
+        correlationId: event.metadata.correlationId,
+        visitId: saved.id,
+        status: 'PUBLISHED',
+      });
+    } catch (error: unknown) {
+      this.logger.error({
+        eventName: event.metadata.eventName,
+        eventId: event.metadata.eventId,
+        correlationId: event.metadata.correlationId,
+        visitId: saved.id,
+        status: 'PUBLISH_FAILED',
+        error,
+      });
+      throw new ServiceUnavailableException('Message broker unavailable');
+    }
 
     return saved;
   }
