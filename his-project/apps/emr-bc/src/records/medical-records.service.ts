@@ -3,12 +3,13 @@ import {
   NotFoundException,
   BadRequestException,
   Inject,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
-import { IdempotencyService, RMQ_CLIENT } from '@app/common';
+import { IdempotencyService, RMQ_CLIENT, StructuredLogger } from '@app/common';
 import { MedicalRecord, RecordStatus } from './entities/medical-record.entity';
 import { CreateMedicalRecordDto } from './dto/create-medical-record.dto';
 import { UpdateMedicalRecordDto } from './dto/update-medical-record.dto';
@@ -23,6 +24,8 @@ import { randomUUID } from 'crypto';
 
 @Injectable()
 export class MedicalRecordsService {
+  private readonly logger = new StructuredLogger('emr-bc');
+
   constructor(
     @InjectRepository(MedicalRecord)
     private readonly medicalRecordRepository: Repository<MedicalRecord>,
@@ -67,6 +70,7 @@ export class MedicalRecordsService {
   async update(
     id: string,
     updateDto: UpdateMedicalRecordDto,
+    correlationId?: string,
   ): Promise<MedicalRecord> {
     const record = await this.findOne(id);
 
@@ -89,6 +93,7 @@ export class MedicalRecordsService {
           eventName: TREATMENT_COMPLETED_EVENT_NAME,
           version: TREATMENT_COMPLETED_EVENT_VERSION,
           occurredAt: new Date().toISOString(),
+          correlationId: correlationId ?? saved.correlationId ?? randomUUID(),
         },
         payload: {
           visitId: saved.visitId,
@@ -98,9 +103,28 @@ export class MedicalRecordsService {
         },
       };
 
-      await firstValueFrom(
-        this.client.emit(TREATMENT_COMPLETED_EVENT_NAME, event),
-      );
+      try {
+        await firstValueFrom(
+          this.client.emit(TREATMENT_COMPLETED_EVENT_NAME, event),
+        );
+        this.logger.log({
+          eventName: event.metadata.eventName,
+          eventId: event.metadata.eventId,
+          correlationId: event.metadata.correlationId,
+          visitId: event.payload.visitId,
+          status: 'PUBLISHED',
+        });
+      } catch (error: unknown) {
+        this.logger.error({
+          eventName: event.metadata.eventName,
+          eventId: event.metadata.eventId,
+          correlationId: event.metadata.correlationId,
+          visitId: event.payload.visitId,
+          status: 'PUBLISH_FAILED',
+          error,
+        });
+        throw new ServiceUnavailableException('Message broker unavailable');
+      }
     }
 
     return saved;
@@ -115,6 +139,7 @@ export class MedicalRecordsService {
           event.payload.visitId,
           event.payload.patientId,
           manager,
+          event.metadata.correlationId,
         );
       },
     );
@@ -123,17 +148,23 @@ export class MedicalRecordsService {
   async completeTreatment(
     id: string,
     completeTreatmentDto: CompleteTreatmentDto,
+    correlationId?: string,
   ): Promise<MedicalRecord> {
-    return this.update(id, {
-      ...completeTreatmentDto,
-      status: RecordStatus.COMPLETED,
-    });
+    return this.update(
+      id,
+      {
+        ...completeTreatmentDto,
+        status: RecordStatus.COMPLETED,
+      },
+      correlationId,
+    );
   }
 
   async createWaitingRecord(
     visitId: string,
     patientId: string,
     manager?: EntityManager,
+    correlationId?: string,
   ): Promise<MedicalRecord> {
     const repository = manager
       ? manager.getRepository(MedicalRecord)
@@ -144,11 +175,16 @@ export class MedicalRecordsService {
       return existingRecord;
     }
 
-    const record = repository.create({
+    const recordData: Partial<MedicalRecord> = {
       visitId,
       patientId,
       status: RecordStatus.WAITING,
-    });
+    };
+    if (correlationId) {
+      recordData.correlationId = correlationId;
+    }
+
+    const record = repository.create(recordData);
     return repository.save(record);
   }
 }

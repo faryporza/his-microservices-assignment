@@ -18,9 +18,7 @@ export function getEventIdForLog(event: unknown): string {
   }
 
   const eventId = (metadata as { eventId?: unknown }).eventId;
-  return typeof eventId === 'string' && eventId.length > 0
-    ? eventId
-    : 'unknown';
+  return isUuidV4(eventId) ? eventId : 'unknown';
 }
 
 export function hasValidEventMetadata(

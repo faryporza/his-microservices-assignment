@@ -1,4 +1,4 @@
-import { Controller, Logger, NotFoundException } from '@nestjs/common';
+import { Controller, NotFoundException } from '@nestjs/common';
 import { Ctx, EventPattern, Payload, RmqContext } from '@nestjs/microservices';
 import {
   hasValidEventMetadata,
@@ -9,6 +9,7 @@ import {
   isUuidV4,
 } from '@app/contracts';
 import type { Channel, ConsumeMessage } from 'amqplib';
+import { StructuredLogger } from '@app/common';
 import { VisitsService } from './visits.service';
 
 /**
@@ -18,7 +19,7 @@ import { VisitsService } from './visits.service';
  */
 @Controller()
 export class VisitsConsumer {
-  private readonly logger = new Logger(VisitsConsumer.name);
+  private readonly logger = new StructuredLogger('opd-bc');
 
   constructor(private readonly service: VisitsService) {}
 
@@ -31,9 +32,12 @@ export class VisitsConsumer {
     const message = context.getMessage() as ConsumeMessage;
 
     if (!this.isInvoicePaidEvent(event)) {
-      this.logger.error(
-        `Discarding invalid invoice.paid event ${getEventIdForLog(event)}`,
-      );
+      this.logger.error({
+        eventName: INVOICE_PAID_EVENT_NAME,
+        eventId: getEventIdForLog(event),
+        status: 'DISCARDED',
+        error: 'InvalidEvent',
+      });
       channel.nack(message, false, false);
       return;
     }
@@ -41,19 +45,35 @@ export class VisitsConsumer {
     try {
       await this.service.processInvoicePaid(event);
       channel.ack(message);
+      this.logger.log({
+        eventName: event.metadata.eventName,
+        eventId: event.metadata.eventId,
+        correlationId: event.metadata.correlationId,
+        visitId: event.payload.visitId,
+        status: 'ACKED',
+      });
     } catch (error: unknown) {
       if (error instanceof NotFoundException) {
-        this.logger.error(
-          `Discarding permanent invoice.paid event ${event.metadata.eventId}`,
-        );
+        this.logger.error({
+          eventName: event.metadata.eventName,
+          eventId: event.metadata.eventId,
+          correlationId: event.metadata.correlationId,
+          visitId: event.payload.visitId,
+          status: 'DISCARDED',
+          error,
+        });
         channel.nack(message, false, false);
         return;
       }
 
-      this.logger.error(
-        `Failed to process invoice.paid ${event.metadata.eventId}`,
-        error instanceof Error ? error.stack : undefined,
-      );
+      this.logger.error({
+        eventName: event.metadata.eventName,
+        eventId: event.metadata.eventId,
+        correlationId: event.metadata.correlationId,
+        visitId: event.payload.visitId,
+        status: 'REQUEUED',
+        error,
+      });
       channel.nack(message, false, true);
       throw error;
     }

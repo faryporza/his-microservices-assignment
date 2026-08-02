@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Headers,
   Param,
   ParseUUIDPipe,
   Post,
@@ -14,8 +15,11 @@ export class VisitsController {
   constructor(private readonly visitsService: VisitsService) {}
 
   @Post('visits') // เปิด endpoint สำหรับสร้าง visit ใหม่
-  create(@Body() createVisitDto: CreateVisitDto) {
-    return this.visitsService.create(createVisitDto);
+  create(
+    @Body() createVisitDto: CreateVisitDto,
+    @Headers('x-correlation-id') correlationId?: string,
+  ) {
+    return this.visitsService.create(createVisitDto, correlationId);
   }
 
   @Get('visits') // เปิด endpoint สำหรับดึงข้อมูล visit ทั้งหมด

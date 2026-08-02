@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Headers,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -34,7 +35,8 @@ export class InvoicesController {
   pay(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
     @Body() _payInvoiceDto: PayInvoiceDto,
+    @Headers('x-correlation-id') correlationId?: string,
   ) {
-    return this.invoicesService.pay(id);
+    return this.invoicesService.pay(id, correlationId);
   }
 }
