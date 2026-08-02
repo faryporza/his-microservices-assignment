@@ -1,5 +1,6 @@
-import { BadRequestException, Controller, Logger } from '@nestjs/common';
+import { BadRequestException, Controller } from '@nestjs/common';
 import { Ctx, EventPattern, Payload, RmqContext } from '@nestjs/microservices';
+import { StructuredLogger } from '@app/common';
 import { InvoicesService } from './invoices.service';
 import {
   hasValidEventMetadata,
@@ -18,7 +19,7 @@ import type { Channel, ConsumeMessage } from 'amqplib';
  */
 @Controller()
 export class InvoicesConsumer {
-  private readonly logger = new Logger(InvoicesConsumer.name);
+  private readonly logger = new StructuredLogger('finance-bc');
 
   constructor(private readonly service: InvoicesService) {}
 
@@ -31,9 +32,12 @@ export class InvoicesConsumer {
     const message = context.getMessage() as ConsumeMessage;
 
     if (!this.isTreatmentCompletedEvent(event)) {
-      this.logger.error(
-        `Discarding invalid treatment.completed event ${getEventIdForLog(event)}`,
-      );
+      this.logger.error({
+        eventName: TREATMENT_COMPLETED_EVENT_NAME,
+        eventId: getEventIdForLog(event),
+        status: 'DISCARDED',
+        error: 'InvalidEvent',
+      });
       channel.nack(message, false, false);
       return;
     }
@@ -41,19 +45,35 @@ export class InvoicesConsumer {
     try {
       await this.service.processTreatmentCompleted(event);
       channel.ack(message);
+      this.logger.log({
+        eventName: event.metadata.eventName,
+        eventId: event.metadata.eventId,
+        correlationId: event.metadata.correlationId,
+        visitId: event.payload.visitId,
+        status: 'ACKED',
+      });
     } catch (error: unknown) {
       if (error instanceof BadRequestException) {
-        this.logger.error(
-          `Discarding permanent treatment.completed event ${event.metadata.eventId}`,
-        );
+        this.logger.error({
+          eventName: event.metadata.eventName,
+          eventId: event.metadata.eventId,
+          correlationId: event.metadata.correlationId,
+          visitId: event.payload.visitId,
+          status: 'DISCARDED',
+          error,
+        });
         channel.nack(message, false, false);
         return;
       }
 
-      this.logger.error(
-        `Failed to process treatment.completed ${event.metadata.eventId}`,
-        error instanceof Error ? error.stack : undefined,
-      );
+      this.logger.error({
+        eventName: event.metadata.eventName,
+        eventId: event.metadata.eventId,
+        correlationId: event.metadata.correlationId,
+        visitId: event.payload.visitId,
+        status: 'REQUEUED',
+        error,
+      });
       channel.nack(message, false, true);
       throw error;
     }

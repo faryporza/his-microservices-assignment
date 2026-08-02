@@ -4,12 +4,13 @@ import {
   Injectable,
   NotFoundException,
   Inject,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
-import { IdempotencyService, RMQ_CLIENT } from '@app/common';
+import { IdempotencyService, RMQ_CLIENT, StructuredLogger } from '@app/common';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { Invoice, InvoiceStatus } from './entities/invoice.entity';
 import {
@@ -22,6 +23,8 @@ import { randomUUID } from 'crypto';
 
 @Injectable()
 export class InvoicesService {
+  private readonly logger = new StructuredLogger('finance-bc');
+
   constructor(
     @InjectRepository(Invoice)
     private readonly invoiceRepository: Repository<Invoice>,
@@ -49,7 +52,7 @@ export class InvoicesService {
     });
   }
 
-  async pay(id: string): Promise<Invoice> {
+  async pay(id: string, correlationId?: string): Promise<Invoice> {
     const invoice = await this.findById(id);
     if (invoice.status === InvoiceStatus.PAID) {
       throw new ConflictException(
@@ -67,6 +70,7 @@ export class InvoicesService {
         eventName: INVOICE_PAID_EVENT_NAME,
         version: INVOICE_PAID_EVENT_VERSION,
         occurredAt: new Date().toISOString(),
+        correlationId: correlationId ?? saved.correlationId ?? randomUUID(),
       },
       payload: {
         visitId: saved.visitId,
@@ -75,7 +79,26 @@ export class InvoicesService {
       },
     };
 
-    await firstValueFrom(this.client.emit(INVOICE_PAID_EVENT_NAME, event));
+    try {
+      await firstValueFrom(this.client.emit(INVOICE_PAID_EVENT_NAME, event));
+      this.logger.log({
+        eventName: event.metadata.eventName,
+        eventId: event.metadata.eventId,
+        correlationId: event.metadata.correlationId,
+        visitId: saved.visitId,
+        status: 'PUBLISHED',
+      });
+    } catch (error: unknown) {
+      this.logger.error({
+        eventName: event.metadata.eventName,
+        eventId: event.metadata.eventId,
+        correlationId: event.metadata.correlationId,
+        visitId: saved.visitId,
+        status: 'PUBLISH_FAILED',
+        error,
+      });
+      throw new ServiceUnavailableException('Message broker unavailable');
+    }
 
     return saved;
   }
@@ -94,6 +117,7 @@ export class InvoicesService {
             totalAmount: event.payload.treatmentCost,
           },
           manager,
+          event.metadata.correlationId,
         );
       },
     );
@@ -102,6 +126,7 @@ export class InvoicesService {
   async createFromTreatment(
     createDto: CreateInvoiceDto,
     manager?: EntityManager,
+    correlationId?: string,
   ): Promise<Invoice> {
     const repository = manager
       ? manager.getRepository(Invoice)
@@ -115,12 +140,17 @@ export class InvoicesService {
     }
 
     const totalAmount = this.normalizeAmount(createDto.totalAmount);
-    const invoice = repository.create({
+    const invoiceData: Partial<Invoice> = {
       visitId: createDto.visitId,
       recordId: createDto.recordId,
       totalAmount,
       status: InvoiceStatus.PENDING,
-    });
+    };
+    if (correlationId) {
+      invoiceData.correlationId = correlationId;
+    }
+
+    const invoice = repository.create(invoiceData);
     return repository.save(invoice);
   }
 

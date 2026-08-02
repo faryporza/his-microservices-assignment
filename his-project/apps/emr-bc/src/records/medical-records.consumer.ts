@@ -1,5 +1,6 @@
-import { Controller, Logger } from '@nestjs/common';
+import { BadRequestException, Controller } from '@nestjs/common';
 import { Ctx, EventPattern, Payload, RmqContext } from '@nestjs/microservices';
+import { StructuredLogger } from '@app/common';
 import { MedicalRecordsService } from './medical-records.service';
 import {
   hasValidEventMetadata,
@@ -17,7 +18,7 @@ import type { Channel, ConsumeMessage } from 'amqplib';
  */
 @Controller()
 export class MedicalRecordsConsumer {
-  private readonly logger = new Logger(MedicalRecordsConsumer.name);
+  private readonly logger = new StructuredLogger('emr-bc');
 
   constructor(private readonly service: MedicalRecordsService) {}
 
@@ -30,9 +31,12 @@ export class MedicalRecordsConsumer {
     const message = context.getMessage() as ConsumeMessage;
 
     if (!this.isVisitCreatedEvent(event)) {
-      this.logger.error(
-        `Discarding invalid visit.created event ${getEventIdForLog(event)}`,
-      );
+      this.logger.error({
+        eventName: VISIT_CREATED_EVENT_NAME,
+        eventId: getEventIdForLog(event),
+        status: 'DISCARDED',
+        error: 'InvalidEvent',
+      });
       channel.nack(message, false, false);
       return;
     }
@@ -40,12 +44,26 @@ export class MedicalRecordsConsumer {
     try {
       await this.service.processVisitCreated(event);
       channel.ack(message);
+      this.logger.log({
+        eventName: event.metadata.eventName,
+        eventId: event.metadata.eventId,
+        correlationId: event.metadata.correlationId,
+        visitId: event.payload.visitId,
+        status: 'ACKED',
+      });
     } catch (error: unknown) {
-      this.logger.error(
-        `Failed to process visit.created ${event.metadata.eventId}`,
-        error instanceof Error ? error.stack : undefined,
-      );
-      channel.nack(message, false, true);
+      this.logger.error({
+        eventName: event.metadata.eventName,
+        eventId: event.metadata.eventId,
+        correlationId: event.metadata.correlationId,
+        visitId: event.payload.visitId,
+        status: error instanceof BadRequestException ? 'DISCARDED' : 'REQUEUED',
+        error,
+      });
+      channel.nack(message, false, !(error instanceof BadRequestException));
+      if (error instanceof BadRequestException) {
+        return;
+      }
       throw error;
     }
   }

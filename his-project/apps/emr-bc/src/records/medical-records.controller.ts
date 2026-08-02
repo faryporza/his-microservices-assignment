@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Headers,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -50,10 +51,12 @@ export class MedicalRecordsController {
   completeTreatment(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
     @Body() completeTreatmentDto: CompleteTreatmentDto,
+    @Headers('x-correlation-id') correlationId?: string,
   ) {
     return this.medicalRecordsService.completeTreatment(
       id,
       completeTreatmentDto,
+      correlationId,
     );
   }
 }

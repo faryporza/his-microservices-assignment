@@ -25,6 +25,9 @@ export class Invoice {
   @Column({ type: 'varchar', name: 'record_id', nullable: true })
   recordId?: string | null;
 
+  @Column({ type: 'varchar', name: 'correlation_id', nullable: true })
+  correlationId?: string | null;
+
   // PostgreSQL decimals are returned by TypeORM as strings to preserve precision.
   @Column({ type: 'decimal', name: 'total_amount', precision: 12, scale: 2 })
   totalAmount!: string;
