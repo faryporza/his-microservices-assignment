@@ -1,7 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { Transport } from '@nestjs/microservices';
 import { Test, TestingModule } from '@nestjs/testing';
-import { RABBITMQ_EXCHANGE } from '@app/contracts';
 import { RmqService } from './rmq.service';
 
 describe('RmqService', () => {
@@ -14,10 +13,13 @@ describe('RmqService', () => {
         {
           provide: ConfigService,
           useValue: {
-            get: (key: string, fallback?: string) =>
-              key === 'RABBITMQ_URL'
-                ? 'amqp://user:pass@host:5672'
-                : fallback,
+            getOrThrow: (key: string) => {
+              const values: Record<string, string> = {
+                RABBITMQ_URL: 'amqp://user:pass@host:5672',
+                RABBITMQ_EXCHANGE: 'his.events.test',
+              };
+              return values[key];
+            },
           },
         },
       ],
@@ -30,8 +32,8 @@ describe('RmqService', () => {
     expect(service).toBeDefined();
   });
 
-  it('falls back to the contract exchange when RABBITMQ_EXCHANGE is unset', () => {
-    expect(service.getExchange()).toBe(RABBITMQ_EXCHANGE);
+  it('reads the exchange name from configuration', () => {
+    expect(service.getExchange()).toBe('his.events.test');
   });
 
   it('reads the connection URL from configuration', () => {
@@ -44,7 +46,7 @@ describe('RmqService', () => {
 
       expect(options.transport).toBe(Transport.RMQ);
       expect(options.options).toMatchObject({
-        exchange: RABBITMQ_EXCHANGE,
+        exchange: 'his.events.test',
         exchangeType: 'topic',
         queue: 'opd.events',
         wildcards: true,
@@ -65,7 +67,7 @@ describe('RmqService', () => {
 
       expect(options.transport).toBe(Transport.RMQ);
       expect(options.options).toMatchObject({
-        exchange: RABBITMQ_EXCHANGE,
+        exchange: 'his.events.test',
         exchangeType: 'topic',
         wildcards: true,
         persistent: true,

@@ -19,11 +19,6 @@ export class InvoicesController {
     return this.invoicesService.findAll();
   }
 
-  @Get('id/:id')
-  findById(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string) {
-    return this.invoicesService.findById(id);
-  }
-
   @Get(':visitId')
   findByVisitId(
     @Param('visitId', new ParseUUIDPipe({ version: '4' })) visitId: string,

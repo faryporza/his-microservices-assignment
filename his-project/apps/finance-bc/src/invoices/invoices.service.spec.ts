@@ -74,19 +74,28 @@ describe('InvoicesService', () => {
     );
   });
 
+  it('returns 404 when a visit has no invoice', async () => {
+    repository.find.mockResolvedValue([]);
+
+    await expect(service.findByVisitId('missing-visit-id')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+  });
+
   it('pays a pending invoice once and records the payment time', async () => {
     const invoice = {
       id: 'invoice-id',
       visitId: 'visit-id',
+      correlationId: 'visit-correlation-id',
       status: InvoiceStatus.PENDING,
       paidAt: null,
     } as Invoice;
     repository.findOne.mockResolvedValue(invoice);
     repository.save.mockResolvedValue(invoice);
 
-    await expect(service.pay('invoice-id')).resolves.toMatchObject({
-      status: InvoiceStatus.PAID,
-    });
+    await expect(
+      service.pay('invoice-id', 'payment-request-correlation-id'),
+    ).resolves.toMatchObject({ status: InvoiceStatus.PAID });
     expect(invoice.paidAt).toBeInstanceOf(Date);
     expect(client.emit).toHaveBeenCalledWith(
       'invoice.paid',
@@ -95,6 +104,9 @@ describe('InvoicesService', () => {
           visitId: 'visit-id',
           invoiceId: 'invoice-id',
           status: 'PAID',
+        }),
+        metadata: expect.objectContaining({
+          correlationId: 'visit-correlation-id',
         }),
       }),
     );
