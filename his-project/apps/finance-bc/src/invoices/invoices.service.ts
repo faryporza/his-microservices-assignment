@@ -46,10 +46,16 @@ export class InvoicesService {
   }
 
   async findByVisitId(visitId: string): Promise<Invoice[]> {
-    return this.invoiceRepository.find({
+    const invoices = await this.invoiceRepository.find({
       where: { visitId },
       order: { createdAt: 'DESC' },
     });
+
+    if (invoices.length === 0) {
+      throw new NotFoundException(`Invoice for visit '${visitId}' not found`);
+    }
+
+    return invoices;
   }
 
   async pay(id: string, correlationId?: string): Promise<Invoice> {
@@ -70,7 +76,7 @@ export class InvoicesService {
         eventName: INVOICE_PAID_EVENT_NAME,
         version: INVOICE_PAID_EVENT_VERSION,
         occurredAt: new Date().toISOString(),
-        correlationId: correlationId ?? saved.correlationId ?? randomUUID(),
+        correlationId: saved.correlationId ?? correlationId ?? randomUUID(),
       },
       payload: {
         visitId: saved.visitId,
