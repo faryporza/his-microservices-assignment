@@ -70,7 +70,7 @@ export class InvoicesService {
         eventName: INVOICE_PAID_EVENT_NAME,
         version: INVOICE_PAID_EVENT_VERSION,
         occurredAt: new Date().toISOString(),
-        correlationId: correlationId ?? saved.correlationId ?? randomUUID(),
+        correlationId: saved.correlationId ?? correlationId ?? randomUUID(),
       },
       payload: {
         visitId: saved.visitId,
