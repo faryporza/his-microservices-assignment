@@ -8,8 +8,8 @@ import {
 
 export class CompleteTreatmentDto {
   @IsString()
-  @IsNotEmpty({ message: 'doctorId is required' })
-  doctorId!: string;
+  @IsNotEmpty({ message: 'doctor_id is required' })
+  doctor_id!: string;
 
   @IsString()
   @IsNotEmpty({ message: 'diagnosis is required' })
@@ -17,9 +17,9 @@ export class CompleteTreatmentDto {
 
   @IsOptional()
   @IsString()
-  treatmentNote?: string;
+  treatment_note?: string;
 
-  @IsNumber({}, { message: 'treatmentCost must be a number' })
-  @Min(0, { message: 'treatmentCost cannot be negative' })
-  treatmentCost!: number;
+  @IsNumber({}, { message: 'treatment_cost must be a number' })
+  @Min(0, { message: 'treatment_cost cannot be negative' })
+  treatment_cost!: number;
 }

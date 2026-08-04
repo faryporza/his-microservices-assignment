@@ -18,12 +18,12 @@ import { Patient } from '@apps/opd-bc/patient/entities/patient.entity';
 import { VisitEventsController } from '@apps/opd-bc/visit/visit-events.controller';
 
 // EMR
-import { MedicalRecordsService } from '../../../../apps/emr-bc/src/records/medical-records.service';
+import { MedicalRecordsService } from '@apps/emr-bc/medical-record/medical-records.service';
 import {
   MedicalRecord,
   RecordStatus,
-} from '../../../../apps/emr-bc/src/records/entities/medical-record.entity';
-import { MedicalRecordsConsumer } from '../../../../apps/emr-bc/src/records/medical-records.consumer';
+} from '@apps/emr-bc/medical-record/entities/medical-record.entity';
+import { MedicalRecordEventsController } from '@apps/emr-bc/medical-record/medical-record-events.controller';
 
 // Finance
 import { InvoicesService } from '@apps/finance-bc/invoice/invoices.service';
@@ -240,7 +240,7 @@ describe('Event-driven data flow integration', () => {
         return Promise.resolve(record);
       });
 
-      const emrConsumer = new MedicalRecordsConsumer(emrRecordsService);
+      const emrConsumer = new MedicalRecordEventsController(emrRecordsService);
       await emrConsumer.handleVisitCreated(
         visitEvent!.payload as VisitCreatedEvent,
         createRmqContext(),
@@ -249,8 +249,8 @@ describe('Event-driven data flow integration', () => {
       // Verify stub record was created
       expect(emrRecordRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          visitId: visit.id,
-          patientId,
+          visit_id: visit.id,
+          patient_id: patientId,
           status: RecordStatus.WAITING,
         }),
       );
@@ -260,10 +260,10 @@ describe('Event-driven data flow integration', () => {
       const recordId = randomUUID();
       emrRecordRepo.findOne.mockResolvedValue({
         id: recordId,
-        visitId: visit.id,
-        patientId,
+        visit_id: visit.id,
+        patient_id: patientId,
         diagnosis: 'Flu',
-        treatmentCost: 1500.0,
+        treatment_cost: 1500.0,
         status: RecordStatus.WAITING,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -276,7 +276,7 @@ describe('Event-driven data flow integration', () => {
       await emrRecordsService.update(recordId, {
         status: RecordStatus.COMPLETED,
         diagnosis: 'Flu',
-        treatmentCost: 1500,
+        treatment_cost: 1500,
       } as any);
 
       // Verify treatment.completed event
@@ -450,9 +450,9 @@ describe('Event-driven data flow integration', () => {
 
       emrRecordRepo.findOne.mockResolvedValue({
         id: recordId,
-        visitId,
+        visit_id: visitId,
         diagnosis: 'Surgery',
-        treatmentCost: 12345.67,
+        treatment_cost: 12345.67,
         status: RecordStatus.WAITING,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -464,7 +464,7 @@ describe('Event-driven data flow integration', () => {
 
       await emrRecordsService.update(recordId, {
         status: RecordStatus.COMPLETED,
-        treatmentCost: 12345.67,
+        treatment_cost: 12345.67,
       } as any);
 
       const treatmentEvent = emrEvents.find(
