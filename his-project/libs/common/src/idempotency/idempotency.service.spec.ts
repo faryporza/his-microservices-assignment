@@ -30,7 +30,7 @@ describe('IdempotencyService', () => {
 
     await expect(
       service.process('event-id', 'invoice.paid', businessLogic),
-    ).resolves.toEqual({ duplicate: true });
+    ).resolves.toEqual({ isDuplicate: true });
 
     expect(businessLogic).not.toHaveBeenCalled();
     expect(repository.save).not.toHaveBeenCalled();
@@ -42,13 +42,13 @@ describe('IdempotencyService', () => {
 
     await expect(
       service.process('event-id', 'invoice.paid', businessLogic),
-    ).resolves.toEqual({ duplicate: false, value: 'done' });
+    ).resolves.toEqual({ isDuplicate: false, value: 'done' });
 
     expect(dataSource.transaction).toHaveBeenCalledTimes(1);
     expect(businessLogic).toHaveBeenCalledWith(manager);
     expect(repository.save).toHaveBeenCalledWith({
-      eventId: 'event-id',
-      eventName: 'invoice.paid',
+      event_id: 'event-id',
+      event_name: 'invoice.paid',
     });
     expect(businessLogic.mock.invocationCallOrder[0]).toBeLessThan(
       repository.save.mock.invocationCallOrder[0],
