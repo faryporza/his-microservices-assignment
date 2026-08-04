@@ -6,7 +6,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { Patient } from '../../patients/entities/patient.entity';
+import { Patient } from '@apps/opd-bc/patient/entities/patient.entity';
 
 export enum VisitStatus {
   OPEN = 'OPEN',
@@ -15,20 +15,23 @@ export enum VisitStatus {
 
 @Entity('visits')
 export class Visit {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn('uuid', { primaryKeyConstraintName: 'pk_visits' })
   id!: string;
 
-  @Column({ name: 'patient_id' })
-  patientId!: string;
+  @Column()
+  patient_id!: string;
 
   @ManyToOne(() => Patient, (patient) => patient.visits, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'patient_id' })
+  @JoinColumn({
+    name: 'patient_id',
+    foreignKeyConstraintName: 'fk_visits_patients',
+  })
   patient!: Patient;
 
-  @CreateDateColumn({ name: 'visit_date' })
-  visitDate!: Date;
+  @CreateDateColumn()
+  visit_date!: Date;
 
   @Column({
     type: 'enum',

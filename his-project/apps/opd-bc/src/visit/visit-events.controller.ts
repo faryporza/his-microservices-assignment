@@ -18,7 +18,7 @@ import { VisitsService } from './visits.service';
  * duplicate events.
  */
 @Controller()
-export class VisitsConsumer {
+export class VisitEventsController {
   private readonly logger = new StructuredLogger('opd-bc');
 
   constructor(private readonly service: VisitsService) {}

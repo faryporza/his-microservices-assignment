@@ -10,7 +10,7 @@ import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 import { IdempotencyService, RMQ_CLIENT, StructuredLogger } from '@app/common';
 import { Visit, VisitStatus } from './entities/visit.entity';
-import { Patient } from '../patients/entities/patient.entity';
+import { Patient } from '@apps/opd-bc/patient/entities/patient.entity';
 import { CreateVisitDto } from './dto/create-visit.dto';
 import {
   VISIT_CREATED_EVENT_NAME,
@@ -40,16 +40,16 @@ export class VisitsService {
     correlationId?: string,
   ): Promise<Visit> {
     const patient = await this.patientRepository.findOne({
-      where: { id: createVisitDto.patientId },
+      where: { id: createVisitDto.patient_id },
     });
     if (!patient) {
       throw new NotFoundException(
-        `Patient with ID '${createVisitDto.patientId}' not found`,
+        `Patient with ID '${createVisitDto.patient_id}' not found`,
       );
     }
 
     const visit = this.visitRepository.create({
-      patientId: createVisitDto.patientId,
+      patient_id: createVisitDto.patient_id,
       status: VisitStatus.OPEN,
     });
 
@@ -65,8 +65,8 @@ export class VisitsService {
       },
       payload: {
         visitId: saved.id,
-        patientId: saved.patientId,
-        timestamp: saved.visitDate.toISOString(),
+        patientId: saved.patient_id,
+        timestamp: saved.visit_date.toISOString(),
       },
     };
 
@@ -122,7 +122,7 @@ export class VisitsService {
       throw new NotFoundException(`Patient with ID '${patientId}' not found`);
     }
     return await this.visitRepository.find({
-      where: { patientId },
+      where: { patient_id: patientId },
       relations: { patient: true },
     });
   }

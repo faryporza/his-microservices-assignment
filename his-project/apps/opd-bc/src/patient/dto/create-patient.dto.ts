@@ -7,13 +7,13 @@ export class CreatePatientDto {
 
   @IsNotEmpty({ message: 'First name is required' })
   @IsString()
-  firstName!: string;
+  first_name!: string;
 
   @IsNotEmpty({ message: 'Last name is required' })
   @IsString()
-  lastName!: string;
+  last_name!: string;
 
   @IsNotEmpty({ message: 'ID Card is required' })
   @IsString()
-  idCard!: string;
+  id_card!: string;
 }

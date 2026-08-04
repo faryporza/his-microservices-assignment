@@ -5,10 +5,10 @@ import {
   INVOICE_PAID_EVENT_VERSION,
   InvoicePaidEvent,
 } from '@app/contracts';
-import { VisitsConsumer } from './visits.consumer';
+import { VisitEventsController } from './visit-events.controller';
 import { VisitsService } from './visits.service';
 
-describe('VisitsConsumer', () => {
+describe('VisitEventsController', () => {
   const event: InvoicePaidEvent = {
     metadata: {
       eventId: '7c9e6679-7425-40de-944b-e07fc1f90ae7',
@@ -31,7 +31,7 @@ describe('VisitsConsumer', () => {
     getChannelRef: () => channel,
     getMessage: () => message,
   } as unknown as RmqContext;
-  const consumer = new VisitsConsumer(service);
+  const consumer = new VisitEventsController(service);
 
   beforeEach(() => {
     jest.clearAllMocks();

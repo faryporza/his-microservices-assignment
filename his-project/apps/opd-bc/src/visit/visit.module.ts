@@ -1,15 +1,15 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Visit } from './entities/visit.entity';
-import { Patient } from '../patients/entities/patient.entity';
+import { Patient } from '@apps/opd-bc/patient/entities/patient.entity';
 import { VisitsService } from './visits.service';
 import { VisitsController } from './visits.controller';
-import { VisitsConsumer } from './visits.consumer';
+import { VisitEventsController } from './visit-events.controller';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Visit, Patient])],
-  controllers: [VisitsController, VisitsConsumer],
+  controllers: [VisitsController, VisitEventsController],
   providers: [VisitsService],
   exports: [VisitsService],
 })
-export class VisitsModule {}
+export class VisitModule {}
