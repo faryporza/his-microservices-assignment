@@ -34,7 +34,7 @@ export class InvoicesService {
   ) {}
 
   async findAll(): Promise<Invoice[]> {
-    return this.invoiceRepository.find({ order: { createdAt: 'DESC' } });
+    return this.invoiceRepository.find({ order: { created_at: 'DESC' } });
   }
 
   async findById(id: string): Promise<Invoice> {
@@ -47,8 +47,8 @@ export class InvoicesService {
 
   async findByVisitId(visitId: string): Promise<Invoice[]> {
     const invoices = await this.invoiceRepository.find({
-      where: { visitId },
-      order: { createdAt: 'DESC' },
+      where: { visit_id: visitId },
+      order: { created_at: 'DESC' },
     });
 
     if (invoices.length === 0) {
@@ -67,7 +67,7 @@ export class InvoicesService {
     }
 
     invoice.status = InvoiceStatus.PAID;
-    invoice.paidAt = new Date();
+    invoice.paid_at = new Date();
     const saved = await this.invoiceRepository.save(invoice);
 
     const event: InvoicePaidEvent = {
@@ -76,10 +76,10 @@ export class InvoicesService {
         eventName: INVOICE_PAID_EVENT_NAME,
         version: INVOICE_PAID_EVENT_VERSION,
         occurredAt: new Date().toISOString(),
-        correlationId: saved.correlationId ?? correlationId ?? randomUUID(),
+        correlationId: saved.correlation_id ?? correlationId ?? randomUUID(),
       },
       payload: {
-        visitId: saved.visitId,
+        visitId: saved.visit_id,
         invoiceId: saved.id,
         status: 'PAID',
       },
@@ -91,7 +91,7 @@ export class InvoicesService {
         eventName: event.metadata.eventName,
         eventId: event.metadata.eventId,
         correlationId: event.metadata.correlationId,
-        visitId: saved.visitId,
+        visitId: saved.visit_id,
         status: 'PUBLISHED',
       });
     } catch (error: unknown) {
@@ -99,7 +99,7 @@ export class InvoicesService {
         eventName: event.metadata.eventName,
         eventId: event.metadata.eventId,
         correlationId: event.metadata.correlationId,
-        visitId: saved.visitId,
+        visitId: saved.visit_id,
         status: 'PUBLISH_FAILED',
         error,
       });
@@ -118,9 +118,9 @@ export class InvoicesService {
       async (manager) => {
         await this.createFromTreatment(
           {
-            visitId: event.payload.visitId,
-            recordId: event.payload.recordId,
-            totalAmount: event.payload.treatmentCost,
+            visit_id: event.payload.visitId,
+            record_id: event.payload.recordId,
+            total_amount: event.payload.treatmentCost,
           },
           manager,
           event.metadata.correlationId,
@@ -138,22 +138,22 @@ export class InvoicesService {
       ? manager.getRepository(Invoice)
       : this.invoiceRepository;
     const existingInvoice = await repository.findOne({
-      where: { visitId: createDto.visitId },
+      where: { visit_id: createDto.visit_id },
     });
 
     if (existingInvoice) {
       return existingInvoice;
     }
 
-    const totalAmount = this.normalizeAmount(createDto.totalAmount);
+    const totalAmount = this.normalizeAmount(createDto.total_amount);
     const invoiceData: Partial<Invoice> = {
-      visitId: createDto.visitId,
-      recordId: createDto.recordId,
-      totalAmount,
+      visit_id: createDto.visit_id,
+      record_id: createDto.record_id,
+      total_amount: totalAmount,
       status: InvoiceStatus.PENDING,
     };
     if (correlationId) {
-      invoiceData.correlationId = correlationId;
+      invoiceData.correlation_id = correlationId;
     }
 
     const invoice = repository.create(invoiceData);

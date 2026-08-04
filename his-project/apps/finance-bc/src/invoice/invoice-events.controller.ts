@@ -18,7 +18,7 @@ import type { Channel, ConsumeMessage } from 'amqplib';
  * precision; the service normalizes it before persisting.
  */
 @Controller()
-export class InvoicesConsumer {
+export class InvoiceEventsController {
   private readonly logger = new StructuredLogger('finance-bc');
 
   constructor(private readonly service: InvoicesService) {}
