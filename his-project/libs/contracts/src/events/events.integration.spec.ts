@@ -76,7 +76,7 @@ function createMockIdempotency<T extends { id?: string }>(
   return {
     process: jest.fn(async (eventId, _eventName, businessLogic) => {
       if (processed.has(eventId)) {
-        return { duplicate: true };
+        return { isDuplicate: true };
       }
 
       const manager = {
@@ -84,7 +84,7 @@ function createMockIdempotency<T extends { id?: string }>(
       } as unknown as EntityManager;
       const value = await businessLogic(manager);
       processed.add(eventId);
-      return { duplicate: false, value };
+      return { isDuplicate: false, value };
     }),
   } as unknown as IdempotencyService;
 }
