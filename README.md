@@ -47,7 +47,7 @@ Content-Type: application/json
 
 เก็บค่า `id` จาก response ไว้เป็น `PATIENT_UUID` สำหรับขั้นตอนถัดไป
 
-![Bruno - สร้าง Patient](docs/images/bruno-01-create-patient.png)
+![Bruno - สร้าง Patient](docs/images/bruno-01-create-patient.png?raw=true)
 
 ### 2. สร้าง Visit
 
@@ -64,7 +64,7 @@ Content-Type: application/json
 
 Visit เริ่มต้นด้วยสถานะ `OPEN` จากนั้น OPD ส่ง event `visit.created` ไปยัง EMR
 
-![Bruno - เปิด Visit](<docs/images/2. เปิด Visit.png>)
+![Bruno - เปิด Visit](<docs/images/2. เปิด Visit.png?raw=true>)
 
 ### 3. EMR สร้าง Medical Record อัตโนมัติ
 
@@ -76,7 +76,7 @@ GET http://localhost:3001/records/visit/<VISIT_UUID>
 
 ไม่ต้องส่ง body กับ `GET` นี้ และเก็บค่า `id` ของ Record ไว้เป็น `RECORD_UUID`
 
-![Bruno - ดู Medical Record](<docs/images/3. ดู Medical Record.png>)
+![Bruno - ดู Medical Record](<docs/images/3. ดู Medical Record.png?raw=true>)
 
 ### 4. หมอบันทึกผลการรักษา
 
@@ -99,7 +99,7 @@ Content-Type: application/json
 
 เมื่อ Record เปลี่ยนเป็น `COMPLETED` ระบบจะส่ง event `treatment.completed` ไปยัง Finance
 
-![Bruno - บันทึกการรักษา](<docs/images/4. บันทึกการรักษา.png>)
+![Bruno - บันทึกการรักษา](<docs/images/4. บันทึกการรักษา.png?raw=true>)
 
 ### 5. Finance สร้าง Invoice อัตโนมัติ
 
@@ -111,7 +111,7 @@ GET http://localhost:3002/invoices/<VISIT_UUID>
 
 ไม่ต้องส่ง body กับ `GET` นี้ และเก็บค่า `id` ของ Invoice ไว้เป็น `INVOICE_UUID`
 
-![Bruno - ตรวจ Invoice](<docs/images/5. ตรวจ Invoice.png>)
+![Bruno - ตรวจ Invoice](<docs/images/5. ตรวจ Invoice.png?raw=true>)
 
 ### 6. ชำระเงิน
 
@@ -128,7 +128,7 @@ Content-Type: application/json
 
 เมื่อชำระสำเร็จ Invoice เปลี่ยนเป็น `PAID` และ Finance ส่ง event `invoice.paid` กลับไปยัง OPD
 
-![Bruno - ชำระเงิน](<docs/images/6. ชำระเงิน.png>)
+![Bruno - ชำระเงิน](<docs/images/6. ชำระเงิน.png?raw=true>)
 
 ### 7. OPD ปิด Visit
 
@@ -138,7 +138,7 @@ OPD รับ `invoice.paid` แล้วเปลี่ยนสถานะ Vi
 GET http://localhost:3000/visits/<VISIT_UUID>
 ```
 
-![Bruno - ตรวจสอบ Visit](<docs/images/7. ตรวจสอบ Visit.png>)
+![Bruno - ตรวจสอบ Visit](<docs/images/7. ตรวจสอบ Visit.png?raw=true>)
 
 ## Event Flow
 
