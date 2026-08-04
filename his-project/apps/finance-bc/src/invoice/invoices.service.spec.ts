@@ -32,8 +32,8 @@ describe('InvoicesService', () => {
   it('creates a pending invoice with a two-decimal amount', async () => {
     const invoice = {
       id: 'invoice-id',
-      visitId: 'visit-id',
-      totalAmount: '1500.00',
+      visit_id: 'visit-id',
+      total_amount: '1500.00',
       status: InvoiceStatus.PENDING,
     } as Invoice;
     repository.create.mockReturnValue(invoice);
@@ -41,28 +41,28 @@ describe('InvoicesService', () => {
 
     await expect(
       service.createFromTreatment({
-        visitId: 'visit-id',
-        recordId: 'record-id',
-        totalAmount: '1500',
+        visit_id: 'visit-id',
+        record_id: 'record-id',
+        total_amount: '1500',
       }),
     ).resolves.toBe(invoice);
 
     expect(repository.create).toHaveBeenCalledWith({
-      visitId: 'visit-id',
-      recordId: 'record-id',
-      totalAmount: '1500.00',
+      visit_id: 'visit-id',
+      record_id: 'record-id',
+      total_amount: '1500.00',
       status: InvoiceStatus.PENDING,
     });
   });
 
   it('rejects negative or invalid money amounts', async () => {
     await expect(
-      service.createFromTreatment({ visitId: 'visit-id', totalAmount: '-1' }),
+      service.createFromTreatment({ visit_id: 'visit-id', total_amount: '-1' }),
     ).rejects.toBeInstanceOf(BadRequestException);
     await expect(
       service.createFromTreatment({
-        visitId: 'visit-id',
-        totalAmount: '1.999',
+        visit_id: 'visit-id',
+        total_amount: '1.999',
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
@@ -77,18 +77,18 @@ describe('InvoicesService', () => {
   it('returns 404 when a visit has no invoice', async () => {
     repository.find.mockResolvedValue([]);
 
-    await expect(service.findByVisitId('missing-visit-id')).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    await expect(
+      service.findByVisitId('missing-visit-id'),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('pays a pending invoice once and records the payment time', async () => {
     const invoice = {
       id: 'invoice-id',
-      visitId: 'visit-id',
-      correlationId: 'visit-correlation-id',
+      visit_id: 'visit-id',
+      correlation_id: 'visit-correlation-id',
       status: InvoiceStatus.PENDING,
-      paidAt: null,
+      paid_at: null,
     } as Invoice;
     repository.findOne.mockResolvedValue(invoice);
     repository.save.mockResolvedValue(invoice);
@@ -96,7 +96,7 @@ describe('InvoicesService', () => {
     await expect(
       service.pay('invoice-id', 'payment-request-correlation-id'),
     ).resolves.toMatchObject({ status: InvoiceStatus.PAID });
-    expect(invoice.paidAt).toBeInstanceOf(Date);
+    expect(invoice.paid_at).toBeInstanceOf(Date);
     expect(client.emit).toHaveBeenCalledWith(
       'invoice.paid',
       expect.objectContaining({
@@ -115,7 +115,7 @@ describe('InvoicesService', () => {
   it('does not allow a paid invoice to be paid again', async () => {
     repository.findOne.mockResolvedValue({
       id: 'invoice-id',
-      visitId: 'visit-id',
+      visit_id: 'visit-id',
       status: InvoiceStatus.PAID,
     } as Invoice);
 

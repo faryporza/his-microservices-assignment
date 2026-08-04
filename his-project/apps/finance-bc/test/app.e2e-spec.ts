@@ -35,7 +35,7 @@ describe('FinanceBcController (e2e)', () => {
 
     await request(app.getHttpServer() as App)
       .patch(`/invoices/${invoiceId}/pay`)
-      .send({ paidAt: new Date().toISOString() })
+      .send({ paid_at: new Date().toISOString() })
       .expect(400);
 
     await request(app.getHttpServer() as App)

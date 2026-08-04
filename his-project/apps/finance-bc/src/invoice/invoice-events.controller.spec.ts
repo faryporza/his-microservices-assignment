@@ -5,10 +5,10 @@ import {
   TREATMENT_COMPLETED_EVENT_VERSION,
   TreatmentCompletedEvent,
 } from '@app/contracts';
-import { InvoicesConsumer } from './invoices.consumer';
+import { InvoiceEventsController } from './invoice-events.controller';
 import { InvoicesService } from './invoices.service';
 
-describe('InvoicesConsumer', () => {
+describe('InvoiceEventsController', () => {
   const event: TreatmentCompletedEvent = {
     metadata: {
       eventId: '7c9e6679-7425-40de-944b-e07fc1f90ae7',
@@ -31,7 +31,7 @@ describe('InvoicesConsumer', () => {
     getChannelRef: () => channel,
     getMessage: () => message,
   } as unknown as RmqContext;
-  const consumer = new InvoicesConsumer(service);
+  const consumer = new InvoiceEventsController(service);
 
   beforeEach(() => {
     jest.clearAllMocks();

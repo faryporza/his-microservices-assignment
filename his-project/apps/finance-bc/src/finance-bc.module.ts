@@ -4,7 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { createPostgresOptions } from '@app/common';
 import { FinanceBcController } from './finance-bc.controller';
 import { FinanceBcService } from './finance-bc.service';
-import { InvoicesModule } from './invoices/invoices.module';
+import { InvoiceModule } from '@apps/finance-bc/invoice/invoice.module';
 import { CommonModule } from '@app/common';
 
 @Module({
@@ -20,7 +20,7 @@ import { CommonModule } from '@app/common';
         createPostgresOptions(configService, 'FINANCE_DATABASE'),
     }),
     CommonModule,
-    InvoicesModule,
+    InvoiceModule,
   ],
   controllers: [FinanceBcController],
   providers: [FinanceBcService],

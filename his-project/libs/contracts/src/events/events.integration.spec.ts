@@ -26,12 +26,12 @@ import {
 import { MedicalRecordEventsController } from '@apps/emr-bc/medical-record/medical-record-events.controller';
 
 // Finance
-import { InvoicesService } from '../../../../apps/finance-bc/src/invoices/invoices.service';
+import { InvoicesService } from '@apps/finance-bc/invoice/invoices.service';
 import {
   Invoice,
   InvoiceStatus,
-} from '../../../../apps/finance-bc/src/invoices/entities/invoice.entity';
-import { InvoicesConsumer } from '../../../../apps/finance-bc/src/invoices/invoices.consumer';
+} from '@apps/finance-bc/invoice/entities/invoice.entity';
+import { InvoiceEventsController } from '@apps/finance-bc/invoice/invoice-events.controller';
 
 // Contracts
 import {
@@ -305,7 +305,9 @@ describe('Event-driven data flow integration', () => {
         return Promise.resolve(inv);
       });
 
-      const financeConsumer = new InvoicesConsumer(financeInvoicesService);
+      const financeConsumer = new InvoiceEventsController(
+        financeInvoicesService,
+      );
       await financeConsumer.handleTreatmentCompleted(
         treatmentEvent!.payload as TreatmentCompletedEvent,
         createRmqContext(),
@@ -314,8 +316,8 @@ describe('Event-driven data flow integration', () => {
       // Verify invoice was created
       expect(financeInvoiceRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          visitId: visit.id,
-          totalAmount: '1500.00',
+          visit_id: visit.id,
+          total_amount: '1500.00',
           status: InvoiceStatus.PENDING,
         }),
       );
@@ -323,12 +325,12 @@ describe('Event-driven data flow integration', () => {
       // Step 6: Finance pays invoice → emits invoice.paid
       financeInvoiceRepo.findOne.mockResolvedValue({
         id: invoiceId,
-        visitId: visit.id,
-        totalAmount: '1500.00',
+        visit_id: visit.id,
+        total_amount: '1500.00',
         status: InvoiceStatus.PENDING,
-        paidAt: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        paid_at: null,
+        created_at: new Date(),
+        updated_at: new Date(),
       } as Invoice);
 
       financeInvoiceRepo.save.mockImplementation((inv: Invoice) => {
@@ -482,22 +484,22 @@ describe('Event-driven data flow integration', () => {
     it('should normalize amount to two decimal places in Finance', async () => {
       const invoice = {
         id: randomUUID(),
-        visitId: randomUUID(),
-        totalAmount: '1500.00',
+        visit_id: randomUUID(),
+        total_amount: '1500.00',
         status: InvoiceStatus.PENDING,
       } as Invoice;
       financeInvoiceRepo.create.mockReturnValue(invoice);
       financeInvoiceRepo.save.mockResolvedValue(invoice);
 
       await financeInvoicesService.createFromTreatment({
-        visitId: 'visit-1',
-        recordId: 'record-1',
-        totalAmount: '1500',
+        visit_id: 'visit-1',
+        record_id: 'record-1',
+        total_amount: '1500',
       });
 
       expect(financeInvoiceRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          totalAmount: '1500.00',
+          total_amount: '1500.00',
         }),
       );
     });
@@ -539,12 +541,12 @@ describe('Event-driven data flow integration', () => {
     it('should include all required metadata fields in invoice.paid', async () => {
       financeInvoiceRepo.findOne.mockResolvedValue({
         id: 'inv-1',
-        visitId: 'vis-1',
-        totalAmount: '100.00',
+        visit_id: 'vis-1',
+        total_amount: '100.00',
         status: InvoiceStatus.PENDING,
-        paidAt: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        paid_at: null,
+        created_at: new Date(),
+        updated_at: new Date(),
       } as Invoice);
 
       financeInvoiceRepo.save.mockImplementation((inv: Invoice) => {

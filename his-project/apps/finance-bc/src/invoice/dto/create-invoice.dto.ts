@@ -5,14 +5,14 @@ import { IsNotEmpty, IsOptional, IsUUID } from 'class-validator';
 export class CreateInvoiceDto {
   @IsNotEmpty()
   @IsUUID('4')
-  visitId!: string;
+  visit_id!: string;
 
   @IsOptional()
   @IsUUID('4')
-  recordId?: string;
+  record_id?: string;
 
   // Event payloads may deserialize a JSON number. The service normalizes its
   // string representation without doing floating-point arithmetic.
   @IsNotEmpty()
-  totalAmount!: string | number;
+  total_amount!: string | number;
 }
