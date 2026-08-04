@@ -5,10 +5,10 @@ import {
   VISIT_CREATED_EVENT_VERSION,
   VisitCreatedEvent,
 } from '@app/contracts';
-import { MedicalRecordsConsumer } from './medical-records.consumer';
+import { MedicalRecordEventsController } from './medical-record-events.controller';
 import { MedicalRecordsService } from './medical-records.service';
 
-describe('MedicalRecordsConsumer', () => {
+describe('MedicalRecordEventsController', () => {
   const event: VisitCreatedEvent = {
     metadata: {
       eventId: '7c9e6679-7425-40de-944b-e07fc1f90ae7',
@@ -31,7 +31,7 @@ describe('MedicalRecordsConsumer', () => {
     getChannelRef: () => channel,
     getMessage: () => message,
   } as unknown as RmqContext;
-  const consumer = new MedicalRecordsConsumer(service);
+  const consumer = new MedicalRecordEventsController(service);
 
   beforeEach(() => {
     jest.clearAllMocks();

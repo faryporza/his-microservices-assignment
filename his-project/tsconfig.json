@@ -28,7 +28,9 @@
       "@app/contracts": ["libs/contracts/src"],
       "@app/contracts/*": ["libs/contracts/src/*"],
       "@apps/opd-bc": ["apps/opd-bc/src"],
-      "@apps/opd-bc/*": ["apps/opd-bc/src/*"]
+      "@apps/opd-bc/*": ["apps/opd-bc/src/*"],
+      "@apps/emr-bc": ["apps/emr-bc/src"],
+      "@apps/emr-bc/*": ["apps/emr-bc/src/*"]
     }
   }
 }

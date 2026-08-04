@@ -17,7 +17,7 @@ import type { Channel, ConsumeMessage } from 'amqplib';
  * with status `WAITING` so the EMR workflow can begin.
  */
 @Controller()
-export class MedicalRecordsConsumer {
+export class MedicalRecordEventsController {
   private readonly logger = new StructuredLogger('emr-bc');
 
   constructor(private readonly service: MedicalRecordsService) {}

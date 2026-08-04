@@ -35,7 +35,10 @@ export class MedicalRecordsService {
   ) {}
 
   async create(createDto: CreateMedicalRecordDto): Promise<MedicalRecord> {
-    if (createDto.treatmentCost !== undefined && createDto.treatmentCost < 0) {
+    if (
+      createDto.treatment_cost !== undefined &&
+      createDto.treatment_cost < 0
+    ) {
       throw new BadRequestException('Treatment cost cannot be negative');
     }
 
@@ -63,7 +66,7 @@ export class MedicalRecordsService {
 
   async findByVisitId(visitId: string): Promise<MedicalRecord[]> {
     return await this.medicalRecordRepository.find({
-      where: { visitId },
+      where: { visit_id: visitId },
     });
   }
 
@@ -74,7 +77,10 @@ export class MedicalRecordsService {
   ): Promise<MedicalRecord> {
     const record = await this.findOne(id);
 
-    if (updateDto.treatmentCost !== undefined && updateDto.treatmentCost < 0) {
+    if (
+      updateDto.treatment_cost !== undefined &&
+      updateDto.treatment_cost < 0
+    ) {
       throw new BadRequestException('Treatment cost cannot be negative');
     }
 
@@ -93,13 +99,15 @@ export class MedicalRecordsService {
           eventName: TREATMENT_COMPLETED_EVENT_NAME,
           version: TREATMENT_COMPLETED_EVENT_VERSION,
           occurredAt: new Date().toISOString(),
-          correlationId: correlationId ?? saved.correlationId ?? randomUUID(),
+          correlationId: correlationId ?? saved.correlation_id ?? randomUUID(),
         },
         payload: {
-          visitId: saved.visitId,
+          visitId: saved.visit_id,
           recordId: saved.id,
           treatmentCost:
-            saved.treatmentCost != null ? String(saved.treatmentCost) : '0.00',
+            saved.treatment_cost != null
+              ? String(saved.treatment_cost)
+              : '0.00',
         },
       };
 
@@ -169,19 +177,21 @@ export class MedicalRecordsService {
     const repository = manager
       ? manager.getRepository(MedicalRecord)
       : this.medicalRecordRepository;
-    const existingRecord = await repository.findOne({ where: { visitId } });
+    const existingRecord = await repository.findOne({
+      where: { visit_id: visitId },
+    });
 
     if (existingRecord) {
       return existingRecord;
     }
 
     const recordData: Partial<MedicalRecord> = {
-      visitId,
-      patientId,
+      visit_id: visitId,
+      patient_id: patientId,
       status: RecordStatus.WAITING,
     };
     if (correlationId) {
-      recordData.correlationId = correlationId;
+      recordData.correlation_id = correlationId;
     }
 
     const record = repository.create(recordData);
