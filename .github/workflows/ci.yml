@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [develop]
+  pull_request:
+    branches: [develop]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_PORT: 5432
+      POSTGRES_USERNAME: postgres
+      POSTGRES_PASSWORD: postgres
+      OPD_DATABASE: opd_db
+      EMR_DATABASE: emr_db
+      FINANCE_DATABASE: finance_db
+      OPD_PORT: 3000
+      EMR_PORT: 3001
+      FINANCE_PORT: 3002
+      OPD_RABBITMQ_QUEUE: opd.events
+      EMR_RABBITMQ_QUEUE: emr.events
+      FINANCE_RABBITMQ_QUEUE: finance.events
+      RABBITMQ_URL: amqp://guest:guest@localhost:5672
+      RABBITMQ_EXCHANGE: his.events
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+      rabbitmq:
+        image: rabbitmq:3-management-alpine
+        env:
+          RABBITMQ_DEFAULT_USER: guest
+          RABBITMQ_DEFAULT_PASS: guest
+        ports:
+          - 5672:5672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: his-project/package-lock.json
+
+      - name: Install dependencies
+        working-directory: his-project
+        run: npm ci
+
+      - name: Create HIS databases
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -c 'CREATE DATABASE opd_db;'
+          psql -h 127.0.0.1 -U postgres -d postgres -c 'CREATE DATABASE emr_db;'
+          psql -h 127.0.0.1 -U postgres -d postgres -c 'CREATE DATABASE finance_db;'
+
+      - name: Run unit and integration tests
+        working-directory: his-project
+        run: npm test -- --runInBand
+
+      - name: Build all services
+        working-directory: his-project
+        run: npm run build
+
+      - name: Run end-to-end tests
+        working-directory: his-project
+        run: npm run test:e2e
