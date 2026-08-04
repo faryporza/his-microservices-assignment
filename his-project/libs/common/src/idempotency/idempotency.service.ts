@@ -3,7 +3,7 @@ import { DataSource, EntityManager } from 'typeorm';
 import { ProcessedEvent } from './processed-event.entity';
 
 export interface IdempotencyResult<T> {
-  duplicate: boolean;
+  isDuplicate: boolean;
   value?: T;
 }
 
@@ -19,21 +19,21 @@ export class IdempotencyService {
     return this.dataSource.transaction(async (manager) => {
       const processedEventRepository = manager.getRepository(ProcessedEvent);
       const wasProcessed = await processedEventRepository.exists({
-        where: { eventId },
+        where: { event_id: eventId },
       });
 
       if (wasProcessed) {
-        return { duplicate: true };
+        return { isDuplicate: true };
       }
 
       const value = await businessLogic(manager);
       const processedEvent = processedEventRepository.create({
-        eventId,
-        eventName,
+        event_id: eventId,
+        event_name: eventName,
       });
       await processedEventRepository.save(processedEvent);
 
-      return { duplicate: false, value };
+      return { isDuplicate: false, value };
     });
   }
 }

@@ -12,29 +12,29 @@ import { of } from 'rxjs';
 import { IdempotencyService } from '@app/common';
 
 // OPD
-import { VisitsService as OpdVisitsService } from '../../../../apps/opd-bc/src/visits/visits.service';
+import { VisitsService as OpdVisitsService } from '@apps/opd-bc/visits/visits.service';
 import {
   Visit,
   VisitStatus,
-} from '../../../../apps/opd-bc/src/visits/entities/visit.entity';
-import { Patient } from '../../../../apps/opd-bc/src/patients/entities/patient.entity';
-import { VisitsConsumer } from '../../../../apps/opd-bc/src/visits/visits.consumer';
+} from '@apps/opd-bc/visits/entities/visit.entity';
+import { Patient } from '@apps/opd-bc/patients/entities/patient.entity';
+import { VisitsConsumer } from '@apps/opd-bc/visits/visits.consumer';
 
 // EMR
-import { MedicalRecordsService } from '../../../../apps/emr-bc/src/records/medical-records.service';
+import { MedicalRecordsService } from '@apps/emr-bc/records/medical-records.service';
 import {
   MedicalRecord,
   RecordStatus,
-} from '../../../../apps/emr-bc/src/records/entities/medical-record.entity';
-import { MedicalRecordsConsumer } from '../../../../apps/emr-bc/src/records/medical-records.consumer';
+} from '@apps/emr-bc/records/entities/medical-record.entity';
+import { MedicalRecordsConsumer } from '@apps/emr-bc/records/medical-records.consumer';
 
 // Finance
-import { InvoicesService } from '../../../../apps/finance-bc/src/invoices/invoices.service';
+import { InvoicesService } from '@apps/finance-bc/invoices/invoices.service';
 import {
   Invoice,
   InvoiceStatus,
-} from '../../../../apps/finance-bc/src/invoices/entities/invoice.entity';
-import { InvoicesConsumer } from '../../../../apps/finance-bc/src/invoices/invoices.consumer';
+} from '@apps/finance-bc/invoices/entities/invoice.entity';
+import { InvoicesConsumer } from '@apps/finance-bc/invoices/invoices.consumer';
 
 // Contracts
 import {
@@ -76,7 +76,7 @@ function createMockIdempotency<T extends { id?: string }>(
   return {
     process: jest.fn(async (eventId, _eventName, businessLogic) => {
       if (processed.has(eventId)) {
-        return { duplicate: true };
+        return { isDuplicate: true };
       }
 
       const manager = {
@@ -84,7 +84,7 @@ function createMockIdempotency<T extends { id?: string }>(
       } as unknown as EntityManager;
       const value = await businessLogic(manager);
       processed.add(eventId);
-      return { duplicate: false, value };
+      return { isDuplicate: false, value };
     }),
   } as unknown as IdempotencyService;
 }

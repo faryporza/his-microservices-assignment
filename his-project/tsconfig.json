@@ -23,6 +23,24 @@
     "noFallthroughCasesInSwitch": false,
     "types": ["jest", "node"],
     "paths": {
+      "@apps/opd-bc": [
+        "apps/opd-bc/src"
+      ],
+      "@apps/opd-bc/*": [
+        "apps/opd-bc/src/*"
+      ],
+      "@apps/emr-bc": [
+        "apps/emr-bc/src"
+      ],
+      "@apps/emr-bc/*": [
+        "apps/emr-bc/src/*"
+      ],
+      "@apps/finance-bc": [
+        "apps/finance-bc/src"
+      ],
+      "@apps/finance-bc/*": [
+        "apps/finance-bc/src/*"
+      ],
       "@app/common": [
         "libs/common/src"
       ],
