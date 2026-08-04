@@ -34,10 +34,10 @@ describe('EmrBcController (e2e)', () => {
     return request(app.getHttpServer() as App)
       .post('/records')
       .send({
-        visitId: 'not-a-uuid',
-        doctorId: '',
+        visit_id: 'not-a-uuid',
+        doctor_id: '',
         diagnosis: '',
-        treatmentCost: -1,
+        treatment_cost: -1,
         unexpected: true,
       })
       .expect(400);
@@ -59,7 +59,7 @@ describe('EmrBcController (e2e)', () => {
       .send({
         status: 'COMPLETED',
         diagnosis: 'Flu',
-        treatmentCost: 100,
+        treatment_cost: 100,
       })
       .expect(404);
   });
