@@ -18,6 +18,7 @@ jobs:
       POSTGRES_PORT: 5432
       POSTGRES_USERNAME: postgres
       POSTGRES_PASSWORD: postgres
+      PGPASSWORD: postgres
       OPD_DATABASE: opd_db
       EMR_DATABASE: emr_db
       FINANCE_DATABASE: finance_db
@@ -58,10 +59,10 @@ jobs:
 
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
