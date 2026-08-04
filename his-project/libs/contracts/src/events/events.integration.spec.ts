@@ -12,29 +12,26 @@ import { of } from 'rxjs';
 import { IdempotencyService } from '@app/common';
 
 // OPD
-import { VisitsService as OpdVisitsService } from '@apps/opd-bc/visits/visits.service';
-import {
-  Visit,
-  VisitStatus,
-} from '@apps/opd-bc/visits/entities/visit.entity';
-import { Patient } from '@apps/opd-bc/patients/entities/patient.entity';
-import { VisitsConsumer } from '@apps/opd-bc/visits/visits.consumer';
+import { VisitsService as OpdVisitsService } from '@apps/opd-bc/visit/visits.service';
+import { Visit, VisitStatus } from '@apps/opd-bc/visit/entities/visit.entity';
+import { Patient } from '@apps/opd-bc/patient/entities/patient.entity';
+import { VisitEventsController } from '@apps/opd-bc/visit/visit-events.controller';
 
 // EMR
-import { MedicalRecordsService } from '@apps/emr-bc/records/medical-records.service';
+import { MedicalRecordsService } from '@apps/emr-bc/medical-record/medical-records.service';
 import {
   MedicalRecord,
   RecordStatus,
-} from '@apps/emr-bc/records/entities/medical-record.entity';
-import { MedicalRecordsConsumer } from '@apps/emr-bc/records/medical-records.consumer';
+} from '@apps/emr-bc/medical-record/entities/medical-record.entity';
+import { MedicalRecordEventsController } from '@apps/emr-bc/medical-record/medical-record-events.controller';
 
 // Finance
-import { InvoicesService } from '@apps/finance-bc/invoices/invoices.service';
+import { InvoicesService } from '@apps/finance-bc/invoice/invoices.service';
 import {
   Invoice,
   InvoiceStatus,
-} from '@apps/finance-bc/invoices/entities/invoice.entity';
-import { InvoicesConsumer } from '@apps/finance-bc/invoices/invoices.consumer';
+} from '@apps/finance-bc/invoice/entities/invoice.entity';
+import { InvoiceEventsController } from '@apps/finance-bc/invoice/invoice-events.controller';
 
 // Contracts
 import {
@@ -121,6 +118,7 @@ function createMockRepo<T extends { id?: string }>(
         ...(('visitDate' in (data as any) || true) && {
           visitDate: (data as any).visitDate ?? new Date(),
         }),
+        visit_date: (data as any).visit_date ?? new Date(),
         createdAt: (data as any).createdAt ?? new Date(),
         updatedAt: (data as any).updatedAt ?? new Date(),
       } as unknown as T;
@@ -203,9 +201,9 @@ describe('Event-driven data flow integration', () => {
       opdPatientRepo.findOne.mockResolvedValue({
         id: patientId,
         hn: 'HN001',
-        firstName: 'John',
-        lastName: 'Doe',
-        idCard: '1234567890123',
+        first_name: 'John',
+        last_name: 'Doe',
+        id_card: '1234567890123',
         visits: [],
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -213,11 +211,11 @@ describe('Event-driven data flow integration', () => {
 
       // Step 2: OPD creates a visit
       const visit = await opdVisitsService.create({
-        patientId,
+        patient_id: patientId,
       } as any);
 
       expect(visit.status).toBe(VisitStatus.OPEN);
-      expect(visit.patientId).toBe(patientId);
+      expect(visit.patient_id).toBe(patientId);
 
       // Verify visit.created event
       const visitEvent = opdEvents.find(
@@ -242,7 +240,7 @@ describe('Event-driven data flow integration', () => {
         return Promise.resolve(record);
       });
 
-      const emrConsumer = new MedicalRecordsConsumer(emrRecordsService);
+      const emrConsumer = new MedicalRecordEventsController(emrRecordsService);
       await emrConsumer.handleVisitCreated(
         visitEvent!.payload as VisitCreatedEvent,
         createRmqContext(),
@@ -251,8 +249,8 @@ describe('Event-driven data flow integration', () => {
       // Verify stub record was created
       expect(emrRecordRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          visitId: visit.id,
-          patientId,
+          visit_id: visit.id,
+          patient_id: patientId,
           status: RecordStatus.WAITING,
         }),
       );
@@ -262,10 +260,10 @@ describe('Event-driven data flow integration', () => {
       const recordId = randomUUID();
       emrRecordRepo.findOne.mockResolvedValue({
         id: recordId,
-        visitId: visit.id,
-        patientId,
+        visit_id: visit.id,
+        patient_id: patientId,
         diagnosis: 'Flu',
-        treatmentCost: 1500.0,
+        treatment_cost: 1500.0,
         status: RecordStatus.WAITING,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -278,7 +276,7 @@ describe('Event-driven data flow integration', () => {
       await emrRecordsService.update(recordId, {
         status: RecordStatus.COMPLETED,
         diagnosis: 'Flu',
-        treatmentCost: 1500,
+        treatment_cost: 1500,
       } as any);
 
       // Verify treatment.completed event
@@ -307,7 +305,9 @@ describe('Event-driven data flow integration', () => {
         return Promise.resolve(inv);
       });
 
-      const financeConsumer = new InvoicesConsumer(financeInvoicesService);
+      const financeConsumer = new InvoiceEventsController(
+        financeInvoicesService,
+      );
       await financeConsumer.handleTreatmentCompleted(
         treatmentEvent!.payload as TreatmentCompletedEvent,
         createRmqContext(),
@@ -316,8 +316,8 @@ describe('Event-driven data flow integration', () => {
       // Verify invoice was created
       expect(financeInvoiceRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          visitId: visit.id,
-          totalAmount: '1500.00',
+          visit_id: visit.id,
+          total_amount: '1500.00',
           status: InvoiceStatus.PENDING,
         }),
       );
@@ -325,12 +325,12 @@ describe('Event-driven data flow integration', () => {
       // Step 6: Finance pays invoice → emits invoice.paid
       financeInvoiceRepo.findOne.mockResolvedValue({
         id: invoiceId,
-        visitId: visit.id,
-        totalAmount: '1500.00',
+        visit_id: visit.id,
+        total_amount: '1500.00',
         status: InvoiceStatus.PENDING,
-        paidAt: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        paid_at: null,
+        created_at: new Date(),
+        updated_at: new Date(),
       } as Invoice);
 
       financeInvoiceRepo.save.mockImplementation((inv: Invoice) => {
@@ -353,9 +353,9 @@ describe('Event-driven data flow integration', () => {
       // Step 7: OPD consumer receives invoice.paid → closes visit
       const savedVisit = {
         id: visit.id,
-        patientId,
+        patient_id: patientId,
         status: VisitStatus.OPEN,
-        visitDate: new Date(),
+        visit_date: new Date(),
       } as Visit;
       opdVisitRepo.findOne.mockResolvedValue(savedVisit);
       opdVisitRepo.save.mockImplementation((v: Visit) => {
@@ -363,7 +363,7 @@ describe('Event-driven data flow integration', () => {
         return Promise.resolve(v);
       });
 
-      const opdConsumer = new VisitsConsumer(opdVisitsService);
+      const opdConsumer = new VisitEventsController(opdVisitsService);
       await opdConsumer.handleInvoicePaid(
         invoiceEvent!.payload as InvoicePaidEvent,
         createRmqContext(),
@@ -382,15 +382,15 @@ describe('Event-driven data flow integration', () => {
       const visitId = randomUUID();
       const closedVisit = {
         id: visitId,
-        patientId: randomUUID(),
+        patient_id: randomUUID(),
         status: VisitStatus.CLOSED,
-        visitDate: new Date(),
+        visit_date: new Date(),
       } as Visit;
 
       opdVisitRepo.findOne.mockResolvedValue(closedVisit);
       opdVisitRepo.save.mockResolvedValue(closedVisit);
 
-      const opdConsumer = new VisitsConsumer(opdVisitsService);
+      const opdConsumer = new VisitEventsController(opdVisitsService);
       await opdConsumer.handleInvoicePaid(
         {
           metadata: {
@@ -416,7 +416,7 @@ describe('Event-driven data flow integration', () => {
     it('should handle a non-existent visit gracefully', async () => {
       opdVisitRepo.findOne.mockResolvedValue(null);
 
-      const opdConsumer = new VisitsConsumer(opdVisitsService);
+      const opdConsumer = new VisitEventsController(opdVisitsService);
       await opdConsumer.handleInvoicePaid(
         {
           metadata: {
@@ -450,9 +450,9 @@ describe('Event-driven data flow integration', () => {
 
       emrRecordRepo.findOne.mockResolvedValue({
         id: recordId,
-        visitId,
+        visit_id: visitId,
         diagnosis: 'Surgery',
-        treatmentCost: 12345.67,
+        treatment_cost: 12345.67,
         status: RecordStatus.WAITING,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -464,7 +464,7 @@ describe('Event-driven data flow integration', () => {
 
       await emrRecordsService.update(recordId, {
         status: RecordStatus.COMPLETED,
-        treatmentCost: 12345.67,
+        treatment_cost: 12345.67,
       } as any);
 
       const treatmentEvent = emrEvents.find(
@@ -484,22 +484,22 @@ describe('Event-driven data flow integration', () => {
     it('should normalize amount to two decimal places in Finance', async () => {
       const invoice = {
         id: randomUUID(),
-        visitId: randomUUID(),
-        totalAmount: '1500.00',
+        visit_id: randomUUID(),
+        total_amount: '1500.00',
         status: InvoiceStatus.PENDING,
       } as Invoice;
       financeInvoiceRepo.create.mockReturnValue(invoice);
       financeInvoiceRepo.save.mockResolvedValue(invoice);
 
       await financeInvoicesService.createFromTreatment({
-        visitId: 'visit-1',
-        recordId: 'record-1',
-        totalAmount: '1500',
+        visit_id: 'visit-1',
+        record_id: 'record-1',
+        total_amount: '1500',
       });
 
       expect(financeInvoiceRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          totalAmount: '1500.00',
+          total_amount: '1500.00',
         }),
       );
     });
@@ -515,15 +515,15 @@ describe('Event-driven data flow integration', () => {
       opdPatientRepo.findOne.mockResolvedValue({
         id: patientId,
         hn: 'HN001',
-        firstName: 'A',
-        lastName: 'B',
-        idCard: 'C',
+        first_name: 'A',
+        last_name: 'B',
+        id_card: 'C',
         visits: [],
         createdAt: new Date(),
         updatedAt: new Date(),
       } as Patient);
 
-      await opdVisitsService.create({ patientId } as any);
+      await opdVisitsService.create({ patient_id: patientId } as any);
 
       const event = opdEvents.find(
         (e) => e.pattern === VISIT_CREATED_EVENT_NAME,
@@ -541,12 +541,12 @@ describe('Event-driven data flow integration', () => {
     it('should include all required metadata fields in invoice.paid', async () => {
       financeInvoiceRepo.findOne.mockResolvedValue({
         id: 'inv-1',
-        visitId: 'vis-1',
-        totalAmount: '100.00',
+        visit_id: 'vis-1',
+        total_amount: '100.00',
         status: InvoiceStatus.PENDING,
-        paidAt: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        paid_at: null,
+        created_at: new Date(),
+        updated_at: new Date(),
       } as Invoice);
 
       financeInvoiceRepo.save.mockImplementation((inv: Invoice) => {

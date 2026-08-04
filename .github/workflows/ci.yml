@@ -73,6 +73,8 @@ jobs:
         run: npm ci
 
       - name: Create HIS databases
+        env:
+          PGPASSWORD: postgres
         run: |
           psql -h 127.0.0.1 -U postgres -d postgres -c 'CREATE DATABASE opd_db;'
           psql -h 127.0.0.1 -U postgres -d postgres -c 'CREATE DATABASE emr_db;'

@@ -4,7 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { createPostgresOptions } from '@app/common';
 import { EmrBcController } from './emr-bc.controller';
 import { EmrBcService } from './emr-bc.service';
-import { MedicalRecordsModule } from './records/medical-records.module';
+import { MedicalRecordModule } from '@apps/emr-bc/medical-record/medical-record.module';
 import { CommonModule } from '@app/common';
 
 @Module({
@@ -20,7 +20,7 @@ import { CommonModule } from '@app/common';
         createPostgresOptions(configService, 'EMR_DATABASE'),
     }),
     CommonModule,
-    MedicalRecordsModule,
+    MedicalRecordModule,
   ],
   controllers: [EmrBcController],
   providers: [EmrBcService],

@@ -1,0 +1,39 @@
+import { DataSource } from 'typeorm';
+import { MedicalRecord } from './medical-record/entities/medical-record.entity';
+
+describe('EMR persistence naming', () => {
+  const dataSource = new DataSource({
+    type: 'postgres',
+    entities: [MedicalRecord],
+  });
+
+  it('uses snake_case columns and explicit medical record constraints', async () => {
+    await dataSource.buildMetadatas();
+    const metadata = dataSource.getMetadata(MedicalRecord);
+
+    expect(metadata.tableName).toBe('medical_records');
+    expect(metadata.primaryColumns[0].primaryKeyConstraintName).toBe(
+      'pk_medical_records',
+    );
+    expect(metadata.columns.map((column) => column.databaseName)).toEqual(
+      expect.arrayContaining([
+        'visit_id',
+        'patient_id',
+        'correlation_id',
+        'treatment_note',
+        'doctor_id',
+        'treatment_cost',
+        'created_at',
+        'updated_at',
+      ]),
+    );
+    expect(metadata.indices).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'uq_medical_records_visit_id',
+          isUnique: true,
+        }),
+      ]),
+    );
+  });
+});
