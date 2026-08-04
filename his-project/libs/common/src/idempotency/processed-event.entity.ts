@@ -7,17 +7,19 @@ import {
 } from 'typeorm';
 
 @Entity('processed_events')
-@Index('UQ_processed_events_event_id', ['eventId'], { unique: true })
+@Index('uq_processed_events_event_id', ['event_id'], { unique: true })
 export class ProcessedEvent {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn('uuid', {
+    primaryKeyConstraintName: 'pk_processed_events',
+  })
   id!: string;
 
-  @Column({ type: 'uuid', name: 'event_id' })
-  eventId!: string;
+  @Column({ type: 'uuid' })
+  event_id!: string;
 
-  @Column({ type: 'varchar', name: 'event_name' })
-  eventName!: string;
+  @Column({ type: 'varchar' })
+  event_name!: string;
 
-  @CreateDateColumn({ type: 'timestamp with time zone', name: 'processed_at' })
-  processedAt!: Date;
+  @CreateDateColumn({ type: 'timestamp with time zone' })
+  processed_at!: Date;
 }
