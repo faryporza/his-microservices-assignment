@@ -39,13 +39,13 @@ Content-Type: application/json
 ```json
 {
   "hn": "HN-0001",
-  "firstName": "สมชาย",
-  "lastName": "ใจดี",
-  "idCard": "1234567890123"
+  "first_name": "สมชาย",
+  "last_name": "ใจดี",
+  "id_card": "1234567890123"
 }
 ```
 
-เก็บค่า `id` จาก response ไว้เป็น `patientId` สำหรับขั้นตอนถัดไป
+เก็บค่า `id` จาก response ไว้เป็น `PATIENT_UUID` สำหรับขั้นตอนถัดไป
 
 ![Bruno - สร้าง Patient](docs/images/bruno-01-create-patient.png)
 
@@ -58,7 +58,7 @@ Content-Type: application/json
 
 ```json
 {
-  "patientId": "<PATIENT_ID>"
+  "patient_id": "<PATIENT_UUID>"
 }
 ```
 
@@ -71,45 +71,29 @@ Visit เริ่มต้นด้วยสถานะ `OPEN` จากนั
 เมื่อ EMR ได้รับ `visit.created` จะสร้าง Medical Record สถานะ `WAITING` โดยอัตโนมัติ
 
 ```http
-GET http://localhost:3001/records/visit/<VISIT_ID>
+GET http://localhost:3001/records/visit/<VISIT_UUID>
 ```
 
-เก็บค่า `id` ของ Record ไว้เป็น `recordId`
+ไม่ต้องส่ง body กับ `GET` นี้ และเก็บค่า `id` ของ Record ไว้เป็น `RECORD_UUID`
 
 ![Bruno - ดู Medical Record](<docs/images/3. ดู Medical Record.png>)
 
 ### 4. หมอบันทึกผลการรักษา
 
-Route หลัก:
+ใช้ Medical Record ที่ EMR สร้างอัตโนมัติในขั้นตอนก่อนหน้า ไม่ต้อง `POST /records`
+ซ้ำ เพราะ `visit_id` มี unique constraint
 
 ```http
-PATCH http://localhost:3001/records/<RECORD_ID>
+PATCH http://localhost:3001/records/<RECORD_UUID>/complete
 Content-Type: application/json
 ```
 
 ```json
 {
-  "doctorId": "doctor-001",
+  "doctor_id": "doctor-001",
   "diagnosis": "ไข้หวัดทั่วไป",
-  "treatmentNote": "ให้ยาลดไข้และพักผ่อน",
-  "treatmentCost": 1500,
-  "status": "COMPLETED"
-}
-```
-
-Route เดิมที่ยังรองรับ:
-
-```http
-PATCH http://localhost:3001/records/<RECORD_ID>/complete
-Content-Type: application/json
-```
-
-```json
-{
-  "doctorId": "doctor-001",
-  "diagnosis": "ไข้หวัดทั่วไป",
-  "treatmentNote": "ให้ยาลดไข้และพักผ่อน",
-  "treatmentCost": 1500
+  "treatment_note": "ให้ยาลดไข้และพักผ่อน",
+  "treatment_cost": 1500
 }
 ```
 
@@ -122,17 +106,17 @@ Content-Type: application/json
 Finance สร้าง Invoice สถานะ `PENDING` จาก `treatment.completed` โดยไม่มี public API สำหรับสร้าง Invoice โดยตรง
 
 ```http
-GET http://localhost:3002/invoices/<VISIT_ID>
+GET http://localhost:3002/invoices/<VISIT_UUID>
 ```
 
-เก็บค่า `id` ของ Invoice ไว้เป็น `invoiceId`
+ไม่ต้องส่ง body กับ `GET` นี้ และเก็บค่า `id` ของ Invoice ไว้เป็น `INVOICE_UUID`
 
 ![Bruno - ตรวจ Invoice](<docs/images/5. ตรวจ Invoice.png>)
 
 ### 6. ชำระเงิน
 
 ```http
-PATCH http://localhost:3002/invoices/<INVOICE_ID>/pay
+PATCH http://localhost:3002/invoices/<INVOICE_UUID>/pay
 Content-Type: application/json
 ```
 
@@ -151,7 +135,7 @@ Content-Type: application/json
 OPD รับ `invoice.paid` แล้วเปลี่ยนสถานะ Visit เป็น `CLOSED` ตรวจสอบได้ด้วย:
 
 ```http
-GET http://localhost:3000/visits/<VISIT_ID>
+GET http://localhost:3000/visits/<VISIT_UUID>
 ```
 
 ![Bruno - ตรวจสอบ Visit](<docs/images/7. ตรวจสอบ Visit.png>)
