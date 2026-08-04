@@ -7,15 +7,18 @@ import {
   HttpLoggingExceptionFilter,
   RequestLoggingInterceptor,
   RmqService,
+  StructuredLogger,
 } from '@app/common';
 import { FinanceBcModule } from './finance-bc.module';
 
+const logger = new StructuredLogger('finance-bc');
+
 async function bootstrap() {
-  const app = await NestFactory.create(FinanceBcModule);
+  const app = await NestFactory.create(FinanceBcModule, { logger });
   const config = app.get(ConfigService);
   app.useGlobalPipes(createStrictValidationPipe());
-  app.useGlobalInterceptors(new RequestLoggingInterceptor('finance-bc'));
-  app.useGlobalFilters(new HttpLoggingExceptionFilter('finance-bc'));
+  app.useGlobalInterceptors(new RequestLoggingInterceptor(logger));
+  app.useGlobalFilters(new HttpLoggingExceptionFilter(logger));
 
   const rmqService = app.get(RmqService);
   app.connectMicroservice(
@@ -27,4 +30,11 @@ async function bootstrap() {
 
   await app.listen(getRequiredInteger(config, 'FINANCE_PORT'));
 }
-void bootstrap();
+void bootstrap().catch((error: unknown) => {
+  logger.fatal({
+    message: 'Service bootstrap failed',
+    context: { action: 'BOOTSTRAP_SERVICE' },
+    error,
+  });
+  process.exitCode = 1;
+});

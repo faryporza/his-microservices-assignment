@@ -31,7 +31,8 @@ export class InvoicesController {
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
     @Body() _payInvoiceDto: PayInvoiceDto,
     @Headers('x-correlation-id') correlationId?: string,
+    @Headers('x-trace-id') traceId?: string,
   ) {
-    return this.invoicesService.pay(id, correlationId);
+    return this.invoicesService.pay(id, correlationId, traceId);
   }
 }

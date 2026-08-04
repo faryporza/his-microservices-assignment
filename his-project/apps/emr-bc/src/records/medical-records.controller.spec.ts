@@ -16,13 +16,19 @@ describe('MedicalRecordsController', () => {
     };
 
     await expect(
-      controller.completeTreatment('record-id', dto, 'visit-correlation'),
+      controller.completeTreatment(
+        'record-id',
+        dto,
+        'visit-correlation',
+        'trace-id',
+      ),
     ).resolves.toEqual({ id: 'record-id' });
 
     expect(service.completeTreatment).toHaveBeenCalledWith(
       'record-id',
       dto,
       'visit-correlation',
+      'trace-id',
     );
   });
 });

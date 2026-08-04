@@ -7,15 +7,18 @@ import {
   HttpLoggingExceptionFilter,
   RequestLoggingInterceptor,
   RmqService,
+  StructuredLogger,
 } from '@app/common';
 import { EmrBcModule } from './emr-bc.module';
 
+const logger = new StructuredLogger('emr-bc');
+
 async function bootstrap() {
-  const app = await NestFactory.create(EmrBcModule);
+  const app = await NestFactory.create(EmrBcModule, { logger });
   const config = app.get(ConfigService);
   app.useGlobalPipes(createStrictValidationPipe());
-  app.useGlobalInterceptors(new RequestLoggingInterceptor('emr-bc'));
-  app.useGlobalFilters(new HttpLoggingExceptionFilter('emr-bc'));
+  app.useGlobalInterceptors(new RequestLoggingInterceptor(logger));
+  app.useGlobalFilters(new HttpLoggingExceptionFilter(logger));
 
   const rmqService = app.get(RmqService);
   app.connectMicroservice(
@@ -27,4 +30,11 @@ async function bootstrap() {
 
   await app.listen(getRequiredInteger(config, 'EMR_PORT'));
 }
-void bootstrap();
+void bootstrap().catch((error: unknown) => {
+  logger.fatal({
+    message: 'Service bootstrap failed',
+    context: { action: 'BOOTSTRAP_SERVICE' },
+    error,
+  });
+  process.exitCode = 1;
+});

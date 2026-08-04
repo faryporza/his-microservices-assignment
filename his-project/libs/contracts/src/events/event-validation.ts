@@ -36,6 +36,17 @@ export function hasValidEventMetadata(
     metadata.eventName === eventName &&
     metadata.version === version &&
     typeof metadata.occurredAt === 'string' &&
-    !Number.isNaN(Date.parse(metadata.occurredAt))
+    !Number.isNaN(Date.parse(metadata.occurredAt)) &&
+    isOptionalTraceIdentifier(metadata.correlationId) &&
+    isOptionalTraceIdentifier(metadata.traceId)
+  );
+}
+
+function isOptionalTraceIdentifier(value: unknown): boolean {
+  return (
+    value === undefined ||
+    (typeof value === 'string' &&
+      value.trim().length > 0 &&
+      value.length <= 128)
   );
 }

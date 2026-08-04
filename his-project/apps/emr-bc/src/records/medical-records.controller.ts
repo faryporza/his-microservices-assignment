@@ -52,11 +52,13 @@ export class MedicalRecordsController {
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
     @Body() completeTreatmentDto: CompleteTreatmentDto,
     @Headers('x-correlation-id') correlationId?: string,
+    @Headers('x-trace-id') traceId?: string,
   ) {
     return this.medicalRecordsService.completeTreatment(
       id,
       completeTreatmentDto,
       correlationId,
+      traceId,
     );
   }
 }

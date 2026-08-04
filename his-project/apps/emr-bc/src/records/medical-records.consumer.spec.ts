@@ -1,5 +1,5 @@
-import { Logger } from '@nestjs/common';
 import { RmqContext } from '@nestjs/microservices';
+import { StructuredLogger } from '@app/common';
 import {
   VISIT_CREATED_EVENT_NAME,
   VISIT_CREATED_EVENT_VERSION,
@@ -15,6 +15,8 @@ describe('MedicalRecordsConsumer', () => {
       eventName: VISIT_CREATED_EVENT_NAME,
       version: VISIT_CREATED_EVENT_VERSION,
       occurredAt: '2026-08-01T00:00:00.000Z',
+      correlationId: 'correlation-id',
+      traceId: 'trace-id',
     },
     payload: {
       visitId: '550e8400-e29b-41d4-a716-446655440000',
@@ -49,7 +51,9 @@ describe('MedicalRecordsConsumer', () => {
   });
 
   it('NACKs invalid messages without requeueing', async () => {
-    const log = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+    const log = jest
+      .spyOn(StructuredLogger.prototype, 'warn')
+      .mockImplementation();
     await consumer.handleVisitCreated(
       { ...event, payload: { ...event.payload, visitId: 'invalid' } },
       context,
@@ -58,7 +62,12 @@ describe('MedicalRecordsConsumer', () => {
     expect(service.processVisitCreated).not.toHaveBeenCalled();
     expect(channel.nack).toHaveBeenCalledWith(message, false, false);
     expect(log).toHaveBeenCalledWith(
-      expect.stringContaining(event.metadata.eventId),
+      expect.objectContaining({
+        context: expect.objectContaining({
+          event_id: event.metadata.eventId,
+          event_status: 'DISCARDED',
+        }),
+      }),
     );
     log.mockRestore();
   });

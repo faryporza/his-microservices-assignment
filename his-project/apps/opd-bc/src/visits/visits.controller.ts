@@ -18,8 +18,9 @@ export class VisitsController {
   create(
     @Body() createVisitDto: CreateVisitDto,
     @Headers('x-correlation-id') correlationId?: string,
+    @Headers('x-trace-id') traceId?: string,
   ) {
-    return this.visitsService.create(createVisitDto, correlationId);
+    return this.visitsService.create(createVisitDto, correlationId, traceId);
   }
 
   @Get('visits') // เปิด endpoint สำหรับดึงข้อมูล visit ทั้งหมด

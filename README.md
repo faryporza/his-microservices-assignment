@@ -260,9 +260,11 @@ npm run build
 - `409 Conflict` — business state ขัดแย้ง เช่น ชำระ Invoice ซ้ำ
 - `503 Service Unavailable` — ไม่สามารถ publish event ไปยัง message broker
 
-ทุก service เขียน structured log ผ่าน console พร้อมข้อมูลสำคัญ เช่น service, event name, event ID, correlation ID, visit ID และสถานะการ publish
+ทุก service เขียน log เป็น JSON หนึ่ง object ต่อบรรทัดตาม schema กลาง โดยมี `timestamp`, `level`, `message`, `service`, `trace` และ `context` และไม่บันทึก request body, token หรือข้อมูลผู้ป่วยที่ไม่จำเป็น
 
-สามารถส่ง header `x-correlation-id` มากับ request ที่เริ่ม business flow เพื่อช่วยติดตามเหตุการณ์ข้าม service ได้
+สามารถส่ง header `x-correlation-id` และ `x-trace-id` มากับ request เพื่อช่วยติดตามเหตุการณ์ข้าม service ได้ หากไม่ส่ง ระบบจะสร้างค่าให้และส่ง `x-correlation-id`, `x-trace-id` และ `x-span-id` กลับมาใน response headers โดย trace metadata จะถูกส่งต่อไปกับ RabbitMQ events ด้วย
+
+กำหนดเวอร์ชันของ service ผ่าน `SERVICE_VERSION` และระดับ log ขั้นต่ำผ่าน `LOG_LEVEL` (`debug`, `info`, `warn`, `error` หรือ `fatal`) โดย production จะปิด debug เป็นค่าเริ่มต้น
 
 ## Project Structure
 

@@ -1,5 +1,4 @@
 import {
-  BaseEvent,
   EventMetadata,
   EventRoutingKey,
   VisitCreatedEvent,
@@ -18,6 +17,7 @@ import {
   RABBITMQ_QUEUES,
   RABBITMQ_ROUTING_KEYS,
   RABBITMQ_BINDINGS,
+  hasValidEventMetadata,
 } from '../index';
 
 // ---------------------------------------------------------------------------
@@ -67,6 +67,15 @@ describe('BaseEvent & EventMetadata', () => {
     expect(metadata.correlationId).toBeUndefined();
   });
 
+  it('should allow distributed trace metadata without changing event payloads', () => {
+    const metadata: EventMetadata = buildMetadata({
+      correlationId: 'correlation-42',
+      traceId: 'trace-42',
+    });
+    expect(metadata.correlationId).toBe('correlation-42');
+    expect(metadata.traceId).toBe('trace-42');
+  });
+
   it('should enforce that eventId is a string', () => {
     const metadata: EventMetadata = buildMetadata({ eventId: 'abc-123' });
     expect(typeof metadata.eventId).toBe('string');
@@ -75,6 +84,37 @@ describe('BaseEvent & EventMetadata', () => {
   it('should enforce that version is a string', () => {
     const metadata: EventMetadata = buildMetadata({ version: '2.0.0' });
     expect(typeof metadata.version).toBe('string');
+  });
+});
+
+describe('event trace metadata validation', () => {
+  const metadata: EventMetadata = {
+    eventId: '7c9e6679-7425-40de-944b-e07fc1f90ae7',
+    eventName: VISIT_CREATED_EVENT_NAME,
+    version: VISIT_CREATED_EVENT_VERSION,
+    occurredAt: '2026-08-01T00:00:00.000Z',
+    correlationId: 'correlation-id',
+    traceId: 'trace-id',
+  };
+
+  it('accepts valid optional correlation and trace identifiers', () => {
+    expect(
+      hasValidEventMetadata(
+        metadata,
+        VISIT_CREATED_EVENT_NAME,
+        VISIT_CREATED_EVENT_VERSION,
+      ),
+    ).toBe(true);
+  });
+
+  it('rejects blank trace identifiers when supplied', () => {
+    expect(
+      hasValidEventMetadata(
+        { ...metadata, traceId: '   ' },
+        VISIT_CREATED_EVENT_NAME,
+        VISIT_CREATED_EVENT_VERSION,
+      ),
+    ).toBe(false);
   });
 });
 
@@ -286,7 +326,9 @@ describe('RabbitMQ topology constants', () => {
   describe('RABBITMQ_ROUTING_KEYS', () => {
     it('should define routing keys for each event', () => {
       expect(RABBITMQ_ROUTING_KEYS.visitCreated).toBe('visit.created');
-      expect(RABBITMQ_ROUTING_KEYS.treatmentCompleted).toBe('treatment.completed');
+      expect(RABBITMQ_ROUTING_KEYS.treatmentCompleted).toBe(
+        'treatment.completed',
+      );
       expect(RABBITMQ_ROUTING_KEYS.invoicePaid).toBe('invoice.paid');
     });
 
@@ -302,7 +344,9 @@ describe('RabbitMQ topology constants', () => {
     });
 
     it('should route treatment.completed to the Finance queue', () => {
-      expect(RABBITMQ_BINDINGS['treatment.completed']).toBe(RABBITMQ_QUEUES.finance);
+      expect(RABBITMQ_BINDINGS['treatment.completed']).toBe(
+        RABBITMQ_QUEUES.finance,
+      );
     });
 
     it('should route invoice.paid to the OPD queue', () => {

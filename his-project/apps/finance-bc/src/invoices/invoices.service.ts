@@ -58,7 +58,11 @@ export class InvoicesService {
     return invoices;
   }
 
-  async pay(id: string, correlationId?: string): Promise<Invoice> {
+  async pay(
+    id: string,
+    correlationId?: string,
+    traceId?: string,
+  ): Promise<Invoice> {
     const invoice = await this.findById(id);
     if (invoice.status === InvoiceStatus.PAID) {
       throw new ConflictException(
@@ -69,6 +73,8 @@ export class InvoicesService {
     invoice.status = InvoiceStatus.PAID;
     invoice.paidAt = new Date();
     const saved = await this.invoiceRepository.save(invoice);
+    const eventCorrelationId =
+      saved.correlationId ?? correlationId ?? randomUUID();
 
     const event: InvoicePaidEvent = {
       metadata: {
@@ -76,7 +82,8 @@ export class InvoicesService {
         eventName: INVOICE_PAID_EVENT_NAME,
         version: INVOICE_PAID_EVENT_VERSION,
         occurredAt: new Date().toISOString(),
-        correlationId: saved.correlationId ?? correlationId ?? randomUUID(),
+        correlationId: eventCorrelationId,
+        traceId: traceId ?? eventCorrelationId,
       },
       payload: {
         visitId: saved.visitId,
@@ -88,19 +95,35 @@ export class InvoicesService {
     try {
       await firstValueFrom(this.client.emit(INVOICE_PAID_EVENT_NAME, event));
       this.logger.log({
-        eventName: event.metadata.eventName,
-        eventId: event.metadata.eventId,
-        correlationId: event.metadata.correlationId,
-        visitId: saved.visitId,
-        status: 'PUBLISHED',
+        message: 'Domain event published',
+        trace: {
+          traceId: event.metadata.traceId,
+          correlationId: event.metadata.correlationId,
+        },
+        context: {
+          action: 'PUBLISH_EVENT',
+          event_name: event.metadata.eventName,
+          event_id: event.metadata.eventId,
+          visit_id: saved.visitId,
+          invoice_id: saved.id,
+          event_status: 'PUBLISHED',
+        },
       });
     } catch (error: unknown) {
       this.logger.error({
-        eventName: event.metadata.eventName,
-        eventId: event.metadata.eventId,
-        correlationId: event.metadata.correlationId,
-        visitId: saved.visitId,
-        status: 'PUBLISH_FAILED',
+        message: 'Failed to publish domain event',
+        trace: {
+          traceId: event.metadata.traceId,
+          correlationId: event.metadata.correlationId,
+        },
+        context: {
+          action: 'PUBLISH_EVENT',
+          event_name: event.metadata.eventName,
+          event_id: event.metadata.eventId,
+          visit_id: saved.visitId,
+          invoice_id: saved.id,
+          event_status: 'PUBLISH_FAILED',
+        },
         error,
       });
       throw new ServiceUnavailableException('Message broker unavailable');

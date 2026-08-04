@@ -32,11 +32,15 @@ export class InvoicesConsumer {
     const message = context.getMessage() as ConsumeMessage;
 
     if (!this.isTreatmentCompletedEvent(event)) {
-      this.logger.error({
-        eventName: TREATMENT_COMPLETED_EVENT_NAME,
-        eventId: getEventIdForLog(event),
-        status: 'DISCARDED',
-        error: 'InvalidEvent',
+      this.logger.warn({
+        message: 'Invalid domain event discarded',
+        context: {
+          action: 'CONSUME_EVENT',
+          event_name: TREATMENT_COMPLETED_EVENT_NAME,
+          event_id: getEventIdForLog(event),
+          event_status: 'DISCARDED',
+          error_type: 'InvalidEvent',
+        },
       });
       channel.nack(message, false, false);
       return;
@@ -46,20 +50,36 @@ export class InvoicesConsumer {
       await this.service.processTreatmentCompleted(event);
       channel.ack(message);
       this.logger.log({
-        eventName: event.metadata.eventName,
-        eventId: event.metadata.eventId,
-        correlationId: event.metadata.correlationId,
-        visitId: event.payload.visitId,
-        status: 'ACKED',
+        message: 'Domain event processed',
+        trace: {
+          traceId: event.metadata.traceId,
+          correlationId: event.metadata.correlationId,
+        },
+        context: {
+          action: 'CONSUME_EVENT',
+          event_name: event.metadata.eventName,
+          event_id: event.metadata.eventId,
+          visit_id: event.payload.visitId,
+          record_id: event.payload.recordId,
+          event_status: 'ACKED',
+        },
       });
     } catch (error: unknown) {
       if (error instanceof BadRequestException) {
-        this.logger.error({
-          eventName: event.metadata.eventName,
-          eventId: event.metadata.eventId,
-          correlationId: event.metadata.correlationId,
-          visitId: event.payload.visitId,
-          status: 'DISCARDED',
+        this.logger.warn({
+          message: 'Domain event discarded',
+          trace: {
+            traceId: event.metadata.traceId,
+            correlationId: event.metadata.correlationId,
+          },
+          context: {
+            action: 'CONSUME_EVENT',
+            event_name: event.metadata.eventName,
+            event_id: event.metadata.eventId,
+            visit_id: event.payload.visitId,
+            record_id: event.payload.recordId,
+            event_status: 'DISCARDED',
+          },
           error,
         });
         channel.nack(message, false, false);
@@ -67,11 +87,19 @@ export class InvoicesConsumer {
       }
 
       this.logger.error({
-        eventName: event.metadata.eventName,
-        eventId: event.metadata.eventId,
-        correlationId: event.metadata.correlationId,
-        visitId: event.payload.visitId,
-        status: 'REQUEUED',
+        message: 'Domain event processing failed',
+        trace: {
+          traceId: event.metadata.traceId,
+          correlationId: event.metadata.correlationId,
+        },
+        context: {
+          action: 'CONSUME_EVENT',
+          event_name: event.metadata.eventName,
+          event_id: event.metadata.eventId,
+          visit_id: event.payload.visitId,
+          record_id: event.payload.recordId,
+          event_status: 'REQUEUED',
+        },
         error,
       });
       channel.nack(message, false, true);

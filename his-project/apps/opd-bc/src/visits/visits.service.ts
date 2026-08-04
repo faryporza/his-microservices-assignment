@@ -38,6 +38,7 @@ export class VisitsService {
   async create(
     createVisitDto: CreateVisitDto,
     correlationId?: string,
+    traceId?: string,
   ): Promise<Visit> {
     const patient = await this.patientRepository.findOne({
       where: { id: createVisitDto.patientId },
@@ -54,6 +55,7 @@ export class VisitsService {
     });
 
     const saved = await this.visitRepository.save(visit);
+    const eventCorrelationId = correlationId ?? randomUUID();
 
     const event: VisitCreatedEvent = {
       metadata: {
@@ -61,7 +63,8 @@ export class VisitsService {
         eventName: VISIT_CREATED_EVENT_NAME,
         version: VISIT_CREATED_EVENT_VERSION,
         occurredAt: new Date().toISOString(),
-        correlationId: correlationId ?? randomUUID(),
+        correlationId: eventCorrelationId,
+        traceId: traceId ?? eventCorrelationId,
       },
       payload: {
         visitId: saved.id,
@@ -73,19 +76,33 @@ export class VisitsService {
     try {
       await firstValueFrom(this.client.emit(VISIT_CREATED_EVENT_NAME, event));
       this.logger.log({
-        eventName: event.metadata.eventName,
-        eventId: event.metadata.eventId,
-        correlationId: event.metadata.correlationId,
-        visitId: saved.id,
-        status: 'PUBLISHED',
+        message: 'Domain event published',
+        trace: {
+          traceId: event.metadata.traceId,
+          correlationId: event.metadata.correlationId,
+        },
+        context: {
+          action: 'PUBLISH_EVENT',
+          event_name: event.metadata.eventName,
+          event_id: event.metadata.eventId,
+          visit_id: saved.id,
+          event_status: 'PUBLISHED',
+        },
       });
     } catch (error: unknown) {
       this.logger.error({
-        eventName: event.metadata.eventName,
-        eventId: event.metadata.eventId,
-        correlationId: event.metadata.correlationId,
-        visitId: saved.id,
-        status: 'PUBLISH_FAILED',
+        message: 'Failed to publish domain event',
+        trace: {
+          traceId: event.metadata.traceId,
+          correlationId: event.metadata.correlationId,
+        },
+        context: {
+          action: 'PUBLISH_EVENT',
+          event_name: event.metadata.eventName,
+          event_id: event.metadata.eventId,
+          visit_id: saved.id,
+          event_status: 'PUBLISH_FAILED',
+        },
         error,
       });
       throw new ServiceUnavailableException('Message broker unavailable');
