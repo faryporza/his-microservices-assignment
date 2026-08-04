@@ -27,7 +27,7 @@ export class PatientsService {
     }
 
     const existingIdCard = await this.patientRepository.findOne({
-      where: { idCard: createPatientDto.idCard },
+      where: { id_card: createPatientDto.id_card },
     });
     if (existingIdCard) {
       throw new ConflictException('ID Card already exists');
@@ -73,9 +73,12 @@ export class PatientsService {
       }
     }
 
-    if (updatePatientDto.idCard && updatePatientDto.idCard !== patient.idCard) {
+    if (
+      updatePatientDto.id_card &&
+      updatePatientDto.id_card !== patient.id_card
+    ) {
       const existingIdCard = await this.patientRepository.findOne({
-        where: { idCard: updatePatientDto.idCard },
+        where: { id_card: updatePatientDto.id_card },
       });
       if (existingIdCard) {
         throw new ConflictException('ID Card already exists');

@@ -33,16 +33,26 @@ describe('OpdBcController (e2e)', () => {
   it('rejects missing and non-whitelisted patient fields', async () => {
     await request(app.getHttpServer() as App)
       .post('/patients')
-      .send({ firstName: 'Ada', lastName: 'Lovelace', idCard: 'ID-1' })
+      .send({ first_name: 'Ada', last_name: 'Lovelace', id_card: 'ID-1' })
+      .expect(400);
+
+    await request(app.getHttpServer() as App)
+      .post('/patients')
+      .send({
+        hn: 'HN-CAMEL-CASE',
+        firstName: 'Ada',
+        lastName: 'Lovelace',
+        idCard: 'ID-CAMEL-CASE',
+      })
       .expect(400);
 
     await request(app.getHttpServer() as App)
       .post('/patients')
       .send({
         hn: 'HN-STRICT',
-        firstName: 'Ada',
-        lastName: 'Lovelace',
-        idCard: 'ID-STRICT',
+        first_name: 'Ada',
+        last_name: 'Lovelace',
+        id_card: 'ID-STRICT',
         role: 'ADMIN',
       })
       .expect(400);
@@ -51,7 +61,7 @@ describe('OpdBcController (e2e)', () => {
   it('validates visit and update-patient DTOs', async () => {
     await request(app.getHttpServer() as App)
       .post('/visits')
-      .send({ patientId: 'not-a-uuid' })
+      .send({ patient_id: 'not-a-uuid' })
       .expect(400);
 
     await request(app.getHttpServer() as App)
@@ -61,7 +71,7 @@ describe('OpdBcController (e2e)', () => {
 
     await request(app.getHttpServer() as App)
       .patch(`/patients/${randomUUID()}`)
-      .send({ firstName: 'Grace' })
+      .send({ first_name: 'Grace' })
       .expect(404);
 
     await request(app.getHttpServer() as App)

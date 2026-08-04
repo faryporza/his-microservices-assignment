@@ -10,4 +10,4 @@ import { PatientsController } from './patients.controller';
   providers: [PatientsService],
   exports: [PatientsService, TypeOrmModule],
 })
-export class PatientsModule {}
+export class PatientModule {}

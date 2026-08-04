@@ -86,6 +86,7 @@
       "<rootDir>/libs/"
     ],
     "moduleNameMapper": {
+      "^@apps/opd-bc(|/.*)$": "<rootDir>/apps/opd-bc/src/$1",
       "^@app/common(|/.*)$": "<rootDir>/libs/common/src/$1",
       "^@app/contracts(|/.*)$": "<rootDir>/libs/contracts/src/$1"
     }

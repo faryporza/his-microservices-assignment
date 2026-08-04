@@ -9,15 +9,15 @@ export class UpdatePatientDto {
   @IsOptional()
   @IsString()
   @IsNotEmpty()
-  firstName?: string;
+  first_name?: string;
 
   @IsOptional()
   @IsString()
   @IsNotEmpty()
-  lastName?: string;
+  last_name?: string;
 
   @IsOptional()
   @IsString()
   @IsNotEmpty()
-  idCard?: string;
+  id_card?: string;
 }

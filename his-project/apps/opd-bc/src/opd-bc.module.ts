@@ -4,8 +4,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { createPostgresOptions } from '@app/common';
 import { OpdBcController } from './opd-bc.controller';
 import { OpdBcService } from './opd-bc.service';
-import { PatientsModule } from './patients/patients.module';
-import { VisitsModule } from './visits/visits.module';
+import { PatientModule } from '@apps/opd-bc/patient/patient.module';
+import { VisitModule } from '@apps/opd-bc/visit/visit.module';
 import { CommonModule } from '@app/common';
 
 @Module({
@@ -21,8 +21,8 @@ import { CommonModule } from '@app/common';
         createPostgresOptions(configService, 'OPD_DATABASE'),
     }),
     CommonModule,
-    PatientsModule,
-    VisitsModule,
+    PatientModule,
+    VisitModule,
   ],
   controllers: [OpdBcController],
   providers: [OpdBcService],
