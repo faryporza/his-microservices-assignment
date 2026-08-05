@@ -6,7 +6,7 @@ import {
   getRequiredString,
   HttpLoggingExceptionFilter,
   RequestLoggingInterceptor,
-  RmqService,
+  RabbitMqOptionsService,
   StructuredLogger,
 } from '@app/common';
 import { EmrBcModule } from './emr-bc.module';
@@ -20,7 +20,7 @@ async function bootstrap() {
   app.useGlobalInterceptors(new RequestLoggingInterceptor(logger));
   app.useGlobalFilters(new HttpLoggingExceptionFilter(logger));
 
-  const rmqService = app.get(RmqService);
+  const rmqService = app.get(RabbitMqOptionsService);
   app.connectMicroservice(
     rmqService.createServiceOptions(
       getRequiredString(config, 'EMR_RABBITMQ_QUEUE'),

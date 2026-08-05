@@ -3,8 +3,8 @@ import { Ctx, EventPattern, Payload, RmqContext } from '@nestjs/microservices';
 import {
   hasValidEventMetadata,
   getEventIdForLog,
-  INVOICE_PAID_EVENT_NAME,
-  INVOICE_PAID_EVENT_VERSION,
+  invoicePaidEventName,
+  invoicePaidEventVersion,
   InvoicePaidEvent,
   isUuidV4,
 } from '@app/contracts';
@@ -23,7 +23,7 @@ export class VisitEventsController {
 
   constructor(private readonly service: VisitsService) {}
 
-  @EventPattern(INVOICE_PAID_EVENT_NAME)
+  @EventPattern(invoicePaidEventName)
   async handleInvoicePaid(
     @Payload() event: unknown,
     @Ctx() context: RmqContext,
@@ -36,7 +36,7 @@ export class VisitEventsController {
         message: 'Invalid domain event discarded',
         context: {
           action: 'CONSUME_EVENT',
-          event_name: INVOICE_PAID_EVENT_NAME,
+          event_name: invoicePaidEventName,
           event_id: getEventIdForLog(event),
           event_status: 'DISCARDED',
           error_type: 'InvalidEvent',
@@ -117,8 +117,8 @@ export class VisitEventsController {
     return (
       hasValidEventMetadata(
         candidate.metadata,
-        INVOICE_PAID_EVENT_NAME,
-        INVOICE_PAID_EVENT_VERSION,
+        invoicePaidEventName,
+        invoicePaidEventVersion,
       ) &&
       isUuidV4(payload?.visitId) &&
       isUuidV4(payload.invoiceId) &&

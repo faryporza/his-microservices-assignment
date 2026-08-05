@@ -1,5 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
+import { RenameUniqueConstraints20260805000000 } from '../migrations/rename-unique-constraints.migration';
+import { RenameMigrationsPrimaryKey20260805000100 } from '../migrations/rename-migrations-primary-key.migration';
 
 export function getRequiredString(config: ConfigService, key: string): string {
   return config.getOrThrow<string>(key);
@@ -29,5 +31,10 @@ export function createPostgresOptions(
     database: getRequiredString(config, databaseKey),
     autoLoadEntities: true,
     synchronize: true,
+    migrations: [
+      RenameUniqueConstraints20260805000000,
+      RenameMigrationsPrimaryKey20260805000100,
+    ],
+    migrationsRun: true,
   };
 }

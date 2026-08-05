@@ -1,8 +1,8 @@
 import { RmqContext } from '@nestjs/microservices';
 import { StructuredLogger } from '@app/common';
 import {
-  VISIT_CREATED_EVENT_NAME,
-  VISIT_CREATED_EVENT_VERSION,
+  visitCreatedEventName,
+  visitCreatedEventVersion,
   VisitCreatedEvent,
 } from '@app/contracts';
 import { MedicalRecordEventsController } from './medical-record-events.controller';
@@ -12,8 +12,8 @@ describe('MedicalRecordEventsController', () => {
   const event: VisitCreatedEvent = {
     metadata: {
       eventId: '7c9e6679-7425-40de-944b-e07fc1f90ae7',
-      eventName: VISIT_CREATED_EVENT_NAME,
-      version: VISIT_CREATED_EVENT_VERSION,
+      eventName: visitCreatedEventName,
+      version: visitCreatedEventVersion,
       occurredAt: '2026-08-01T00:00:00.000Z',
       correlationId: 'correlation-id',
       traceId: 'trace-id',

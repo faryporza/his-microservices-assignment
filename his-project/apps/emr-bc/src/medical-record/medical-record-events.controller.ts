@@ -6,8 +6,8 @@ import {
   hasValidEventMetadata,
   getEventIdForLog,
   isUuidV4,
-  VISIT_CREATED_EVENT_NAME,
-  VISIT_CREATED_EVENT_VERSION,
+  visitCreatedEventName,
+  visitCreatedEventVersion,
   VisitCreatedEvent,
 } from '@app/contracts';
 import type { Channel, ConsumeMessage } from 'amqplib';
@@ -22,7 +22,7 @@ export class MedicalRecordEventsController {
 
   constructor(private readonly service: MedicalRecordsService) {}
 
-  @EventPattern(VISIT_CREATED_EVENT_NAME)
+  @EventPattern(visitCreatedEventName)
   async handleVisitCreated(
     @Payload() event: unknown,
     @Ctx() context: RmqContext,
@@ -35,7 +35,7 @@ export class MedicalRecordEventsController {
         message: 'Invalid domain event discarded',
         context: {
           action: 'CONSUME_EVENT',
-          event_name: VISIT_CREATED_EVENT_NAME,
+          event_name: visitCreatedEventName,
           event_id: getEventIdForLog(event),
           event_status: 'DISCARDED',
           error_type: 'InvalidEvent',
@@ -113,8 +113,8 @@ export class MedicalRecordEventsController {
     return (
       hasValidEventMetadata(
         candidate.metadata,
-        VISIT_CREATED_EVENT_NAME,
-        VISIT_CREATED_EVENT_VERSION,
+        visitCreatedEventName,
+        visitCreatedEventVersion,
       ) &&
       isUuidV4(payload?.visitId) &&
       isUuidV4(payload.patientId) &&

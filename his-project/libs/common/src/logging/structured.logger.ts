@@ -44,7 +44,7 @@ export interface StandardLogEntry {
   details?: Record<string, unknown>;
 }
 
-const LEVEL_PRIORITY: Record<StandardLogLevel, number> = {
+const levelPriority: Record<StandardLogLevel, number> = {
   debug: 10,
   info: 20,
   warn: 30,
@@ -52,7 +52,7 @@ const LEVEL_PRIORITY: Record<StandardLogLevel, number> = {
   fatal: 50,
 };
 
-const SENSITIVE_KEY_PATTERN =
+const sensitiveKeyPattern =
   /(?:password|passphrase|secret|token|authorization|cookie|api[_-]?key|id[_-]?card|card[_-]?number|credit[_-]?card|session)/i;
 
 /**
@@ -161,7 +161,7 @@ export class StructuredLogger implements LoggerService {
     const configured = normalizeLogLevel(process.env.LOG_LEVEL);
     const minimum =
       configured ?? (process.env.NODE_ENV === 'production' ? 'info' : 'debug');
-    return LEVEL_PRIORITY[level] >= LEVEL_PRIORITY[minimum];
+    return levelPriority[level] >= levelPriority[minimum];
   }
 }
 
@@ -235,7 +235,7 @@ function normalizeLogLevel(value: unknown): StandardLogLevel | undefined {
   if (level === 'log') {
     return 'info';
   }
-  if (level in LEVEL_PRIORITY) {
+  if (level in levelPriority) {
     return level as StandardLogLevel;
   }
   return undefined;
@@ -259,7 +259,7 @@ function sanitizeRecord(
   return Object.fromEntries(
     Object.entries(record).map(([key, value]) => [
       key,
-      SENSITIVE_KEY_PATTERN.test(key) ? '[REDACTED]' : sanitizeValue(value),
+      sensitiveKeyPattern.test(key) ? '[REDACTED]' : sanitizeValue(value),
     ]),
   );
 }

@@ -35,9 +35,9 @@ import { InvoiceEventsController } from '@apps/finance-bc/invoice/invoice-events
 
 // Contracts
 import {
-  VISIT_CREATED_EVENT_NAME,
-  TREATMENT_COMPLETED_EVENT_NAME,
-  INVOICE_PAID_EVENT_NAME,
+  visitCreatedEventName,
+  treatmentCompletedEventName,
+  invoicePaidEventName,
   VisitCreatedEvent,
   TreatmentCompletedEvent,
   InvoicePaidEvent,
@@ -219,7 +219,7 @@ describe('Event-driven data flow integration', () => {
 
       // Verify visit.created event
       const visitEvent = opdEvents.find(
-        (e) => e.pattern === VISIT_CREATED_EVENT_NAME,
+        (e) => e.pattern === visitCreatedEventName,
       );
       expect(visitEvent).toBeDefined();
       const visitPayload = (visitEvent!.payload as VisitCreatedEvent).payload;
@@ -281,7 +281,7 @@ describe('Event-driven data flow integration', () => {
 
       // Verify treatment.completed event
       const treatmentEvent = emrEvents.find(
-        (e) => e.pattern === TREATMENT_COMPLETED_EVENT_NAME,
+        (e) => e.pattern === treatmentCompletedEventName,
       );
       expect(treatmentEvent).toBeDefined();
       const treatmentPayload = (
@@ -341,7 +341,7 @@ describe('Event-driven data flow integration', () => {
 
       // Verify invoice.paid event
       const invoiceEvent = financeEvents.find(
-        (e) => e.pattern === INVOICE_PAID_EVENT_NAME,
+        (e) => e.pattern === invoicePaidEventName,
       );
       expect(invoiceEvent).toBeDefined();
       const invoicePayload = (invoiceEvent!.payload as InvoicePaidEvent)
@@ -395,7 +395,7 @@ describe('Event-driven data flow integration', () => {
         {
           metadata: {
             eventId: randomUUID(),
-            eventName: INVOICE_PAID_EVENT_NAME,
+            eventName: invoicePaidEventName,
             version: '1.0.0',
             occurredAt: new Date().toISOString(),
           },
@@ -421,7 +421,7 @@ describe('Event-driven data flow integration', () => {
         {
           metadata: {
             eventId: randomUUID(),
-            eventName: INVOICE_PAID_EVENT_NAME,
+            eventName: invoicePaidEventName,
             version: '1.0.0',
             occurredAt: new Date().toISOString(),
           },
@@ -468,7 +468,7 @@ describe('Event-driven data flow integration', () => {
       } as any);
 
       const treatmentEvent = emrEvents.find(
-        (e) => e.pattern === TREATMENT_COMPLETED_EVENT_NAME,
+        (e) => e.pattern === treatmentCompletedEventName,
       );
       expect(treatmentEvent).toBeDefined();
       const payload = (treatmentEvent!.payload as TreatmentCompletedEvent)
@@ -525,12 +525,10 @@ describe('Event-driven data flow integration', () => {
 
       await opdVisitsService.create({ patient_id: patientId } as any);
 
-      const event = opdEvents.find(
-        (e) => e.pattern === VISIT_CREATED_EVENT_NAME,
-      );
+      const event = opdEvents.find((e) => e.pattern === visitCreatedEventName);
       const evt = event!.payload as VisitCreatedEvent;
       expect(evt.metadata.eventId).toBeDefined();
-      expect(evt.metadata.eventName).toBe(VISIT_CREATED_EVENT_NAME);
+      expect(evt.metadata.eventName).toBe(visitCreatedEventName);
       expect(evt.metadata.version).toBe('1.0.0');
       expect(evt.metadata.occurredAt).toBeDefined();
       expect(new Date(evt.metadata.occurredAt).toISOString()).toBe(
@@ -556,11 +554,11 @@ describe('Event-driven data flow integration', () => {
       await financeInvoicesService.pay('inv-1');
 
       const event = financeEvents.find(
-        (e) => e.pattern === INVOICE_PAID_EVENT_NAME,
+        (e) => e.pattern === invoicePaidEventName,
       );
       const evt = event!.payload as InvoicePaidEvent;
       expect(evt.metadata.eventId).toBeDefined();
-      expect(evt.metadata.eventName).toBe(INVOICE_PAID_EVENT_NAME);
+      expect(evt.metadata.eventName).toBe(invoicePaidEventName);
       expect(evt.metadata.version).toBe('1.0.0');
       expect(evt.metadata.occurredAt).toBeDefined();
       expect(evt.payload.status).toBe('PAID');

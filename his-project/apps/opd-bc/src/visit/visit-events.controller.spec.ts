@@ -1,8 +1,8 @@
 import { RmqContext } from '@nestjs/microservices';
 import { StructuredLogger } from '@app/common';
 import {
-  INVOICE_PAID_EVENT_NAME,
-  INVOICE_PAID_EVENT_VERSION,
+  invoicePaidEventName,
+  invoicePaidEventVersion,
   InvoicePaidEvent,
 } from '@app/contracts';
 import { VisitEventsController } from './visit-events.controller';
@@ -12,8 +12,8 @@ describe('VisitEventsController', () => {
   const event: InvoicePaidEvent = {
     metadata: {
       eventId: '7c9e6679-7425-40de-944b-e07fc1f90ae7',
-      eventName: INVOICE_PAID_EVENT_NAME,
-      version: INVOICE_PAID_EVENT_VERSION,
+      eventName: invoicePaidEventName,
+      version: invoicePaidEventVersion,
       occurredAt: '2026-08-01T00:00:00.000Z',
       correlationId: 'correlation-id',
       traceId: 'trace-id',

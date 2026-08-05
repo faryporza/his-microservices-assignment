@@ -13,5 +13,5 @@ export interface VisitCreatedPayload {
 
 export type VisitCreatedEvent = BaseEvent<VisitCreatedPayload>;
 
-export const VISIT_CREATED_EVENT_NAME = 'visit.created';
-export const VISIT_CREATED_EVENT_VERSION = '1.0.0';
+export const visitCreatedEventName = 'visit.created';
+export const visitCreatedEventVersion = '1.0.0';

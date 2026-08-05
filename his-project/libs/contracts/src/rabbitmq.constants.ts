@@ -11,9 +11,9 @@
  *   invoice.paid        → OPD
  */
 
-export const RABBITMQ_EXCHANGE = 'his.events';
+export const rabbitMqExchange = 'his.events';
 
-export const RABBITMQ_QUEUES = {
+export const rabbitMqQueues = {
   /** OPD publishes `visit.created` and consumes `invoice.paid`. */
   opd: 'opd.events',
   /** EMR consumes `visit.created` and publishes `treatment.completed`. */
@@ -22,7 +22,7 @@ export const RABBITMQ_QUEUES = {
   finance: 'finance.events',
 } as const;
 
-export const RABBITMQ_ROUTING_KEYS = {
+export const rabbitMqRoutingKeys = {
   visitCreated: 'visit.created',
   treatmentCompleted: 'treatment.completed',
   invoicePaid: 'invoice.paid',
@@ -32,8 +32,8 @@ export const RABBITMQ_ROUTING_KEYS = {
  * Bindings from routing key to the queue whose owning service should consume
  * it. Used by each service to declare its queue-to-exchange bindings.
  */
-export const RABBITMQ_BINDINGS = {
-  [RABBITMQ_ROUTING_KEYS.visitCreated]: RABBITMQ_QUEUES.emr,
-  [RABBITMQ_ROUTING_KEYS.treatmentCompleted]: RABBITMQ_QUEUES.finance,
-  [RABBITMQ_ROUTING_KEYS.invoicePaid]: RABBITMQ_QUEUES.opd,
+export const rabbitMqBindings = {
+  [rabbitMqRoutingKeys.visitCreated]: rabbitMqQueues.emr,
+  [rabbitMqRoutingKeys.treatmentCompleted]: rabbitMqQueues.finance,
+  [rabbitMqRoutingKeys.invoicePaid]: rabbitMqQueues.opd,
 } as const;

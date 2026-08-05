@@ -8,13 +8,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
-import { IdempotencyService, RMQ_CLIENT, StructuredLogger } from '@app/common';
+import { IdempotencyService, rmqClient, StructuredLogger } from '@app/common';
 import { Visit, VisitStatus } from './entities/visit.entity';
 import { Patient } from '@apps/opd-bc/patient/entities/patient.entity';
 import { CreateVisitDTO } from './dto/create-visit.dto';
 import {
-  VISIT_CREATED_EVENT_NAME,
-  VISIT_CREATED_EVENT_VERSION,
+  visitCreatedEventName,
+  visitCreatedEventVersion,
   InvoicePaidEvent,
   VisitCreatedEvent,
 } from '@app/contracts';
@@ -29,7 +29,7 @@ export class VisitsService {
     private readonly visitRepository: Repository<Visit>,
     @InjectRepository(Patient)
     private readonly patientRepository: Repository<Patient>,
-    @Inject(RMQ_CLIENT)
+    @Inject(rmqClient)
     private readonly client: ClientProxy,
     private readonly idempotency: IdempotencyService,
   ) {}
@@ -60,8 +60,8 @@ export class VisitsService {
     const event: VisitCreatedEvent = {
       metadata: {
         eventId: randomUUID(),
-        eventName: VISIT_CREATED_EVENT_NAME,
-        version: VISIT_CREATED_EVENT_VERSION,
+        eventName: visitCreatedEventName,
+        version: visitCreatedEventVersion,
         occurredAt: new Date().toISOString(),
         correlationId: eventCorrelationId,
         traceId: traceId ?? eventCorrelationId,
@@ -74,7 +74,7 @@ export class VisitsService {
     };
 
     try {
-      await firstValueFrom(this.client.emit(VISIT_CREATED_EVENT_NAME, event));
+      await firstValueFrom(this.client.emit(visitCreatedEventName, event));
       this.logger.log({
         message: 'Domain event published',
         trace: {

@@ -1,4 +1,4 @@
-import { StructuredLogger } from './structured-logger';
+import { StructuredLogger } from './structured.logger';
 
 describe('StructuredLogger', () => {
   const originalNodeEnv = process.env.NODE_ENV;

@@ -16,7 +16,7 @@ import {
   StructuredLogger,
   StructuredLogUser,
   StructuredTraceContext,
-} from './structured-logger';
+} from './structured.logger';
 
 export interface RequestTraceContext {
   traceId: string;

@@ -10,12 +10,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
-import { IdempotencyService, RMQ_CLIENT, StructuredLogger } from '@app/common';
+import { IdempotencyService, rmqClient, StructuredLogger } from '@app/common';
 import { CreateInvoiceDTO } from './dto/create-invoice.dto';
 import { Invoice, InvoiceStatus } from './entities/invoice.entity';
 import {
-  INVOICE_PAID_EVENT_NAME,
-  INVOICE_PAID_EVENT_VERSION,
+  invoicePaidEventName,
+  invoicePaidEventVersion,
   InvoicePaidEvent,
   TreatmentCompletedEvent,
 } from '@app/contracts';
@@ -28,7 +28,7 @@ export class InvoicesService {
   constructor(
     @InjectRepository(Invoice)
     private readonly invoiceRepository: Repository<Invoice>,
-    @Inject(RMQ_CLIENT)
+    @Inject(rmqClient)
     private readonly client: ClientProxy,
     private readonly idempotency: IdempotencyService,
   ) {}
@@ -79,8 +79,8 @@ export class InvoicesService {
     const event: InvoicePaidEvent = {
       metadata: {
         eventId: randomUUID(),
-        eventName: INVOICE_PAID_EVENT_NAME,
-        version: INVOICE_PAID_EVENT_VERSION,
+        eventName: invoicePaidEventName,
+        version: invoicePaidEventVersion,
         occurredAt: new Date().toISOString(),
         correlationId: eventCorrelationId,
         traceId: traceId ?? eventCorrelationId,
@@ -93,7 +93,7 @@ export class InvoicesService {
     };
 
     try {
-      await firstValueFrom(this.client.emit(INVOICE_PAID_EVENT_NAME, event));
+      await firstValueFrom(this.client.emit(invoicePaidEventName, event));
       this.logger.log({
         message: 'Domain event published',
         trace: {

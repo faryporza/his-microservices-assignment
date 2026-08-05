@@ -2,11 +2,11 @@ import { Global, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule } from '@nestjs/microservices';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { RmqService } from './rmq/rmq.service';
+import { RabbitMqOptionsService } from './rmq/rabbitmq-options.service';
 import { IdempotencyService } from './idempotency/idempotency.service';
 import { ProcessedEvent } from './idempotency/processed-event.entity';
 
-export const RMQ_CLIENT = 'RMQ_CLIENT';
+export const rmqClient = 'rmqClient';
 
 @Global()
 @Module({
@@ -14,17 +14,17 @@ export const RMQ_CLIENT = 'RMQ_CLIENT';
     TypeOrmModule.forFeature([ProcessedEvent]),
     ClientsModule.registerAsync([
       {
-        name: RMQ_CLIENT,
+        name: rmqClient,
         imports: [ConfigModule],
         inject: [ConfigService],
         useFactory: (configService: ConfigService) => {
-          const rmqService = new RmqService(configService);
+          const rmqService = new RabbitMqOptionsService(configService);
           return rmqService.createClientOptions();
         },
       },
     ]),
   ],
-  providers: [RmqService, IdempotencyService],
-  exports: [RmqService, IdempotencyService, ClientsModule, TypeOrmModule],
+  providers: [RabbitMqOptionsService, IdempotencyService],
+  exports: [RabbitMqOptionsService, IdempotencyService, ClientsModule, TypeOrmModule],
 })
 export class CommonModule {}

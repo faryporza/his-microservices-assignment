@@ -16,5 +16,5 @@ export interface TreatmentCompletedPayload {
 
 export type TreatmentCompletedEvent = BaseEvent<TreatmentCompletedPayload>;
 
-export const TREATMENT_COMPLETED_EVENT_NAME = 'treatment.completed';
-export const TREATMENT_COMPLETED_EVENT_VERSION = '1.0.0';
+export const treatmentCompletedEventName = 'treatment.completed';
+export const treatmentCompletedEventVersion = '1.0.0';

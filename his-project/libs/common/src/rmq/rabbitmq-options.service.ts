@@ -15,7 +15,7 @@ import { RmqOptions, Transport } from '@nestjs/microservices';
  * handed more than one in-flight message at a time.
  */
 @Injectable()
-export class RmqService {
+export class RabbitMqOptionsService {
   constructor(private readonly config: ConfigService) {}
 
   /** The `amqp://` connection URL read from configuration. */

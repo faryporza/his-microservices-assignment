@@ -9,14 +9,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
-import { IdempotencyService, RMQ_CLIENT, StructuredLogger } from '@app/common';
+import { IdempotencyService, rmqClient, StructuredLogger } from '@app/common';
 import { MedicalRecord, RecordStatus } from './entities/medical-record.entity';
 import { CreateMedicalRecordDTO } from './dto/create-medical-record.dto';
 import { UpdateMedicalRecordDTO } from './dto/update-medical-record.dto';
 import { CompleteTreatmentDTO } from './dto/complete-treatment.dto';
 import {
-  TREATMENT_COMPLETED_EVENT_NAME,
-  TREATMENT_COMPLETED_EVENT_VERSION,
+  treatmentCompletedEventName,
+  treatmentCompletedEventVersion,
   TreatmentCompletedEvent,
   VisitCreatedEvent,
 } from '@app/contracts';
@@ -29,7 +29,7 @@ export class MedicalRecordsService {
   constructor(
     @InjectRepository(MedicalRecord)
     private readonly medicalRecordRepository: Repository<MedicalRecord>,
-    @Inject(RMQ_CLIENT)
+    @Inject(rmqClient)
     private readonly client: ClientProxy,
     private readonly idempotency: IdempotencyService,
   ) {}
@@ -99,8 +99,8 @@ export class MedicalRecordsService {
       const event: TreatmentCompletedEvent = {
         metadata: {
           eventId: randomUUID(),
-          eventName: TREATMENT_COMPLETED_EVENT_NAME,
-          version: TREATMENT_COMPLETED_EVENT_VERSION,
+          eventName: treatmentCompletedEventName,
+          version: treatmentCompletedEventVersion,
           occurredAt: new Date().toISOString(),
           correlationId: eventCorrelationId,
           traceId: traceId ?? eventCorrelationId,
@@ -117,7 +117,7 @@ export class MedicalRecordsService {
 
       try {
         await firstValueFrom(
-          this.client.emit(TREATMENT_COMPLETED_EVENT_NAME, event),
+          this.client.emit(treatmentCompletedEventName, event),
         );
         this.logger.log({
           message: 'Domain event published',

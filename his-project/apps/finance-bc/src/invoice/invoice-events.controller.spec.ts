@@ -1,8 +1,8 @@
 import { RmqContext } from '@nestjs/microservices';
 import { StructuredLogger } from '@app/common';
 import {
-  TREATMENT_COMPLETED_EVENT_NAME,
-  TREATMENT_COMPLETED_EVENT_VERSION,
+  treatmentCompletedEventName,
+  treatmentCompletedEventVersion,
   TreatmentCompletedEvent,
 } from '@app/contracts';
 import { InvoiceEventsController } from './invoice-events.controller';
@@ -12,8 +12,8 @@ describe('InvoiceEventsController', () => {
   const event: TreatmentCompletedEvent = {
     metadata: {
       eventId: '7c9e6679-7425-40de-944b-e07fc1f90ae7',
-      eventName: TREATMENT_COMPLETED_EVENT_NAME,
-      version: TREATMENT_COMPLETED_EVENT_VERSION,
+      eventName: treatmentCompletedEventName,
+      version: treatmentCompletedEventVersion,
       occurredAt: '2026-08-01T00:00:00.000Z',
       correlationId: 'correlation-id',
       traceId: 'trace-id',

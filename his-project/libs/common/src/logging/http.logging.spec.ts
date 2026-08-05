@@ -10,8 +10,8 @@ import {
   getOrCreateTraceContext,
   HttpLoggingExceptionFilter,
   RequestLoggingInterceptor,
-} from './http-logging';
-import { StructuredLogger, StructuredLogInput } from './structured-logger';
+} from './http.logging';
+import { StructuredLogger, StructuredLogInput } from './structured.logger';
 
 describe('HTTP structured logging', () => {
   function createRequest(headers: Record<string, string> = {}): Request {

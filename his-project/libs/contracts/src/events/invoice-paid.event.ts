@@ -13,5 +13,5 @@ export interface InvoicePaidPayload {
 
 export type InvoicePaidEvent = BaseEvent<InvoicePaidPayload>;
 
-export const INVOICE_PAID_EVENT_NAME = 'invoice.paid';
-export const INVOICE_PAID_EVENT_VERSION = '1.0.0';
+export const invoicePaidEventName = 'invoice.paid';
+export const invoicePaidEventVersion = '1.0.0';

@@ -38,7 +38,12 @@ describe('environment configuration helpers', () => {
       username: 'app',
       password: 'secret',
       database: 'opd_db',
+      migrationsRun: true,
     });
+
+    expect(
+      createPostgresOptions(config, 'OPD_DATABASE').migrations,
+    ).toHaveLength(2);
   });
 
   it('rejects an invalid numeric environment value', () => {

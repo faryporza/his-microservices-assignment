@@ -3,20 +3,20 @@ import {
   EventRoutingKey,
   VisitCreatedEvent,
   VisitCreatedPayload,
-  VISIT_CREATED_EVENT_NAME,
-  VISIT_CREATED_EVENT_VERSION,
+  visitCreatedEventName,
+  visitCreatedEventVersion,
   TreatmentCompletedEvent,
   TreatmentCompletedPayload,
-  TREATMENT_COMPLETED_EVENT_NAME,
-  TREATMENT_COMPLETED_EVENT_VERSION,
+  treatmentCompletedEventName,
+  treatmentCompletedEventVersion,
   InvoicePaidEvent,
   InvoicePaidPayload,
-  INVOICE_PAID_EVENT_NAME,
-  INVOICE_PAID_EVENT_VERSION,
-  RABBITMQ_EXCHANGE,
-  RABBITMQ_QUEUES,
-  RABBITMQ_ROUTING_KEYS,
-  RABBITMQ_BINDINGS,
+  invoicePaidEventName,
+  invoicePaidEventVersion,
+  rabbitMqExchange,
+  rabbitMqQueues,
+  rabbitMqRoutingKeys,
+  rabbitMqBindings,
   hasValidEventMetadata,
 } from '../index';
 
@@ -90,8 +90,8 @@ describe('BaseEvent & EventMetadata', () => {
 describe('event trace metadata validation', () => {
   const metadata: EventMetadata = {
     eventId: '7c9e6679-7425-40de-944b-e07fc1f90ae7',
-    eventName: VISIT_CREATED_EVENT_NAME,
-    version: VISIT_CREATED_EVENT_VERSION,
+    eventName: visitCreatedEventName,
+    version: visitCreatedEventVersion,
     occurredAt: '2026-08-01T00:00:00.000Z',
     correlationId: 'correlation-id',
     traceId: 'trace-id',
@@ -101,8 +101,8 @@ describe('event trace metadata validation', () => {
     expect(
       hasValidEventMetadata(
         metadata,
-        VISIT_CREATED_EVENT_NAME,
-        VISIT_CREATED_EVENT_VERSION,
+        visitCreatedEventName,
+        visitCreatedEventVersion,
       ),
     ).toBe(true);
   });
@@ -111,8 +111,8 @@ describe('event trace metadata validation', () => {
     expect(
       hasValidEventMetadata(
         { ...metadata, traceId: '   ' },
-        VISIT_CREATED_EVENT_NAME,
-        VISIT_CREATED_EVENT_VERSION,
+        visitCreatedEventName,
+        visitCreatedEventVersion,
       ),
     ).toBe(false);
   });
@@ -142,11 +142,11 @@ describe('EventRoutingKey', () => {
 
 describe('visit.created event', () => {
   it('should export the correct event name constant', () => {
-    expect(VISIT_CREATED_EVENT_NAME).toBe('visit.created');
+    expect(visitCreatedEventName).toBe('visit.created');
   });
 
   it('should export the correct event version constant', () => {
-    expect(VISIT_CREATED_EVENT_VERSION).toBe('1.0.0');
+    expect(visitCreatedEventVersion).toBe('1.0.0');
   });
 
   it('should construct a valid VisitCreatedEvent', () => {
@@ -158,14 +158,14 @@ describe('visit.created event', () => {
 
     const event: VisitCreatedEvent = {
       metadata: buildMetadata({
-        eventName: VISIT_CREATED_EVENT_NAME,
-        version: VISIT_CREATED_EVENT_VERSION,
+        eventName: visitCreatedEventName,
+        version: visitCreatedEventVersion,
       }),
       payload,
     };
 
-    expect(event.metadata.eventName).toBe(VISIT_CREATED_EVENT_NAME);
-    expect(event.metadata.version).toBe(VISIT_CREATED_EVENT_VERSION);
+    expect(event.metadata.eventName).toBe(visitCreatedEventName);
+    expect(event.metadata.version).toBe(visitCreatedEventVersion);
     expect(event.payload.visitId).toBe('vis-123');
     expect(event.payload.patientId).toBe('pat-456');
     expect(event.payload.timestamp).toBe('2026-07-27T08:30:00Z');
@@ -202,11 +202,11 @@ describe('visit.created event', () => {
 
 describe('treatment.completed event', () => {
   it('should export the correct event name constant', () => {
-    expect(TREATMENT_COMPLETED_EVENT_NAME).toBe('treatment.completed');
+    expect(treatmentCompletedEventName).toBe('treatment.completed');
   });
 
   it('should export the correct event version constant', () => {
-    expect(TREATMENT_COMPLETED_EVENT_VERSION).toBe('1.0.0');
+    expect(treatmentCompletedEventVersion).toBe('1.0.0');
   });
 
   it('should construct a valid TreatmentCompletedEvent', () => {
@@ -218,14 +218,14 @@ describe('treatment.completed event', () => {
 
     const event: TreatmentCompletedEvent = {
       metadata: buildMetadata({
-        eventName: TREATMENT_COMPLETED_EVENT_NAME,
-        version: TREATMENT_COMPLETED_EVENT_VERSION,
+        eventName: treatmentCompletedEventName,
+        version: treatmentCompletedEventVersion,
       }),
       payload,
     };
 
-    expect(event.metadata.eventName).toBe(TREATMENT_COMPLETED_EVENT_NAME);
-    expect(event.metadata.version).toBe(TREATMENT_COMPLETED_EVENT_VERSION);
+    expect(event.metadata.eventName).toBe(treatmentCompletedEventName);
+    expect(event.metadata.version).toBe(treatmentCompletedEventVersion);
     expect(event.payload.visitId).toBe('vis-123');
     expect(event.payload.recordId).toBe('rec-789');
     expect(event.payload.treatmentCost).toBe('1500.00');
@@ -260,11 +260,11 @@ describe('treatment.completed event', () => {
 
 describe('invoice.paid event', () => {
   it('should export the correct event name constant', () => {
-    expect(INVOICE_PAID_EVENT_NAME).toBe('invoice.paid');
+    expect(invoicePaidEventName).toBe('invoice.paid');
   });
 
   it('should export the correct event version constant', () => {
-    expect(INVOICE_PAID_EVENT_VERSION).toBe('1.0.0');
+    expect(invoicePaidEventVersion).toBe('1.0.0');
   });
 
   it('should construct a valid InvoicePaidEvent', () => {
@@ -276,14 +276,14 @@ describe('invoice.paid event', () => {
 
     const event: InvoicePaidEvent = {
       metadata: buildMetadata({
-        eventName: INVOICE_PAID_EVENT_NAME,
-        version: INVOICE_PAID_EVENT_VERSION,
+        eventName: invoicePaidEventName,
+        version: invoicePaidEventVersion,
       }),
       payload,
     };
 
-    expect(event.metadata.eventName).toBe(INVOICE_PAID_EVENT_NAME);
-    expect(event.metadata.version).toBe(INVOICE_PAID_EVENT_VERSION);
+    expect(event.metadata.eventName).toBe(invoicePaidEventName);
+    expect(event.metadata.version).toBe(invoicePaidEventVersion);
     expect(event.payload.visitId).toBe('vis-123');
     expect(event.payload.invoiceId).toBe('inv-456');
     expect(event.payload.status).toBe('PAID');
@@ -304,70 +304,70 @@ describe('invoice.paid event', () => {
 // ---------------------------------------------------------------------------
 
 describe('RabbitMQ topology constants', () => {
-  describe('RABBITMQ_EXCHANGE', () => {
+  describe('rabbitMqExchange', () => {
     it('should be named his.events', () => {
-      expect(RABBITMQ_EXCHANGE).toBe('his.events');
+      expect(rabbitMqExchange).toBe('his.events');
     });
   });
 
-  describe('RABBITMQ_QUEUES', () => {
+  describe('rabbitMqQueues', () => {
     it('should define a queue for each bounded context', () => {
-      expect(RABBITMQ_QUEUES.opd).toBe('opd.events');
-      expect(RABBITMQ_QUEUES.emr).toBe('emr.events');
-      expect(RABBITMQ_QUEUES.finance).toBe('finance.events');
+      expect(rabbitMqQueues.opd).toBe('opd.events');
+      expect(rabbitMqQueues.emr).toBe('emr.events');
+      expect(rabbitMqQueues.finance).toBe('finance.events');
     });
 
     it('should have exactly three queues', () => {
-      const queueNames = Object.values(RABBITMQ_QUEUES);
+      const queueNames = Object.values(rabbitMqQueues);
       expect(queueNames).toHaveLength(3);
     });
   });
 
-  describe('RABBITMQ_ROUTING_KEYS', () => {
+  describe('rabbitMqRoutingKeys', () => {
     it('should define routing keys for each event', () => {
-      expect(RABBITMQ_ROUTING_KEYS.visitCreated).toBe('visit.created');
-      expect(RABBITMQ_ROUTING_KEYS.treatmentCompleted).toBe(
+      expect(rabbitMqRoutingKeys.visitCreated).toBe('visit.created');
+      expect(rabbitMqRoutingKeys.treatmentCompleted).toBe(
         'treatment.completed',
       );
-      expect(RABBITMQ_ROUTING_KEYS.invoicePaid).toBe('invoice.paid');
+      expect(rabbitMqRoutingKeys.invoicePaid).toBe('invoice.paid');
     });
 
     it('should have exactly three routing keys', () => {
-      const keys = Object.values(RABBITMQ_ROUTING_KEYS);
+      const keys = Object.values(rabbitMqRoutingKeys);
       expect(keys).toHaveLength(3);
     });
   });
 
-  describe('RABBITMQ_BINDINGS', () => {
+  describe('rabbitMqBindings', () => {
     it('should route visit.created to the EMR queue', () => {
-      expect(RABBITMQ_BINDINGS['visit.created']).toBe(RABBITMQ_QUEUES.emr);
+      expect(rabbitMqBindings['visit.created']).toBe(rabbitMqQueues.emr);
     });
 
     it('should route treatment.completed to the Finance queue', () => {
-      expect(RABBITMQ_BINDINGS['treatment.completed']).toBe(
-        RABBITMQ_QUEUES.finance,
+      expect(rabbitMqBindings['treatment.completed']).toBe(
+        rabbitMqQueues.finance,
       );
     });
 
     it('should route invoice.paid to the OPD queue', () => {
-      expect(RABBITMQ_BINDINGS['invoice.paid']).toBe(RABBITMQ_QUEUES.opd);
+      expect(rabbitMqBindings['invoice.paid']).toBe(rabbitMqQueues.opd);
     });
 
     it('should have bindings for all three routing keys', () => {
-      const bindingKeys = Object.keys(RABBITMQ_BINDINGS);
+      const bindingKeys = Object.keys(rabbitMqBindings);
       expect(bindingKeys).toHaveLength(3);
-      expect(bindingKeys).toContain(RABBITMQ_ROUTING_KEYS.visitCreated);
-      expect(bindingKeys).toContain(RABBITMQ_ROUTING_KEYS.treatmentCompleted);
-      expect(bindingKeys).toContain(RABBITMQ_ROUTING_KEYS.invoicePaid);
+      expect(bindingKeys).toContain(rabbitMqRoutingKeys.visitCreated);
+      expect(bindingKeys).toContain(rabbitMqRoutingKeys.treatmentCompleted);
+      expect(bindingKeys).toContain(rabbitMqRoutingKeys.invoicePaid);
     });
 
     it('should bind each event to a distinct queue matching the event flow', () => {
       // OPD publishes visit.created → EMR consumes
-      expect(RABBITMQ_BINDINGS['visit.created']).toBe('emr.events');
+      expect(rabbitMqBindings['visit.created']).toBe('emr.events');
       // EMR publishes treatment.completed → Finance consumes
-      expect(RABBITMQ_BINDINGS['treatment.completed']).toBe('finance.events');
+      expect(rabbitMqBindings['treatment.completed']).toBe('finance.events');
       // Finance publishes invoice.paid → OPD consumes
-      expect(RABBITMQ_BINDINGS['invoice.paid']).toBe('opd.events');
+      expect(rabbitMqBindings['invoice.paid']).toBe('opd.events');
     });
   });
 });
@@ -382,8 +382,8 @@ describe('Event flow contracts', () => {
     const visitEvent: VisitCreatedEvent = {
       metadata: buildMetadata({
         eventId: 'evt-001',
-        eventName: VISIT_CREATED_EVENT_NAME,
-        version: VISIT_CREATED_EVENT_VERSION,
+        eventName: visitCreatedEventName,
+        version: visitCreatedEventVersion,
         correlationId: 'flow-1',
       }),
       payload: {
@@ -398,8 +398,8 @@ describe('Event flow contracts', () => {
     const treatmentEvent: TreatmentCompletedEvent = {
       metadata: buildMetadata({
         eventId: 'evt-002',
-        eventName: TREATMENT_COMPLETED_EVENT_NAME,
-        version: TREATMENT_COMPLETED_EVENT_VERSION,
+        eventName: treatmentCompletedEventName,
+        version: treatmentCompletedEventVersion,
         correlationId: 'flow-1',
       }),
       payload: {
@@ -415,8 +415,8 @@ describe('Event flow contracts', () => {
     const invoiceEvent: InvoicePaidEvent = {
       metadata: buildMetadata({
         eventId: 'evt-003',
-        eventName: INVOICE_PAID_EVENT_NAME,
-        version: INVOICE_PAID_EVENT_VERSION,
+        eventName: invoicePaidEventName,
+        version: invoicePaidEventVersion,
         correlationId: 'flow-1',
       }),
       payload: {
@@ -480,7 +480,7 @@ describe('Idempotency contract', () => {
     const event1: VisitCreatedEvent = {
       metadata: buildMetadata({
         eventId: originalEventId,
-        eventName: VISIT_CREATED_EVENT_NAME,
+        eventName: visitCreatedEventName,
       }),
       payload: {
         visitId: 'vis-1',
@@ -492,7 +492,7 @@ describe('Idempotency contract', () => {
     const event2: VisitCreatedEvent = {
       metadata: buildMetadata({
         eventId: originalEventId, // same idempotency key
-        eventName: VISIT_CREATED_EVENT_NAME,
+        eventName: visitCreatedEventName,
       }),
       payload: {
         visitId: 'vis-1',

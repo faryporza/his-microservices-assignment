@@ -6,8 +6,8 @@ import {
   hasValidEventMetadata,
   getEventIdForLog,
   isUuidV4,
-  TREATMENT_COMPLETED_EVENT_NAME,
-  TREATMENT_COMPLETED_EVENT_VERSION,
+  treatmentCompletedEventName,
+  treatmentCompletedEventVersion,
   TreatmentCompletedEvent,
 } from '@app/contracts';
 import type { Channel, ConsumeMessage } from 'amqplib';
@@ -23,7 +23,7 @@ export class InvoiceEventsController {
 
   constructor(private readonly service: InvoicesService) {}
 
-  @EventPattern(TREATMENT_COMPLETED_EVENT_NAME)
+  @EventPattern(treatmentCompletedEventName)
   async handleTreatmentCompleted(
     @Payload() event: unknown,
     @Ctx() context: RmqContext,
@@ -36,7 +36,7 @@ export class InvoiceEventsController {
         message: 'Invalid domain event discarded',
         context: {
           action: 'CONSUME_EVENT',
-          event_name: TREATMENT_COMPLETED_EVENT_NAME,
+          event_name: treatmentCompletedEventName,
           event_id: getEventIdForLog(event),
           event_status: 'DISCARDED',
           error_type: 'InvalidEvent',
@@ -119,8 +119,8 @@ export class InvoiceEventsController {
     return (
       hasValidEventMetadata(
         candidate.metadata,
-        TREATMENT_COMPLETED_EVENT_NAME,
-        TREATMENT_COMPLETED_EVENT_VERSION,
+        treatmentCompletedEventName,
+        treatmentCompletedEventVersion,
       ) &&
       isUuidV4(payload?.visitId) &&
       isUuidV4(payload.recordId) &&

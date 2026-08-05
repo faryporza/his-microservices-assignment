@@ -1,15 +1,15 @@
 import { ConfigService } from '@nestjs/config';
 import { Transport } from '@nestjs/microservices';
 import { Test, TestingModule } from '@nestjs/testing';
-import { RmqService } from './rmq.service';
+import { RabbitMqOptionsService } from './rabbitmq-options.service';
 
-describe('RmqService', () => {
-  let service: RmqService;
+describe('RabbitMqOptionsService', () => {
+  let service: RabbitMqOptionsService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        RmqService,
+        RabbitMqOptionsService,
         {
           provide: ConfigService,
           useValue: {
@@ -25,7 +25,7 @@ describe('RmqService', () => {
       ],
     }).compile();
 
-    service = module.get<RmqService>(RmqService);
+    service = module.get<RabbitMqOptionsService>(RabbitMqOptionsService);
   });
 
   it('should be defined', () => {
@@ -54,9 +54,7 @@ describe('RmqService', () => {
         noAck: false,
         prefetchCount: 1,
       });
-      expect(options.options?.urls).toEqual([
-        'amqp://user:pass@host:5672',
-      ]);
+      expect(options.options?.urls).toEqual(['amqp://user:pass@host:5672']);
       expect(options.options?.queueOptions).toEqual({ durable: true });
     });
   });
