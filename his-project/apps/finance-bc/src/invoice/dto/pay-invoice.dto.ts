@@ -1,6 +1,6 @@
 import { Equals, IsOptional } from 'class-validator';
 
-export class PayInvoiceDto {
+export class PayInvoiceDTO {
   @IsOptional()
   @Equals('PAID')
   status?: 'PAID';

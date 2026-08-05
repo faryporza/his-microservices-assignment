@@ -1,6 +1,6 @@
 import { IsNotEmpty, IsString } from 'class-validator';
 
-export class CreatePatientDto {
+export class CreatePatientDTO {
   @IsNotEmpty({ message: 'HN is required' })
   @IsString()
   hn!: string;

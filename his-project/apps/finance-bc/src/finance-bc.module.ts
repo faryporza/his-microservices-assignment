@@ -2,8 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { createPostgresOptions } from '@app/common';
-import { FinanceBcController } from './finance-bc.controller';
-import { FinanceBcService } from './finance-bc.service';
+import { FinanceHealthChecksController } from './health-checks.controller';
+import { FinanceHealthChecksService } from './health-checks.service';
 import { InvoiceModule } from '@apps/finance-bc/invoice/invoice.module';
 import { CommonModule } from '@app/common';
 
@@ -22,7 +22,7 @@ import { CommonModule } from '@app/common';
     CommonModule,
     InvoiceModule,
   ],
-  controllers: [FinanceBcController],
-  providers: [FinanceBcService],
+  controllers: [FinanceHealthChecksController],
+  providers: [FinanceHealthChecksService],
 })
 export class FinanceBcModule {}

@@ -11,7 +11,7 @@ import { firstValueFrom } from 'rxjs';
 import { IdempotencyService, RMQ_CLIENT, StructuredLogger } from '@app/common';
 import { Visit, VisitStatus } from './entities/visit.entity';
 import { Patient } from '@apps/opd-bc/patient/entities/patient.entity';
-import { CreateVisitDto } from './dto/create-visit.dto';
+import { CreateVisitDTO } from './dto/create-visit.dto';
 import {
   VISIT_CREATED_EVENT_NAME,
   VISIT_CREATED_EVENT_VERSION,
@@ -36,7 +36,7 @@ export class VisitsService {
 
   // สร้าง visit ใหม่
   async create(
-    createVisitDto: CreateVisitDto,
+    createVisitDto: CreateVisitDTO,
     correlationId?: string,
     traceId?: string,
   ): Promise<Visit> {

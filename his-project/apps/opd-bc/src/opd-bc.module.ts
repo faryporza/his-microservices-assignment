@@ -2,8 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { createPostgresOptions } from '@app/common';
-import { OpdBcController } from './opd-bc.controller';
-import { OpdBcService } from './opd-bc.service';
+import { OpdHealthChecksController } from './health-checks.controller';
+import { OpdHealthChecksService } from './health-checks.service';
 import { PatientModule } from '@apps/opd-bc/patient/patient.module';
 import { VisitModule } from '@apps/opd-bc/visit/visit.module';
 import { CommonModule } from '@app/common';
@@ -24,7 +24,7 @@ import { CommonModule } from '@app/common';
     PatientModule,
     VisitModule,
   ],
-  controllers: [OpdBcController],
-  providers: [OpdBcService],
+  controllers: [OpdHealthChecksController],
+  providers: [OpdHealthChecksService],
 })
 export class OpdBcModule {}

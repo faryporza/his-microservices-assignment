@@ -1,7 +1,7 @@
 import { IsString, IsNumber, Min, IsOptional, IsEnum } from 'class-validator';
 import { RecordStatus } from '../entities/medical-record.entity';
 
-export class UpdateMedicalRecordDto {
+export class UpdateMedicalRecordDTO {
   @IsOptional()
   @IsString()
   doctor_id?: string;

@@ -1,6 +1,6 @@
 import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
-export class UpdatePatientDto {
+export class UpdatePatientDTO {
   @IsOptional()
   @IsString()
   @IsNotEmpty()

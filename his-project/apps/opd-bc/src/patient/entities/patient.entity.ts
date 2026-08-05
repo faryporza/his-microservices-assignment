@@ -5,13 +5,13 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
-  Index,
+  Unique,
 } from 'typeorm';
 import { Visit } from '@apps/opd-bc/visit/entities/visit.entity';
 
 @Entity('patients')
-@Index('uq_patients_hn', ['hn'], { unique: true })
-@Index('uq_patients_id_card', ['id_card'], { unique: true })
+@Unique('uq_patients_hn', ['hn'])
+@Unique('uq_patients_id_card', ['id_card'])
 export class Patient {
   @PrimaryGeneratedColumn('uuid', { primaryKeyConstraintName: 'pk_patients' })
   id!: string;

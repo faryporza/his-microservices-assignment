@@ -2,8 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { createPostgresOptions } from '@app/common';
-import { EmrBcController } from './emr-bc.controller';
-import { EmrBcService } from './emr-bc.service';
+import { EmrHealthChecksController } from './health-checks.controller';
+import { EmrHealthChecksService } from './health-checks.service';
 import { MedicalRecordModule } from '@apps/emr-bc/medical-record/medical-record.module';
 import { CommonModule } from '@app/common';
 
@@ -22,7 +22,7 @@ import { CommonModule } from '@app/common';
     CommonModule,
     MedicalRecordModule,
   ],
-  controllers: [EmrBcController],
-  providers: [EmrBcService],
+  controllers: [EmrHealthChecksController],
+  providers: [EmrHealthChecksService],
 })
 export class EmrBcModule {}

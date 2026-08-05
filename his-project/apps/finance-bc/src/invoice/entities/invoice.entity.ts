@@ -2,7 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
-  Index,
+  Unique,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -13,7 +13,7 @@ export enum InvoiceStatus {
 }
 
 @Entity('invoices')
-@Index('uq_invoices_visit_id', ['visit_id'], { unique: true })
+@Unique('uq_invoices_visit_id', ['visit_id'])
 export class Invoice {
   @PrimaryGeneratedColumn('uuid', { primaryKeyConstraintName: 'pk_invoices' })
   id!: string;

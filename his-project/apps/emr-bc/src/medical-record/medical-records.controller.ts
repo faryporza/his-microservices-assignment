@@ -9,16 +9,16 @@ import {
   Post,
 } from '@nestjs/common';
 import { MedicalRecordsService } from './medical-records.service';
-import { CreateMedicalRecordDto } from './dto/create-medical-record.dto';
-import { UpdateMedicalRecordDto } from './dto/update-medical-record.dto';
-import { CompleteTreatmentDto } from './dto/complete-treatment.dto';
+import { CreateMedicalRecordDTO } from './dto/create-medical-record.dto';
+import { UpdateMedicalRecordDTO } from './dto/update-medical-record.dto';
+import { CompleteTreatmentDTO } from './dto/complete-treatment.dto';
 
 @Controller('records')
 export class MedicalRecordsController {
   constructor(private readonly medicalRecordsService: MedicalRecordsService) {}
 
   @Post()
-  create(@Body() createDto: CreateMedicalRecordDto) {
+  create(@Body() createDto: CreateMedicalRecordDTO) {
     return this.medicalRecordsService.create(createDto);
   }
 
@@ -42,7 +42,7 @@ export class MedicalRecordsController {
   @Patch(':id')
   update(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-    @Body() updateDto: UpdateMedicalRecordDto,
+    @Body() updateDto: UpdateMedicalRecordDTO,
     @Headers('x-correlation-id') correlationId?: string,
     @Headers('x-trace-id') traceId?: string,
   ) {
@@ -57,7 +57,7 @@ export class MedicalRecordsController {
   @Patch(':id/complete')
   completeTreatment(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-    @Body() completeTreatmentDto: CompleteTreatmentDto,
+    @Body() completeTreatmentDto: CompleteTreatmentDTO,
     @Headers('x-correlation-id') correlationId?: string,
     @Headers('x-trace-id') traceId?: string,
   ) {

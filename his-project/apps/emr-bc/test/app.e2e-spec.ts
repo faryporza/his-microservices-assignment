@@ -6,7 +6,7 @@ import { App } from 'supertest/types';
 import { createStrictValidationPipe } from '@app/common';
 import { randomUUID } from 'node:crypto';
 
-describe('EmrBcController (e2e)', () => {
+describe('HealthChecksController (EMR e2e)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {

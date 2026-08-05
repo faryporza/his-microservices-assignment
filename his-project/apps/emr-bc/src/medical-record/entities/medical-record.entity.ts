@@ -3,7 +3,7 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  Index,
+  Unique,
   UpdateDateColumn,
 } from 'typeorm';
 
@@ -13,7 +13,7 @@ export enum RecordStatus {
 }
 
 @Entity('medical_records')
-@Index('uq_medical_records_visit_id', ['visit_id'], { unique: true })
+@Unique('uq_medical_records_visit_id', ['visit_id'])
 export class MedicalRecord {
   @PrimaryGeneratedColumn('uuid', {
     primaryKeyConstraintName: 'pk_medical_records',

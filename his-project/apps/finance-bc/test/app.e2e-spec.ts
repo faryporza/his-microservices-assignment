@@ -6,7 +6,7 @@ import { App } from 'supertest/types';
 import { createStrictValidationPipe } from '@app/common';
 import { randomUUID } from 'node:crypto';
 
-describe('FinanceBcController (e2e)', () => {
+describe('HealthChecksController (Finance e2e)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
@@ -30,7 +30,7 @@ describe('FinanceBcController (e2e)', () => {
       .expect('Hello World!');
   });
 
-  it('rejects non-whitelisted and invalid PayInvoiceDto fields', async () => {
+  it('rejects non-whitelisted and invalid PayInvoiceDTO fields', async () => {
     const invoiceId = randomUUID();
 
     await request(app.getHttpServer() as App)

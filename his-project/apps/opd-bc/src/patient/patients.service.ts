@@ -6,8 +6,8 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Patient } from './entities/patient.entity';
-import { CreatePatientDto } from './dto/create-patient.dto';
-import { UpdatePatientDto } from './dto/update-patient.dto';
+import { CreatePatientDTO } from './dto/create-patient.dto';
+import { UpdatePatientDTO } from './dto/update-patient.dto';
 
 @Injectable()
 export class PatientsService {
@@ -17,7 +17,7 @@ export class PatientsService {
   ) {}
 
   // สร้าง patient ใหม่
-  async create(createPatientDto: CreatePatientDto): Promise<Patient> {
+  async create(createPatientDto: CreatePatientDTO): Promise<Patient> {
     // ตรวจสอบว่า HN และ ID Card ซ้ำหรือไม่
     const existingHn = await this.patientRepository.findOne({
       where: { hn: createPatientDto.hn },
@@ -60,7 +60,7 @@ export class PatientsService {
 
   async update(
     id: string,
-    updatePatientDto: UpdatePatientDto,
+    updatePatientDto: UpdatePatientDTO,
   ): Promise<Patient> {
     const patient = await this.findOne(id);
 

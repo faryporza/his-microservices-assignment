@@ -11,7 +11,7 @@ import { EntityManager, Repository } from 'typeorm';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 import { IdempotencyService, RMQ_CLIENT, StructuredLogger } from '@app/common';
-import { CreateInvoiceDto } from './dto/create-invoice.dto';
+import { CreateInvoiceDTO } from './dto/create-invoice.dto';
 import { Invoice, InvoiceStatus } from './entities/invoice.entity';
 import {
   INVOICE_PAID_EVENT_NAME,
@@ -153,7 +153,7 @@ export class InvoicesService {
   }
 
   async createFromTreatment(
-    createDto: CreateInvoiceDto,
+    createDto: CreateInvoiceDTO,
     manager?: EntityManager,
     correlationId?: string,
   ): Promise<Invoice> {

@@ -1,5 +1,8 @@
 import { DataSource } from 'typeorm';
 import { MedicalRecord } from './medical-record/entities/medical-record.entity';
+import { CompleteTreatmentDTO } from './medical-record/dto/complete-treatment.dto';
+import { CreateMedicalRecordDTO } from './medical-record/dto/create-medical-record.dto';
+import { UpdateMedicalRecordDTO } from './medical-record/dto/update-medical-record.dto';
 
 describe('EMR persistence naming', () => {
   const dataSource = new DataSource({
@@ -27,13 +30,24 @@ describe('EMR persistence naming', () => {
         'updated_at',
       ]),
     );
-    expect(metadata.indices).toEqual(
+    expect(metadata.uniques).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           name: 'uq_medical_records_visit_id',
-          isUnique: true,
         }),
       ]),
     );
+  });
+
+  it('uses the uppercase DTO suffix', () => {
+    expect([
+      CompleteTreatmentDTO.name,
+      CreateMedicalRecordDTO.name,
+      UpdateMedicalRecordDTO.name,
+    ]).toEqual([
+      'CompleteTreatmentDTO',
+      'CreateMedicalRecordDTO',
+      'UpdateMedicalRecordDTO',
+    ]);
   });
 });

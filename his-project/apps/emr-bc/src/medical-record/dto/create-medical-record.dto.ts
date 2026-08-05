@@ -9,7 +9,7 @@ import {
 } from 'class-validator';
 import { RecordStatus } from '../entities/medical-record.entity';
 
-export class CreateMedicalRecordDto {
+export class CreateMedicalRecordDTO {
   @IsNotEmpty({ message: 'visit_id is required' })
   @IsUUID('4', { message: 'visit_id must be a valid UUID' })
   visit_id!: string;

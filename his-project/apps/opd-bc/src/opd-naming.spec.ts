@@ -1,6 +1,9 @@
 import { DataSource } from 'typeorm';
 import { Patient } from './patient/entities/patient.entity';
 import { Visit } from './visit/entities/visit.entity';
+import { CreatePatientDTO } from './patient/dto/create-patient.dto';
+import { UpdatePatientDTO } from './patient/dto/update-patient.dto';
+import { CreateVisitDTO } from './visit/dto/create-visit.dto';
 
 describe('OPD persistence naming', () => {
   const dataSource = new DataSource({
@@ -26,12 +29,11 @@ describe('OPD persistence naming', () => {
         'updated_at',
       ]),
     );
-    expect(metadata.indices).toEqual(
+    expect(metadata.uniques).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ name: 'uq_patients_hn', isUnique: true }),
+        expect.objectContaining({ name: 'uq_patients_hn' }),
         expect.objectContaining({
           name: 'uq_patients_id_card',
-          isUnique: true,
         }),
       ]),
     );
@@ -52,5 +54,13 @@ describe('OPD persistence naming', () => {
         expect.objectContaining({ name: 'fk_visits_patients' }),
       ]),
     );
+  });
+
+  it('uses the uppercase DTO suffix', () => {
+    expect([
+      CreatePatientDTO.name,
+      UpdatePatientDTO.name,
+      CreateVisitDTO.name,
+    ]).toEqual(['CreatePatientDTO', 'UpdatePatientDTO', 'CreateVisitDTO']);
   });
 });

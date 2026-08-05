@@ -5,4 +5,4 @@ import { ContractsService } from './contracts.service';
   providers: [ContractsService],
   exports: [ContractsService],
 })
-export class ContractsModule {}
+export class ContractModule {}

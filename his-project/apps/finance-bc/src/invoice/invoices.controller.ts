@@ -8,7 +8,7 @@ import {
   Patch,
 } from '@nestjs/common';
 import { InvoicesService } from './invoices.service';
-import { PayInvoiceDto } from './dto/pay-invoice.dto';
+import { PayInvoiceDTO } from './dto/pay-invoice.dto';
 
 @Controller('invoices')
 export class InvoicesController {
@@ -29,7 +29,7 @@ export class InvoicesController {
   @Patch(':id/pay')
   pay(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-    @Body() _payInvoiceDto: PayInvoiceDto,
+    @Body() _payInvoiceDto: PayInvoiceDTO,
     @Headers('x-correlation-id') correlationId?: string,
     @Headers('x-trace-id') traceId?: string,
   ) {

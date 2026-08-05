@@ -4,12 +4,14 @@ import { ProcessedEvent } from './processed-event.entity';
 describe('ProcessedEvent entity naming', () => {
   const metadata = getMetadataArgsStorage();
 
-  it('uses the required table, column, index, and primary-key names', () => {
-    const table = metadata.tables.find((item) => item.target === ProcessedEvent);
+  it('uses the required table, column, constraint, and primary-key names', () => {
+    const table = metadata.tables.find(
+      (item) => item.target === ProcessedEvent,
+    );
     const columns = metadata.columns.filter(
       (item) => item.target === ProcessedEvent,
     );
-    const index = metadata.indices.find(
+    const uniqueConstraint = metadata.uniques.find(
       (item) => item.target === ProcessedEvent,
     );
 
@@ -20,12 +22,12 @@ describe('ProcessedEvent entity naming', () => {
       'event_name',
       'processed_at',
     ]);
-    expect(columns.find((column) => column.propertyName === 'id')?.options)
-      .toMatchObject({ primaryKeyConstraintName: 'pk_processed_events' });
-    expect(index).toMatchObject({
+    expect(
+      columns.find((column) => column.propertyName === 'id')?.options,
+    ).toMatchObject({ primaryKeyConstraintName: 'pk_processed_events' });
+    expect(uniqueConstraint).toMatchObject({
       name: 'uq_processed_events_event_id',
       columns: ['event_id'],
-      unique: true,
     });
   });
 });

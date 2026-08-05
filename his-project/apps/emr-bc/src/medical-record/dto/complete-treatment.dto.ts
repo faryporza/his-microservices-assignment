@@ -6,7 +6,7 @@ import {
   Min,
 } from 'class-validator';
 
-export class CompleteTreatmentDto {
+export class CompleteTreatmentDTO {
   @IsString()
   @IsNotEmpty({ message: 'doctor_id is required' })
   doctor_id!: string;

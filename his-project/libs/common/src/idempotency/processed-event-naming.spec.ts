@@ -18,11 +18,10 @@ describe('ProcessedEvent persistence naming', () => {
     expect(metadata.columns.map((column) => column.databaseName)).toEqual(
       expect.arrayContaining(['event_id', 'event_name', 'processed_at']),
     );
-    expect(metadata.indices).toEqual(
+    expect(metadata.uniques).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           name: 'uq_processed_events_event_id',
-          isUnique: true,
           columns: [expect.objectContaining({ propertyName: 'event_id' })],
         }),
       ]),

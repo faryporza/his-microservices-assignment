@@ -2,7 +2,7 @@ import { IsNotEmpty, IsOptional, IsUUID } from 'class-validator';
 
 // This DTO is for service/event use only. It is deliberately not exposed by a
 // public controller; invoices are created from treatment.completed in Week 2.
-export class CreateInvoiceDto {
+export class CreateInvoiceDTO {
   @IsNotEmpty()
   @IsUUID('4')
   visit_id!: string;

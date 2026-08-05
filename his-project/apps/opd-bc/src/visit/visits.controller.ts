@@ -8,7 +8,7 @@ import {
   Post,
 } from '@nestjs/common';
 import { VisitsService } from './visits.service';
-import { CreateVisitDto } from './dto/create-visit.dto';
+import { CreateVisitDTO } from './dto/create-visit.dto';
 
 @Controller()
 export class VisitsController {
@@ -16,7 +16,7 @@ export class VisitsController {
 
   @Post('visits') // เปิด endpoint สำหรับสร้าง visit ใหม่
   create(
-    @Body() createVisitDto: CreateVisitDto,
+    @Body() createVisitDto: CreateVisitDTO,
     @Headers('x-correlation-id') correlationId?: string,
     @Headers('x-trace-id') traceId?: string,
   ) {

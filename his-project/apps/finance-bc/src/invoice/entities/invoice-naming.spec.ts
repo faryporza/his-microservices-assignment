@@ -1,5 +1,7 @@
 import { DataSource } from 'typeorm';
 import { Invoice } from './invoice.entity';
+import { CreateInvoiceDTO } from '../dto/create-invoice.dto';
+import { PayInvoiceDTO } from '../dto/pay-invoice.dto';
 
 describe('Invoice persistence naming', () => {
   it('uses the required table, column, primary key, and unique constraint names', async () => {
@@ -26,14 +28,20 @@ describe('Invoice persistence naming', () => {
         'updated_at',
       ]),
     );
-    expect(metadata.indices).toEqual(
+    expect(metadata.uniques).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           name: 'uq_invoices_visit_id',
-          isUnique: true,
           columns: [expect.objectContaining({ propertyName: 'visit_id' })],
         }),
       ]),
     );
+  });
+
+  it('uses the uppercase DTO suffix', () => {
+    expect([CreateInvoiceDTO.name, PayInvoiceDTO.name]).toEqual([
+      'CreateInvoiceDTO',
+      'PayInvoiceDTO',
+    ]);
   });
 });

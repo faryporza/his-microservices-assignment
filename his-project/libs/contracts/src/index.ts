@@ -1,4 +1,4 @@
-export * from './contracts.module';
+export * from './contract.module';
 export * from './contracts.service';
 export * from './events/base-event.interface';
 export * from './events/event-validation';

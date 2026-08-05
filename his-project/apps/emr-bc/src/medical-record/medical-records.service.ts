@@ -11,9 +11,9 @@ import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 import { IdempotencyService, RMQ_CLIENT, StructuredLogger } from '@app/common';
 import { MedicalRecord, RecordStatus } from './entities/medical-record.entity';
-import { CreateMedicalRecordDto } from './dto/create-medical-record.dto';
-import { UpdateMedicalRecordDto } from './dto/update-medical-record.dto';
-import { CompleteTreatmentDto } from './dto/complete-treatment.dto';
+import { CreateMedicalRecordDTO } from './dto/create-medical-record.dto';
+import { UpdateMedicalRecordDTO } from './dto/update-medical-record.dto';
+import { CompleteTreatmentDTO } from './dto/complete-treatment.dto';
 import {
   TREATMENT_COMPLETED_EVENT_NAME,
   TREATMENT_COMPLETED_EVENT_VERSION,
@@ -34,7 +34,7 @@ export class MedicalRecordsService {
     private readonly idempotency: IdempotencyService,
   ) {}
 
-  async create(createDto: CreateMedicalRecordDto): Promise<MedicalRecord> {
+  async create(createDto: CreateMedicalRecordDTO): Promise<MedicalRecord> {
     if (
       createDto.treatment_cost !== undefined &&
       createDto.treatment_cost < 0
@@ -72,7 +72,7 @@ export class MedicalRecordsService {
 
   async update(
     id: string,
-    updateDto: UpdateMedicalRecordDto,
+    updateDto: UpdateMedicalRecordDTO,
     correlationId?: string,
     traceId?: string,
   ): Promise<MedicalRecord> {
@@ -175,7 +175,7 @@ export class MedicalRecordsService {
 
   async completeTreatment(
     id: string,
-    completeTreatmentDto: CompleteTreatmentDto,
+    completeTreatmentDto: CompleteTreatmentDTO,
     correlationId?: string,
     traceId?: string,
   ): Promise<MedicalRecord> {

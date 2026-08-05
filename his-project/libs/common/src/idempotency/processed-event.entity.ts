@@ -2,12 +2,12 @@ import {
   Column,
   CreateDateColumn,
   Entity,
-  Index,
+  Unique,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
 @Entity('processed_events')
-@Index('uq_processed_events_event_id', ['event_id'], { unique: true })
+@Unique('uq_processed_events_event_id', ['event_id'])
 export class ProcessedEvent {
   @PrimaryGeneratedColumn('uuid', {
     primaryKeyConstraintName: 'pk_processed_events',

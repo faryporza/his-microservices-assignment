@@ -2,7 +2,6 @@ import { Global, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule } from '@nestjs/microservices';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { CommonService } from './common.service';
 import { RmqService } from './rmq/rmq.service';
 import { IdempotencyService } from './idempotency/idempotency.service';
 import { ProcessedEvent } from './idempotency/processed-event.entity';
@@ -25,13 +24,7 @@ export const RMQ_CLIENT = 'RMQ_CLIENT';
       },
     ]),
   ],
-  providers: [CommonService, RmqService, IdempotencyService],
-  exports: [
-    CommonService,
-    RmqService,
-    IdempotencyService,
-    ClientsModule,
-    TypeOrmModule,
-  ],
+  providers: [RmqService, IdempotencyService],
+  exports: [RmqService, IdempotencyService, ClientsModule, TypeOrmModule],
 })
 export class CommonModule {}
