@@ -9,7 +9,11 @@ import { ClientProxy, RmqContext } from '@nestjs/microservices';
 import { EntityManager, Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
 import { of } from 'rxjs';
-import { IdempotencyService } from '@app/common';
+import {
+  IdempotencyService,
+  OutboxEvent,
+  OutboxEventsService,
+} from '@app/common';
 
 // OPD
 import { VisitsService as OpdVisitsService } from '@apps/opd-bc/visit/visits.service';
@@ -66,6 +70,30 @@ function createMockClient(): {
   return { client, events };
 }
 
+function createMockOutbox(
+  client: jest.Mocked<ClientProxy>,
+  repositories: Map<unknown, unknown>,
+): OutboxEventsService {
+  const manager = {
+    getRepository: (entity: unknown) => {
+      const repository = repositories.get(entity);
+      if (!repository) {
+        throw new Error('Repository not registered in mock transaction');
+      }
+      return repository;
+    },
+  } as unknown as EntityManager;
+
+  return {
+    runInTransaction: jest.fn((work) => work(manager)),
+    enqueue: jest.fn((_manager, eventName, event) => {
+      client.emit(eventName, event);
+      return Promise.resolve({} as OutboxEvent);
+    }),
+    publishPending: jest.fn(() => Promise.resolve()),
+  } as unknown as OutboxEventsService;
+}
+
 function createMockIdempotency<T extends { id?: string }>(
   repository: jest.Mocked<Repository<T>>,
 ): IdempotencyService {
@@ -115,23 +143,20 @@ function createMockRepo<T extends { id?: string }>(
         ...data,
         id: (data as any).id ?? randomUUID(),
         // Set default date fields if they exist on the entity type
-        ...(('visitDate' in (data as any) || true) && {
-          visitDate: (data as any).visitDate ?? new Date(),
-        }),
         visit_date: (data as any).visit_date ?? new Date(),
-        createdAt: (data as any).createdAt ?? new Date(),
-        updatedAt: (data as any).updatedAt ?? new Date(),
+        created_at: (data as any).created_at ?? new Date(),
+        updated_at: (data as any).updated_at ?? new Date(),
       } as unknown as T;
       return entity;
     }),
     save: jest.fn((entity: T) => {
       const e = entity as any;
       // Ensure date fields are set
-      if (e.visitDate === undefined && 'visitDate' in e) {
-        e.visitDate = new Date();
+      if (e.visit_date === undefined && 'visit_date' in e) {
+        e.visit_date = new Date();
       }
-      if (!e.createdAt) e.createdAt = new Date();
-      if (!e.updatedAt) e.updatedAt = new Date();
+      if (!e.created_at) e.created_at = new Date();
+      if (!e.updated_at) e.updated_at = new Date();
       store.set(e.id as string, entity);
       return Promise.resolve(entity);
     }),
@@ -162,10 +187,17 @@ describe('Event-driven data flow integration', () => {
     opdPatientRepo = createMockRepo<Patient>();
     const opd = createMockClient();
     opdEvents = opd.events;
+    const opdOutbox = createMockOutbox(
+      opd.client,
+      new Map([
+        [Visit, opdVisitRepo],
+        [Patient, opdPatientRepo],
+      ]),
+    );
     opdVisitsService = new OpdVisitsService(
       opdVisitRepo,
       opdPatientRepo,
-      opd.client,
+      opdOutbox,
       createMockIdempotency(opdVisitRepo),
     );
 
@@ -173,9 +205,13 @@ describe('Event-driven data flow integration', () => {
     emrRecordRepo = createMockRepo<MedicalRecord>();
     const emr = createMockClient();
     emrEvents = emr.events;
+    const emrOutbox = createMockOutbox(
+      emr.client,
+      new Map([[MedicalRecord, emrRecordRepo]]),
+    );
     emrRecordsService = new MedicalRecordsService(
       emrRecordRepo,
-      emr.client,
+      emrOutbox,
       createMockIdempotency(emrRecordRepo),
     );
 
@@ -183,9 +219,13 @@ describe('Event-driven data flow integration', () => {
     financeInvoiceRepo = createMockRepo<Invoice>();
     const fin = createMockClient();
     financeEvents = fin.events;
+    const financeOutbox = createMockOutbox(
+      fin.client,
+      new Map([[Invoice, financeInvoiceRepo]]),
+    );
     financeInvoicesService = new InvoicesService(
       financeInvoiceRepo,
-      fin.client,
+      financeOutbox,
       createMockIdempotency(financeInvoiceRepo),
     );
   });
@@ -205,8 +245,8 @@ describe('Event-driven data flow integration', () => {
         last_name: 'Doe',
         id_card: '1234567890123',
         visits: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        created_at: new Date(),
+        updated_at: new Date(),
       } as Patient);
 
       // Step 2: OPD creates a visit
@@ -265,8 +305,8 @@ describe('Event-driven data flow integration', () => {
         diagnosis: 'Flu',
         treatment_cost: 1500.0,
         status: RecordStatus.WAITING,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        created_at: new Date(),
+        updated_at: new Date(),
       } as MedicalRecord);
 
       emrRecordRepo.save.mockImplementation((record: MedicalRecord) => {
@@ -454,8 +494,8 @@ describe('Event-driven data flow integration', () => {
         diagnosis: 'Surgery',
         treatment_cost: 12345.67,
         status: RecordStatus.WAITING,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        created_at: new Date(),
+        updated_at: new Date(),
       } as MedicalRecord);
 
       emrRecordRepo.save.mockImplementation((record: MedicalRecord) => {
@@ -519,8 +559,8 @@ describe('Event-driven data flow integration', () => {
         last_name: 'B',
         id_card: 'C',
         visits: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        created_at: new Date(),
+        updated_at: new Date(),
       } as Patient);
 
       await opdVisitsService.create({ patient_id: patientId } as any);

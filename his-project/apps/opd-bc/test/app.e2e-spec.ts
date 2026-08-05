@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { OpdBcModule } from './../src/opd-bc.module';
+import { OpdBcModule } from '@apps/opd-bc/opd-bc.module';
 import { App } from 'supertest/types';
 import { createStrictValidationPipe } from '@app/common';
 import { randomUUID } from 'node:crypto';

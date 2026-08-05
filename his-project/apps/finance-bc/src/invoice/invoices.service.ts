@@ -3,14 +3,14 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
-  Inject,
-  ServiceUnavailableException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
-import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom } from 'rxjs';
-import { IdempotencyService, rmqClient, StructuredLogger } from '@app/common';
+import {
+  IdempotencyService,
+  OutboxEventsService,
+  StructuredLogger,
+} from '@app/common';
 import { CreateInvoiceDTO } from './dto/create-invoice.dto';
 import { Invoice, InvoiceStatus } from './entities/invoice.entity';
 import {
@@ -28,8 +28,7 @@ export class InvoicesService {
   constructor(
     @InjectRepository(Invoice)
     private readonly invoiceRepository: Repository<Invoice>,
-    @Inject(rmqClient)
-    private readonly client: ClientProxy,
+    private readonly outboxEvents: OutboxEventsService,
     private readonly idempotency: IdempotencyService,
   ) {}
 
@@ -63,71 +62,61 @@ export class InvoicesService {
     correlationId?: string,
     traceId?: string,
   ): Promise<Invoice> {
-    const invoice = await this.findById(id);
-    if (invoice.status === InvoiceStatus.PAID) {
-      throw new ConflictException(
-        `Invoice with ID '${id}' has already been paid`,
-      );
-    }
+    const { saved, event } = await this.outboxEvents.runInTransaction(
+      async (manager) => {
+        const repository = manager.getRepository(Invoice);
+        const invoice = await repository.findOne({ where: { id } });
+        if (!invoice) {
+          throw new NotFoundException(`Invoice with ID '${id}' not found`);
+        }
+        if (invoice.status === InvoiceStatus.PAID) {
+          throw new ConflictException(
+            `Invoice with ID '${id}' has already been paid`,
+          );
+        }
 
-    invoice.status = InvoiceStatus.PAID;
-    invoice.paid_at = new Date();
-    const saved = await this.invoiceRepository.save(invoice);
-    const eventCorrelationId =
-      correlationId ?? saved.correlation_id ?? randomUUID();
+        invoice.status = InvoiceStatus.PAID;
+        invoice.paid_at = new Date();
+        const saved = await repository.save(invoice);
+        const eventCorrelationId =
+          correlationId ?? saved.correlation_id ?? randomUUID();
+        const event: InvoicePaidEvent = {
+          metadata: {
+            eventId: randomUUID(),
+            eventName: invoicePaidEventName,
+            version: invoicePaidEventVersion,
+            occurredAt: new Date().toISOString(),
+            correlationId: eventCorrelationId,
+            traceId: traceId ?? eventCorrelationId,
+          },
+          payload: {
+            visitId: saved.visit_id,
+            invoiceId: saved.id,
+            status: 'PAID',
+          },
+        };
 
-    const event: InvoicePaidEvent = {
-      metadata: {
-        eventId: randomUUID(),
-        eventName: invoicePaidEventName,
-        version: invoicePaidEventVersion,
-        occurredAt: new Date().toISOString(),
-        correlationId: eventCorrelationId,
-        traceId: traceId ?? eventCorrelationId,
+        await this.outboxEvents.enqueue(manager, invoicePaidEventName, event);
+        return { saved, event };
       },
-      payload: {
-        visitId: saved.visit_id,
-        invoiceId: saved.id,
-        status: 'PAID',
-      },
-    };
+    );
 
-    try {
-      await firstValueFrom(this.client.emit(invoicePaidEventName, event));
-      this.logger.log({
-        message: 'Domain event published',
-        trace: {
-          traceId: event.metadata.traceId,
-          correlationId: event.metadata.correlationId,
-        },
-        context: {
-          action: 'PUBLISH_EVENT',
-          event_name: event.metadata.eventName,
-          event_id: event.metadata.eventId,
-          visit_id: saved.visit_id,
-          invoice_id: saved.id,
-          event_status: 'PUBLISHED',
-        },
-      });
-    } catch (error: unknown) {
-      this.logger.error({
-        message: 'Failed to publish domain event',
-        trace: {
-          traceId: event.metadata.traceId,
-          correlationId: event.metadata.correlationId,
-        },
-        context: {
-          action: 'PUBLISH_EVENT',
-          event_name: event.metadata.eventName,
-          event_id: event.metadata.eventId,
-          visit_id: saved.visit_id,
-          invoice_id: saved.id,
-          event_status: 'PUBLISH_FAILED',
-        },
-        error,
-      });
-      throw new ServiceUnavailableException('Message broker unavailable');
-    }
+    await this.outboxEvents.publishPending();
+    this.logger.log({
+      message: 'Domain event queued',
+      trace: {
+        traceId: event.metadata.traceId,
+        correlationId: event.metadata.correlationId,
+      },
+      context: {
+        action: 'QUEUE_EVENT',
+        event_name: event.metadata.eventName,
+        event_id: event.metadata.eventId,
+        visit_id: saved.visit_id,
+        invoice_id: saved.id,
+        event_status: 'QUEUED',
+      },
+    });
 
     return saved;
   }

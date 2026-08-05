@@ -173,6 +173,10 @@ sequenceDiagram
 
 Consumers รองรับ idempotency เพื่อป้องกันผลลัพธ์ซ้ำจาก event เดิม เช่น หนึ่ง Visit มี Invoice หลักเพียงหนึ่งใบ และ Visit ที่ปิดแล้วจะยังคงเป็น `CLOSED` เมื่อได้รับ payment event ซ้ำ
 
+Outgoing events are persisted in a service-local `outbox_events` table in the
+same transaction as the aggregate change. A background publisher retries rows
+that are still pending, and consumers remain idempotent if a publish is retried.
+
 ## API ที่รองรับ
 
 | Service | Method | Endpoint | รายละเอียด |
@@ -196,6 +200,8 @@ Consumers รองรับ idempotency เพื่อป้องกันผ
 | Finance | `PATCH` | `/invoices/:id/pay` | ชำระ Invoice |
 
 ## การติดตั้งและรันระบบ
+
+สามารถนำเข้า [Postman Collection](docs/postman/his.postman_collection.json) เพื่อทดสอบ happy path ตั้งแต่เปิด Visit จนถึงปิด Visit ได้
 
 สิ่งที่ต้องมี: Node.js, npm และ Docker Desktop หรือ Docker Engine ที่รองรับ Compose
 

@@ -3,9 +3,13 @@ import {
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { ClientProxy } from '@nestjs/microservices';
-import { IdempotencyService } from '@app/common';
+import {
+  IdempotencyService,
+  OutboxEvent,
+  OutboxEventsService,
+} from '@app/common';
 import { of } from 'rxjs';
 import { Invoice, InvoiceStatus } from './entities/invoice.entity';
 import { InvoicesService } from './invoices.service';
@@ -21,7 +25,17 @@ describe('InvoicesService', () => {
     emit: jest.fn(),
   } as unknown as jest.Mocked<ClientProxy>;
   const idempotency = {} as IdempotencyService;
-  const service = new InvoicesService(repository, client, idempotency);
+  const outbox = {
+    runInTransaction: jest.fn((work: (manager: EntityManager) => unknown) =>
+      work({ getRepository: () => repository } as unknown as EntityManager),
+    ),
+    enqueue: jest.fn((_manager, eventName, event) => {
+      client.emit(eventName, event);
+      return Promise.resolve({} as OutboxEvent);
+    }),
+    publishPending: jest.fn(() => Promise.resolve()),
+  } as unknown as OutboxEventsService;
+  const service = new InvoicesService(repository, outbox, idempotency);
 
   beforeEach(() => {
     jest.clearAllMocks();

@@ -1,7 +1,7 @@
 import { BaseEvent } from './base-event.interface';
 
 /**
- * Published by Finance after an invoice is persisted as `PAID` with `paidAt`.
+ * Published by Finance after an invoice is persisted as `PAID` with `paid_at`.
  * Consumed by OPD to close the visit. Receiving a duplicate `invoice.paid`
  * event for a visit that is already `CLOSED` must leave it closed.
  */

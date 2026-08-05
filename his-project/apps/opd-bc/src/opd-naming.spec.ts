@@ -1,9 +1,9 @@
 import { DataSource } from 'typeorm';
-import { Patient } from './patient/entities/patient.entity';
-import { Visit } from './visit/entities/visit.entity';
-import { CreatePatientDTO } from './patient/dto/create-patient.dto';
-import { UpdatePatientDTO } from './patient/dto/update-patient.dto';
-import { CreateVisitDTO } from './visit/dto/create-visit.dto';
+import { Patient } from '@apps/opd-bc/patient/entities/patient.entity';
+import { Visit } from '@apps/opd-bc/visit/entities/visit.entity';
+import { CreatePatientDTO } from '@apps/opd-bc/patient/dto/create-patient.dto';
+import { UpdatePatientDTO } from '@apps/opd-bc/patient/dto/update-patient.dto';
+import { CreateVisitDTO } from '@apps/opd-bc/visit/dto/create-visit.dto';
 
 describe('OPD persistence naming', () => {
   const dataSource = new DataSource({

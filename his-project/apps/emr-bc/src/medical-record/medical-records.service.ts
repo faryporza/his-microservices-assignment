@@ -2,14 +2,14 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
-  Inject,
-  ServiceUnavailableException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
-import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom } from 'rxjs';
-import { IdempotencyService, rmqClient, StructuredLogger } from '@app/common';
+import {
+  IdempotencyService,
+  OutboxEventsService,
+  StructuredLogger,
+} from '@app/common';
 import { MedicalRecord, RecordStatus } from './entities/medical-record.entity';
 import { CreateMedicalRecordDTO } from './dto/create-medical-record.dto';
 import { UpdateMedicalRecordDTO } from './dto/update-medical-record.dto';
@@ -29,25 +29,39 @@ export class MedicalRecordsService {
   constructor(
     @InjectRepository(MedicalRecord)
     private readonly medicalRecordRepository: Repository<MedicalRecord>,
-    @Inject(rmqClient)
-    private readonly client: ClientProxy,
+    private readonly outboxEvents: OutboxEventsService,
     private readonly idempotency: IdempotencyService,
   ) {}
 
   async create(createDto: CreateMedicalRecordDTO): Promise<MedicalRecord> {
-    if (
-      createDto.treatment_cost !== undefined &&
-      createDto.treatment_cost < 0
-    ) {
-      throw new BadRequestException('Treatment cost cannot be negative');
+    const { saved, event } = await this.outboxEvents.runInTransaction(
+      async (manager) => {
+        this.validateTreatmentCost(createDto.treatment_cost);
+        const repository = manager.getRepository(MedicalRecord);
+        const record = repository.create({
+          ...createDto,
+          status: createDto.status ?? RecordStatus.COMPLETED,
+        });
+        const saved = await repository.save(record);
+        const event =
+          saved.status === RecordStatus.COMPLETED
+            ? await this.enqueueTreatmentCompleted(
+                manager,
+                saved,
+                undefined,
+                undefined,
+              )
+            : undefined;
+        return { saved, event };
+      },
+    );
+
+    if (event) {
+      await this.outboxEvents.publishPending();
+      this.logEventQueued(event);
     }
 
-    const record = this.medicalRecordRepository.create({
-      ...createDto,
-      status: createDto.status ?? RecordStatus.COMPLETED,
-    });
-
-    return await this.medicalRecordRepository.save(record);
+    return saved;
   }
 
   async findAll(): Promise<MedicalRecord[]> {
@@ -76,83 +90,37 @@ export class MedicalRecordsService {
     correlationId?: string,
     traceId?: string,
   ): Promise<MedicalRecord> {
-    const record = await this.findOne(id);
+    const { saved, event } = await this.outboxEvents.runInTransaction(
+      async (manager) => {
+        const repository = manager.getRepository(MedicalRecord);
+        const record = await repository.findOne({ where: { id } });
+        if (!record) {
+          throw new NotFoundException(
+            `Medical record with ID '${id}' not found`,
+          );
+        }
 
-    if (
-      updateDto.treatment_cost !== undefined &&
-      updateDto.treatment_cost < 0
-    ) {
-      throw new BadRequestException('Treatment cost cannot be negative');
-    }
+        this.validateTreatmentCost(updateDto.treatment_cost);
+        const previousStatus = record.status;
+        Object.assign(record, updateDto);
+        const saved = await repository.save(record);
+        const event =
+          previousStatus !== RecordStatus.COMPLETED &&
+          saved.status === RecordStatus.COMPLETED
+            ? await this.enqueueTreatmentCompleted(
+                manager,
+                saved,
+                correlationId,
+                traceId,
+              )
+            : undefined;
+        return { saved, event };
+      },
+    );
 
-    const previousStatus = record.status;
-
-    Object.assign(record, updateDto);
-    const saved = await this.medicalRecordRepository.save(record);
-
-    if (
-      previousStatus !== RecordStatus.COMPLETED &&
-      saved.status === RecordStatus.COMPLETED
-    ) {
-      const eventCorrelationId =
-        correlationId ?? saved.correlation_id ?? randomUUID();
-      const event: TreatmentCompletedEvent = {
-        metadata: {
-          eventId: randomUUID(),
-          eventName: treatmentCompletedEventName,
-          version: treatmentCompletedEventVersion,
-          occurredAt: new Date().toISOString(),
-          correlationId: eventCorrelationId,
-          traceId: traceId ?? eventCorrelationId,
-        },
-        payload: {
-          visitId: saved.visit_id,
-          recordId: saved.id,
-          treatmentCost:
-            saved.treatment_cost != null
-              ? String(saved.treatment_cost)
-              : '0.00',
-        },
-      };
-
-      try {
-        await firstValueFrom(
-          this.client.emit(treatmentCompletedEventName, event),
-        );
-        this.logger.log({
-          message: 'Domain event published',
-          trace: {
-            traceId: event.metadata.traceId,
-            correlationId: event.metadata.correlationId,
-          },
-          context: {
-            action: 'PUBLISH_EVENT',
-            event_name: event.metadata.eventName,
-            event_id: event.metadata.eventId,
-            visit_id: event.payload.visitId,
-            record_id: event.payload.recordId,
-            event_status: 'PUBLISHED',
-          },
-        });
-      } catch (error: unknown) {
-        this.logger.error({
-          message: 'Failed to publish domain event',
-          trace: {
-            traceId: event.metadata.traceId,
-            correlationId: event.metadata.correlationId,
-          },
-          context: {
-            action: 'PUBLISH_EVENT',
-            event_name: event.metadata.eventName,
-            event_id: event.metadata.eventId,
-            visit_id: event.payload.visitId,
-            record_id: event.payload.recordId,
-            event_status: 'PUBLISH_FAILED',
-          },
-          error,
-        });
-        throw new ServiceUnavailableException('Message broker unavailable');
-      }
+    if (event) {
+      await this.outboxEvents.publishPending();
+      this.logEventQueued(event);
     }
 
     return saved;
@@ -218,5 +186,64 @@ export class MedicalRecordsService {
 
     const record = repository.create(recordData);
     return repository.save(record);
+  }
+
+  private validateTreatmentCost(treatmentCost?: number): void {
+    if (treatmentCost !== undefined && treatmentCost < 0) {
+      throw new BadRequestException('Treatment cost cannot be negative');
+    }
+  }
+
+  private async enqueueTreatmentCompleted(
+    manager: EntityManager,
+    record: MedicalRecord,
+    correlationId?: string,
+    traceId?: string,
+  ): Promise<TreatmentCompletedEvent> {
+    const eventCorrelationId =
+      correlationId ?? record.correlation_id ?? randomUUID();
+    const event: TreatmentCompletedEvent = {
+      metadata: {
+        eventId: randomUUID(),
+        eventName: treatmentCompletedEventName,
+        version: treatmentCompletedEventVersion,
+        occurredAt: new Date().toISOString(),
+        correlationId: eventCorrelationId,
+        traceId: traceId ?? eventCorrelationId,
+      },
+      payload: {
+        visitId: record.visit_id,
+        recordId: record.id,
+        treatmentCost:
+          record.treatment_cost != null
+            ? String(record.treatment_cost)
+            : '0.00',
+      },
+    };
+
+    await this.outboxEvents.enqueue(
+      manager,
+      treatmentCompletedEventName,
+      event,
+    );
+    return event;
+  }
+
+  private logEventQueued(event: TreatmentCompletedEvent): void {
+    this.logger.log({
+      message: 'Domain event queued',
+      trace: {
+        traceId: event.metadata.traceId,
+        correlationId: event.metadata.correlationId,
+      },
+      context: {
+        action: 'QUEUE_EVENT',
+        event_name: event.metadata.eventName,
+        event_id: event.metadata.eventId,
+        visit_id: event.payload.visitId,
+        record_id: event.payload.recordId,
+        event_status: 'QUEUED',
+      },
+    });
   }
 }

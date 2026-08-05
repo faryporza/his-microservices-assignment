@@ -1,0 +1,171 @@
+{
+  "info": {
+    "name": "HIS Microservices",
+    "description": "Happy-path collection for the OPD → EMR → Finance event flow.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "opd_base_url", "value": "http://localhost:3000" },
+    { "key": "emr_base_url", "value": "http://localhost:3001" },
+    { "key": "finance_base_url", "value": "http://localhost:3002" },
+    { "key": "patient_id", "value": "" },
+    { "key": "visit_id", "value": "" },
+    { "key": "record_id", "value": "" },
+    { "key": "invoice_id", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Register patient",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"hn\": \"HN-POSTMAN-001\",\n  \"first_name\": \"Somchai\",\n  \"last_name\": \"Jaidee\",\n  \"id_card\": \"1101700203456\"\n}"
+        },
+        "url": {
+          "raw": "{{opd_base_url}}/patients",
+          "host": ["{{opd_base_url}}"],
+          "path": ["patients"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('patient created', function () { pm.response.to.have.status(201); });",
+              "pm.collectionVariables.set('patient_id', pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Open visit",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-Correlation-Id", "value": "{{$guid}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"patient_id\": \"{{patient_id}}\"\n}"
+        },
+        "url": {
+          "raw": "{{opd_base_url}}/visits",
+          "host": ["{{opd_base_url}}"],
+          "path": ["visits"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('visit opened', function () { pm.response.to.have.status(201); });",
+              "pm.collectionVariables.set('visit_id', pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Read waiting medical record",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{emr_base_url}}/records/visit/{{visit_id}}",
+          "host": ["{{emr_base_url}}"],
+          "path": ["records", "visit", "{{visit_id}}"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('record is waiting', function () { pm.response.to.have.status(200); });",
+              "pm.collectionVariables.set('record_id', pm.response.json()[0].id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Complete treatment",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-Correlation-Id", "value": "{{$guid}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"doctor_id\": \"doctor-001\",\n  \"diagnosis\": \"Influenza\",\n  \"treatment_note\": \"Rest and fluids\",\n  \"treatment_cost\": 1500\n}"
+        },
+        "url": {
+          "raw": "{{emr_base_url}}/records/{{record_id}}/complete",
+          "host": ["{{emr_base_url}}"],
+          "path": ["records", "{{record_id}}", "complete"]
+        }
+      }
+    },
+    {
+      "name": "5. Read invoice",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{finance_base_url}}/invoices/{{visit_id}}",
+          "host": ["{{finance_base_url}}"],
+          "path": ["invoices", "{{visit_id}}"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('invoice created', function () { pm.response.to.have.status(200); });",
+              "pm.collectionVariables.set('invoice_id', pm.response.json()[0].id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Pay invoice",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-Correlation-Id", "value": "{{$guid}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"PAID\"\n}"
+        },
+        "url": {
+          "raw": "{{finance_base_url}}/invoices/{{invoice_id}}/pay",
+          "host": ["{{finance_base_url}}"],
+          "path": ["invoices", "{{invoice_id}}", "pay"]
+        }
+      }
+    },
+    {
+      "name": "7. Verify closed visit",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{opd_base_url}}/visits/{{visit_id}}",
+          "host": ["{{opd_base_url}}"],
+          "path": ["visits", "{{visit_id}}"]
+        }
+      }
+    }
+  ]
+}

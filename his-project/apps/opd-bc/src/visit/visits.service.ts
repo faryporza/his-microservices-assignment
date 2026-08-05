@@ -1,14 +1,11 @@
-import {
-  Inject,
-  Injectable,
-  NotFoundException,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
-import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom } from 'rxjs';
-import { IdempotencyService, rmqClient, StructuredLogger } from '@app/common';
+import {
+  IdempotencyService,
+  OutboxEventsService,
+  StructuredLogger,
+} from '@app/common';
 import { Visit, VisitStatus } from './entities/visit.entity';
 import { Patient } from '@apps/opd-bc/patient/entities/patient.entity';
 import { CreateVisitDTO } from './dto/create-visit.dto';
@@ -29,8 +26,7 @@ export class VisitsService {
     private readonly visitRepository: Repository<Visit>,
     @InjectRepository(Patient)
     private readonly patientRepository: Repository<Patient>,
-    @Inject(rmqClient)
-    private readonly client: ClientProxy,
+    private readonly outboxEvents: OutboxEventsService,
     private readonly idempotency: IdempotencyService,
   ) {}
 
@@ -40,73 +36,61 @@ export class VisitsService {
     correlationId?: string,
     traceId?: string,
   ): Promise<Visit> {
-    const patient = await this.patientRepository.findOne({
-      where: { id: createVisitDto.patient_id },
-    });
-    if (!patient) {
-      throw new NotFoundException(
-        `Patient with ID '${createVisitDto.patient_id}' not found`,
-      );
-    }
+    const { saved, event } = await this.outboxEvents.runInTransaction(
+      async (manager) => {
+        const patientRepository = manager.getRepository(Patient);
+        const patient = await patientRepository.findOne({
+          where: { id: createVisitDto.patient_id },
+        });
+        if (!patient) {
+          throw new NotFoundException(
+            `Patient with ID '${createVisitDto.patient_id}' not found`,
+          );
+        }
 
-    const visit = this.visitRepository.create({
-      patient_id: createVisitDto.patient_id,
-      status: VisitStatus.OPEN,
-    });
+        const repository = manager.getRepository(Visit);
+        const visit = repository.create({
+          patient_id: createVisitDto.patient_id,
+          status: VisitStatus.OPEN,
+        });
+        const saved = await repository.save(visit);
+        const eventCorrelationId = correlationId ?? randomUUID();
+        const event: VisitCreatedEvent = {
+          metadata: {
+            eventId: randomUUID(),
+            eventName: visitCreatedEventName,
+            version: visitCreatedEventVersion,
+            occurredAt: new Date().toISOString(),
+            correlationId: eventCorrelationId,
+            traceId: traceId ?? eventCorrelationId,
+          },
+          payload: {
+            visitId: saved.id,
+            patientId: saved.patient_id,
+            timestamp: saved.visit_date.toISOString(),
+          },
+        };
 
-    const saved = await this.visitRepository.save(visit);
-    const eventCorrelationId = correlationId ?? randomUUID();
-
-    const event: VisitCreatedEvent = {
-      metadata: {
-        eventId: randomUUID(),
-        eventName: visitCreatedEventName,
-        version: visitCreatedEventVersion,
-        occurredAt: new Date().toISOString(),
-        correlationId: eventCorrelationId,
-        traceId: traceId ?? eventCorrelationId,
+        await this.outboxEvents.enqueue(manager, visitCreatedEventName, event);
+        return { saved, event };
       },
-      payload: {
-        visitId: saved.id,
-        patientId: saved.patient_id,
-        timestamp: saved.visit_date.toISOString(),
-      },
-    };
+    );
 
-    try {
-      await firstValueFrom(this.client.emit(visitCreatedEventName, event));
-      this.logger.log({
-        message: 'Domain event published',
-        trace: {
-          traceId: event.metadata.traceId,
-          correlationId: event.metadata.correlationId,
-        },
-        context: {
-          action: 'PUBLISH_EVENT',
-          event_name: event.metadata.eventName,
-          event_id: event.metadata.eventId,
-          visit_id: saved.id,
-          event_status: 'PUBLISHED',
-        },
-      });
-    } catch (error: unknown) {
-      this.logger.error({
-        message: 'Failed to publish domain event',
-        trace: {
-          traceId: event.metadata.traceId,
-          correlationId: event.metadata.correlationId,
-        },
-        context: {
-          action: 'PUBLISH_EVENT',
-          event_name: event.metadata.eventName,
-          event_id: event.metadata.eventId,
-          visit_id: saved.id,
-          event_status: 'PUBLISH_FAILED',
-        },
-        error,
-      });
-      throw new ServiceUnavailableException('Message broker unavailable');
-    }
+    await this.outboxEvents.publishPending();
+    this.logger.log({
+      message: 'Domain event queued',
+      trace: {
+        traceId: event.metadata.traceId,
+        correlationId: event.metadata.correlationId,
+      },
+      context: {
+        action: 'QUEUE_EVENT',
+        event_name: event.metadata.eventName,
+        event_id: event.metadata.eventId,
+        visit_id: saved.id,
+        event_status: 'QUEUED',
+      },
+    });
 
     return saved;
   }

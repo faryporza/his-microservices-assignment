@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { FinanceBcModule } from './../src/finance-bc.module';
+import { FinanceBcModule } from '@apps/finance-bc/finance-bc.module';
 import { App } from 'supertest/types';
 import { createStrictValidationPipe } from '@app/common';
 import { randomUUID } from 'node:crypto';

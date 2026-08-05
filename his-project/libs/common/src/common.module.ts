@@ -5,13 +5,14 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { RabbitMqOptionsService } from './rmq/rabbitmq-options.service';
 import { IdempotencyService } from './idempotency/idempotency.service';
 import { ProcessedEvent } from './idempotency/processed-event.entity';
-
-export const rmqClient = 'rmqClient';
+import { OutboxEvent } from './outbox/outbox-event.entity';
+import { OutboxEventsService } from './outbox/outbox-events.service';
+import { rmqClient } from './rmq/rmq.constants';
 
 @Global()
 @Module({
   imports: [
-    TypeOrmModule.forFeature([ProcessedEvent]),
+    TypeOrmModule.forFeature([ProcessedEvent, OutboxEvent]),
     ClientsModule.registerAsync([
       {
         name: rmqClient,
@@ -24,7 +25,13 @@ export const rmqClient = 'rmqClient';
       },
     ]),
   ],
-  providers: [RabbitMqOptionsService, IdempotencyService],
-  exports: [RabbitMqOptionsService, IdempotencyService, ClientsModule, TypeOrmModule],
+  providers: [RabbitMqOptionsService, IdempotencyService, OutboxEventsService],
+  exports: [
+    RabbitMqOptionsService,
+    IdempotencyService,
+    OutboxEventsService,
+    ClientsModule,
+    TypeOrmModule,
+  ],
 })
 export class CommonModule {}
