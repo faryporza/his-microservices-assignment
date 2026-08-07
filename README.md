@@ -250,11 +250,20 @@ npm run start:finance
 # Unit tests
 npm test
 
+# Coverage-enforced unit and integration tests
+npm run test:cov
+
+# Full lint check
+npm run lint:check
+
 # End-to-end tests ของทั้ง 3 services
 npm run test:e2e
 
 # Build ทุก service
 npm run build
+
+# Live HTTP + RabbitMQ flow (requires all services and infrastructure)
+npm run test:flow
 ```
 
 ## Error Handling และ Logging
@@ -264,7 +273,7 @@ npm run build
 - `400 Bad Request` — request body หรือ parameter ไม่ถูกต้อง
 - `404 Not Found` — ไม่พบ resource
 - `409 Conflict` — business state ขัดแย้ง เช่น ชำระ Invoice ซ้ำ
-- `503 Service Unavailable` — ไม่สามารถ publish event ไปยัง message broker
+- `503 Service Unavailable` — database หรือ service dependency ใช้งานไม่ได้
 
 ทุก service เขียน log เป็น JSON หนึ่ง object ต่อบรรทัดตาม schema กลาง โดยมี `timestamp`, `level`, `message`, `service`, `trace` และ `context` และไม่บันทึก request body, token หรือข้อมูลผู้ป่วยที่ไม่จำเป็น
 
@@ -277,9 +286,9 @@ npm run build
 ```text
 his-project/
 ├── apps/
-│   ├── opd-bc/          # Patient และ Visit
-│   ├── emr-bc/          # Medical Record และ Treatment
-│   └── finance-bc/      # Invoice และ Payment
+│   ├── opd-bc/          # Patient และ Visit (มี docs/, test/ และ jest.config.js)
+│   ├── emr-bc/          # Medical Record และ Treatment (มี docs/, test/ และ jest.config.js)
+│   └── finance-bc/      # Invoice และ Payment (มี docs/, test/ และ jest.config.js)
 └── libs/
     ├── common/          # Logging, validation, RabbitMQ, idempotency
     └── contracts/       # Shared event names และ payload contracts

@@ -80,9 +80,13 @@ jobs:
           psql -h 127.0.0.1 -U postgres -d postgres -c 'CREATE DATABASE emr_db;'
           psql -h 127.0.0.1 -U postgres -d postgres -c 'CREATE DATABASE finance_db;'
 
-      - name: Run unit and integration tests
+      - name: Run ESLint
         working-directory: his-project
-        run: npm test -- --runInBand
+        run: npm run lint:check
+
+      - name: Run unit and integration tests with coverage
+        working-directory: his-project
+        run: npm run test:cov
 
       - name: Build all services
         working-directory: his-project
@@ -91,3 +95,31 @@ jobs:
       - name: Run end-to-end tests
         working-directory: his-project
         run: npm run test:e2e
+
+      - name: Run live event flow with deferred consumers
+        working-directory: his-project
+        env:
+          FLOW_STATE_FILE: /tmp/his-flow-state.json
+        run: |
+          set -euo pipefail
+          npm run start:prod:opd > /tmp/opd-bc.log 2>&1 &
+          opd_pid=$!
+          npm run start:prod:emr > /tmp/emr-bc.log 2>&1 &
+          emr_pid=$!
+          npm run start:prod:finance > /tmp/finance-bc.log 2>&1 &
+          finance_pid=$!
+          cleanup() {
+            kill "$opd_pid" "$emr_pid" "$finance_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          for port in 3000 3001 3002; do
+            curl --fail --retry 20 --retry-delay 1 --retry-connrefused "http://127.0.0.1:${port}/"
+          done
+          kill "$emr_pid" "$finance_pid"
+          sleep 1
+          npm run test:flow -- create
+          npm run start:prod:emr > /tmp/emr-bc.log 2>&1 &
+          emr_pid=$!
+          npm run start:prod:finance > /tmp/finance-bc.log 2>&1 &
+          finance_pid=$!
+          npm run test:flow -- complete

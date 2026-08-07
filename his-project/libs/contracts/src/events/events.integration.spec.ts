@@ -16,26 +16,31 @@ import {
 } from '@app/common';
 
 // OPD
-import { VisitsService as OpdVisitsService } from '@apps/opd-bc/visit/visits.service';
-import { Visit, VisitStatus } from '@apps/opd-bc/visit/entities/visit.entity';
-import { Patient } from '@apps/opd-bc/patient/entities/patient.entity';
-import { VisitEventsController } from '@apps/opd-bc/visit/visit-events.controller';
+import { VisitsService as OpdVisitsService } from '@apps/opd-bc/modules/visit/services/visits.service';
+import {
+  Visit,
+  VisitStatus,
+} from '@apps/opd-bc/modules/visit/entities/visit.entity';
+import { Patient } from '@apps/opd-bc/modules/patient/entities/patient.entity';
+import { CreateVisitDTO } from '@apps/opd-bc/modules/visit/dto/create-visit.dto';
+import { VisitEventsController } from '@apps/opd-bc/modules/visit/controllers/visit-events.controller';
 
 // EMR
-import { MedicalRecordsService } from '@apps/emr-bc/medical-record/medical-records.service';
+import { MedicalRecordsService } from '@apps/emr-bc/modules/medical-record/services/medical-records.service';
 import {
   MedicalRecord,
   RecordStatus,
-} from '@apps/emr-bc/medical-record/entities/medical-record.entity';
-import { MedicalRecordEventsController } from '@apps/emr-bc/medical-record/medical-record-events.controller';
+} from '@apps/emr-bc/modules/medical-record/entities/medical-record.entity';
+import { UpdateMedicalRecordDTO } from '@apps/emr-bc/modules/medical-record/dto/update-medical-record.dto';
+import { MedicalRecordEventsController } from '@apps/emr-bc/modules/medical-record/controllers/medical-record-events.controller';
 
 // Finance
-import { InvoicesService } from '@apps/finance-bc/invoice/invoices.service';
+import { InvoicesService } from '@apps/finance-bc/modules/invoice/services/invoices.service';
 import {
   Invoice,
   InvoiceStatus,
-} from '@apps/finance-bc/invoice/entities/invoice.entity';
-import { InvoiceEventsController } from '@apps/finance-bc/invoice/invoice-events.controller';
+} from '@apps/finance-bc/modules/invoice/entities/invoice.entity';
+import { InvoiceEventsController } from '@apps/finance-bc/modules/invoice/controllers/invoice-events.controller';
 
 // Contracts
 import {
@@ -130,6 +135,12 @@ function createRmqContext(): RmqContext {
 function createMockRepo<T extends { id?: string }>(
   initial: T[] = [],
 ): jest.Mocked<Repository<T>> {
+  type TimestampedEntity = {
+    id?: string;
+    visit_date?: Date;
+    created_at?: Date;
+    updated_at?: Date;
+  };
   const store = new Map<string, T>(initial.map((e) => [e.id!, e]));
 
   return {
@@ -139,18 +150,19 @@ function createMockRepo<T extends { id?: string }>(
     }),
     find: jest.fn(() => Promise.resolve([...store.values()])),
     create: jest.fn((data: Partial<T>) => {
+      const fields = data as Partial<T> & TimestampedEntity;
       const entity = {
         ...data,
-        id: (data as any).id ?? randomUUID(),
+        id: fields.id ?? randomUUID(),
         // Set default date fields if they exist on the entity type
-        visit_date: (data as any).visit_date ?? new Date(),
-        created_at: (data as any).created_at ?? new Date(),
-        updated_at: (data as any).updated_at ?? new Date(),
+        visit_date: fields.visit_date ?? new Date(),
+        created_at: fields.created_at ?? new Date(),
+        updated_at: fields.updated_at ?? new Date(),
       } as unknown as T;
       return entity;
     }),
     save: jest.fn((entity: T) => {
-      const e = entity as any;
+      const e = entity as T & TimestampedEntity;
       // Ensure date fields are set
       if (e.visit_date === undefined && 'visit_date' in e) {
         e.visit_date = new Date();
@@ -252,7 +264,7 @@ describe('Event-driven data flow integration', () => {
       // Step 2: OPD creates a visit
       const visit = await opdVisitsService.create({
         patient_id: patientId,
-      } as any);
+      } as CreateVisitDTO);
 
       expect(visit.status).toBe(VisitStatus.OPEN);
       expect(visit.patient_id).toBe(patientId);
@@ -268,15 +280,13 @@ describe('Event-driven data flow integration', () => {
 
       // Step 3: EMR consumer receives visit.created → creates a stub record
       emrRecordRepo.create.mockImplementation(
-        (data: any) =>
+        (data: Partial<MedicalRecord>) =>
           ({
             id: randomUUID(),
             ...data,
           }) as MedicalRecord,
       );
-      let savedRecordId = '';
       emrRecordRepo.save.mockImplementation((record: MedicalRecord) => {
-        savedRecordId = record.id;
         return Promise.resolve(record);
       });
 
@@ -317,7 +327,7 @@ describe('Event-driven data flow integration', () => {
         status: RecordStatus.COMPLETED,
         diagnosis: 'Flu',
         treatment_cost: 1500,
-      } as any);
+      } as UpdateMedicalRecordDTO);
 
       // Verify treatment.completed event
       const treatmentEvent = emrEvents.find(
@@ -334,7 +344,7 @@ describe('Event-driven data flow integration', () => {
       // Step 5: Finance consumer receives treatment.completed → creates invoice
       let invoiceId = '';
       financeInvoiceRepo.create.mockImplementation(
-        (data: any) =>
+        (data: Partial<Invoice>) =>
           ({
             id: randomUUID(),
             ...data,
@@ -505,7 +515,7 @@ describe('Event-driven data flow integration', () => {
       await emrRecordsService.update(recordId, {
         status: RecordStatus.COMPLETED,
         treatment_cost: 12345.67,
-      } as any);
+      } as UpdateMedicalRecordDTO);
 
       const treatmentEvent = emrEvents.find(
         (e) => e.pattern === treatmentCompletedEventName,
@@ -563,7 +573,9 @@ describe('Event-driven data flow integration', () => {
         updated_at: new Date(),
       } as Patient);
 
-      await opdVisitsService.create({ patient_id: patientId } as any);
+      await opdVisitsService.create({
+        patient_id: patientId,
+      } as CreateVisitDTO);
 
       const event = opdEvents.find((e) => e.pattern === visitCreatedEventName);
       const evt = event!.payload as VisitCreatedEvent;

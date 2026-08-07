@@ -4,8 +4,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { createPostgresOptions } from '@app/common';
 import { OpdHealthChecksController } from './health-checks.controller';
 import { OpdHealthChecksService } from './health-checks.service';
-import { PatientModule } from '@apps/opd-bc/patient/patient.module';
-import { VisitModule } from '@apps/opd-bc/visit/visit.module';
+import { PatientModule } from '@apps/opd-bc/modules/patient/patient.module';
+import { VisitModule } from '@apps/opd-bc/modules/visit/visit.module';
 import { CommonModule } from '@app/common';
 
 @Module({

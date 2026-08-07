@@ -103,4 +103,59 @@ describe('OutboxEventsService', () => {
     expect(pendingEvent.published_at).toBeInstanceOf(Date);
     expect(repository.save).toHaveBeenCalledWith(pendingEvent);
   });
+
+  it('starts and stops the periodic publisher safely', async () => {
+    jest.useFakeTimers();
+    const service = new OutboxEventsService(
+      {} as DataSource,
+      {
+        find: jest.fn().mockResolvedValue([]),
+      } as unknown as Repository<OutboxEvent>,
+      {} as ClientProxy,
+    );
+    const publishPending = jest
+      .spyOn(service, 'publishPending')
+      .mockResolvedValue(undefined);
+
+    await service.onModuleInit();
+    jest.advanceTimersByTime(5000);
+    service.onModuleDestroy();
+
+    expect(publishPending).toHaveBeenCalledTimes(2);
+    jest.useRealTimers();
+  });
+
+  it('does not overlap concurrent publisher runs', async () => {
+    let resolveFirst!: () => void;
+    const firstRun = new Promise<void>((resolve) => {
+      resolveFirst = resolve;
+    });
+    const repository = {
+      find: jest.fn().mockReturnValueOnce(firstRun).mockResolvedValueOnce([]),
+    } as unknown as jest.Mocked<Repository<OutboxEvent>>;
+    const service = new OutboxEventsService(
+      {} as DataSource,
+      repository,
+      {} as ClientProxy,
+    );
+
+    const first = service.publishPending();
+    await service.publishPending();
+    expect(repository.find).toHaveBeenCalledTimes(1);
+    resolveFirst();
+    await first;
+  });
+
+  it('handles a failure while loading pending events', async () => {
+    const repository = {
+      find: jest.fn().mockRejectedValue(new Error('database unavailable')),
+    } as unknown as jest.Mocked<Repository<OutboxEvent>>;
+    const service = new OutboxEventsService(
+      {} as DataSource,
+      repository,
+      {} as ClientProxy,
+    );
+
+    await expect(service.publishPending()).resolves.toBeUndefined();
+  });
 });

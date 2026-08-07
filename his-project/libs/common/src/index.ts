@@ -9,3 +9,4 @@ export * from './validation/strict-validation.pipe';
 export * from './config/environment.config';
 export * from './logging/structured.logger';
 export * from './logging/http.logging';
+export * from './testing/testing.helpers';
