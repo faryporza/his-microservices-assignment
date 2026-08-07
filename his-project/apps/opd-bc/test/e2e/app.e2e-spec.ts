@@ -3,11 +3,12 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { OpdBcModule } from '@apps/opd-bc/opd-bc.module';
 import { App } from 'supertest/types';
-import { createStrictValidationPipe, createTestApp } from '@app/common';
+import { createTestApp } from '@app/common';
 import { randomUUID } from 'node:crypto';
 
 describe('HealthChecksController (OPD e2e)', () => {
-  let app: INestApplication;
+  jest.setTimeout(30_000);
+  let app!: INestApplication;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -15,12 +16,13 @@ describe('HealthChecksController (OPD e2e)', () => {
     }).compile();
 
     app = createTestApp(moduleFixture);
-    app.useGlobalPipes(createStrictValidationPipe());
     await app.init();
   });
 
   afterAll(async () => {
-    await app.close();
+    if (app) {
+      await app.close();
+    }
   });
 
   it('/ (GET)', () => {

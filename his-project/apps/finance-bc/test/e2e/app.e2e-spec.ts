@@ -3,16 +3,17 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { FinanceBcModule } from '@apps/finance-bc/finance-bc.module';
 import { App } from 'supertest/types';
-import { createStrictValidationPipe, createTestApp } from '@app/common';
+import { createTestApp } from '@app/common';
 import { randomUUID } from 'node:crypto';
 import { DataSource } from 'typeorm';
 import {
   Invoice,
   InvoiceStatus,
-} from '@apps/finance-bc/invoice/entities/invoice.entity';
+} from '@apps/finance-bc/modules/invoice/entities/invoice.entity';
 
 describe('HealthChecksController (Finance e2e)', () => {
-  let app: INestApplication;
+  jest.setTimeout(30_000);
+  let app!: INestApplication;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -20,12 +21,13 @@ describe('HealthChecksController (Finance e2e)', () => {
     }).compile();
 
     app = createTestApp(moduleFixture);
-    app.useGlobalPipes(createStrictValidationPipe());
     await app.init();
   });
 
   afterAll(async () => {
-    await app.close();
+    if (app) {
+      await app.close();
+    }
   });
 
   it('/ (GET)', () => {

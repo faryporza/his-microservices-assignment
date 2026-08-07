@@ -1,8 +1,8 @@
 import { DataSource } from 'typeorm';
-import { MedicalRecord } from '@apps/emr-bc/medical-record/entities/medical-record.entity';
-import { CompleteTreatmentDTO } from '@apps/emr-bc/medical-record/dto/complete-treatment.dto';
-import { CreateMedicalRecordDTO } from '@apps/emr-bc/medical-record/dto/create-medical-record.dto';
-import { UpdateMedicalRecordDTO } from '@apps/emr-bc/medical-record/dto/update-medical-record.dto';
+import { MedicalRecord } from '@apps/emr-bc/modules/medical-record/entities/medical-record.entity';
+import { CompleteTreatmentDTO } from '@apps/emr-bc/modules/medical-record/dto/complete-treatment.dto';
+import { CreateMedicalRecordDTO } from '@apps/emr-bc/modules/medical-record/dto/create-medical-record.dto';
+import { UpdateMedicalRecordDTO } from '@apps/emr-bc/modules/medical-record/dto/update-medical-record.dto';
 
 describe('EMR persistence naming', () => {
   const dataSource = new DataSource({

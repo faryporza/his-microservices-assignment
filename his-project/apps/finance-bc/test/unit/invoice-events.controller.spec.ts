@@ -5,8 +5,8 @@ import {
   treatmentCompletedEventVersion,
   TreatmentCompletedEvent,
 } from '@app/contracts';
-import { InvoiceEventsController } from '@apps/finance-bc/invoice/invoice-events.controller';
-import { InvoicesService } from '@apps/finance-bc/invoice/invoices.service';
+import { InvoiceEventsController } from '@apps/finance-bc/modules/invoice/controllers/invoice-events.controller';
+import { InvoicesService } from '@apps/finance-bc/modules/invoice/services/invoices.service';
 
 describe('InvoiceEventsController', () => {
   const event: TreatmentCompletedEvent = {

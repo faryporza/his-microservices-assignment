@@ -1,4 +1,4 @@
-import { VisitsController } from '@apps/opd-bc/visit/visits.controller';
+import { VisitsController } from '@apps/opd-bc/modules/visit/controllers/visits.controller';
 import { createMockVisit, createMockVisitsService } from '../mocks/mock-visits';
 
 describe('VisitsController (Unit)', () => {

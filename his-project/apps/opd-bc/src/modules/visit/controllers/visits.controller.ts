@@ -7,8 +7,8 @@ import {
   ParseUUIDPipe,
   Post,
 } from '@nestjs/common';
-import { VisitsService } from './visits.service';
-import { CreateVisitDTO } from './dto/create-visit.dto';
+import { VisitsService } from '../services/visits.service';
+import { CreateVisitDTO } from '../dto/create-visit.dto';
 
 @Controller()
 export class VisitsController {

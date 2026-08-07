@@ -6,9 +6,9 @@ import {
   OutboxEventsService,
   StructuredLogger,
 } from '@app/common';
-import { Visit, VisitStatus } from './entities/visit.entity';
-import { Patient } from '@apps/opd-bc/patient/entities/patient.entity';
-import { CreateVisitDTO } from './dto/create-visit.dto';
+import { Visit, VisitStatus } from '../entities/visit.entity';
+import { Patient } from '@apps/opd-bc/modules/patient/entities/patient.entity';
+import { CreateVisitDTO } from '../dto/create-visit.dto';
 import {
   visitCreatedEventName,
   visitCreatedEventVersion,

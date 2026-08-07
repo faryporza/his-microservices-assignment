@@ -1,4 +1,4 @@
-import { InvoicesController } from '@apps/finance-bc/invoice/invoices.controller';
+import { InvoicesController } from '@apps/finance-bc/modules/invoice/controllers/invoices.controller';
 import {
   createMockInvoice,
   createMockInvoicesService,

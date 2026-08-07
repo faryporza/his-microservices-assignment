@@ -7,7 +7,7 @@ import {
   OneToMany,
   Unique,
 } from 'typeorm';
-import { Visit } from '@apps/opd-bc/visit/entities/visit.entity';
+import { Visit } from '@apps/opd-bc/modules/visit/entities/visit.entity';
 
 @Entity('patients')
 @Unique('uq_patients_hn', ['hn'])

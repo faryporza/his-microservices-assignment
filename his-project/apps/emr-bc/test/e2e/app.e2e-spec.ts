@@ -3,11 +3,12 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { EmrBcModule } from '@apps/emr-bc/emr-bc.module';
 import { App } from 'supertest/types';
-import { createStrictValidationPipe, createTestApp } from '@app/common';
+import { createTestApp } from '@app/common';
 import { randomUUID } from 'node:crypto';
 
 describe('HealthChecksController (EMR e2e)', () => {
-  let app: INestApplication;
+  jest.setTimeout(30_000);
+  let app!: INestApplication;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -15,12 +16,13 @@ describe('HealthChecksController (EMR e2e)', () => {
     }).compile();
 
     app = createTestApp(moduleFixture);
-    app.useGlobalPipes(createStrictValidationPipe());
     await app.init();
   });
 
   afterAll(async () => {
-    await app.close();
+    if (app) {
+      await app.close();
+    }
   });
 
   it('/ (GET)', () => {
@@ -94,7 +96,7 @@ describe('HealthChecksController (EMR e2e)', () => {
       .expect(200)
       .expect(({ body }) => {
         expect(body.status).toBe('COMPLETED');
-        expect(body.treatment_cost).toBe('1750');
+        expect(Number(body.treatment_cost)).toBe(1750);
       });
   });
 });

@@ -1,7 +1,7 @@
 import { DataSource } from 'typeorm';
-import { Invoice } from '@apps/finance-bc/invoice/entities/invoice.entity';
-import { CreateInvoiceDTO } from '@apps/finance-bc/invoice/dto/create-invoice.dto';
-import { PayInvoiceDTO } from '@apps/finance-bc/invoice/dto/pay-invoice.dto';
+import { Invoice } from '@apps/finance-bc/modules/invoice/entities/invoice.entity';
+import { CreateInvoiceDTO } from '@apps/finance-bc/modules/invoice/dto/create-invoice.dto';
+import { PayInvoiceDTO } from '@apps/finance-bc/modules/invoice/dto/pay-invoice.dto';
 
 describe('Invoice persistence naming', () => {
   it('uses the required table, column, primary key, and unique constraint names', async () => {

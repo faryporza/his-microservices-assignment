@@ -8,10 +8,10 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
-import { MedicalRecordsService } from './medical-records.service';
-import { CreateMedicalRecordDTO } from './dto/create-medical-record.dto';
-import { UpdateMedicalRecordDTO } from './dto/update-medical-record.dto';
-import { CompleteTreatmentDTO } from './dto/complete-treatment.dto';
+import { MedicalRecordsService } from '../services/medical-records.service';
+import { CreateMedicalRecordDTO } from '../dto/create-medical-record.dto';
+import { UpdateMedicalRecordDTO } from '../dto/update-medical-record.dto';
+import { CompleteTreatmentDTO } from '../dto/complete-treatment.dto';
 
 @Controller('records')
 export class MedicalRecordsController {

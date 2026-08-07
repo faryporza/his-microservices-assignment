@@ -1,5 +1,5 @@
-import { Visit } from '@apps/opd-bc/visit/entities/visit.entity';
-import { VisitsService } from '@apps/opd-bc/visit/visits.service';
+import { Visit } from '@apps/opd-bc/modules/visit/entities/visit.entity';
+import { VisitsService } from '@apps/opd-bc/modules/visit/services/visits.service';
 
 export function createMockVisitsService(): jest.Mocked<VisitsService> {
   return {

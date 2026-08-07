@@ -1,9 +1,12 @@
 import { NotFoundException } from '@nestjs/common';
 import { EntityManager, Repository } from 'typeorm';
 import { OutboxEventsService, IdempotencyService } from '@app/common';
-import { Patient } from '@apps/opd-bc/patient/entities/patient.entity';
-import { Visit, VisitStatus } from '@apps/opd-bc/visit/entities/visit.entity';
-import { VisitsService } from '@apps/opd-bc/visit/visits.service';
+import { Patient } from '@apps/opd-bc/modules/patient/entities/patient.entity';
+import {
+  Visit,
+  VisitStatus,
+} from '@apps/opd-bc/modules/visit/entities/visit.entity';
+import { VisitsService } from '@apps/opd-bc/modules/visit/services/visits.service';
 import { createMockVisit } from '../mocks/mock-visits';
 
 describe('VisitsService (Unit)', () => {

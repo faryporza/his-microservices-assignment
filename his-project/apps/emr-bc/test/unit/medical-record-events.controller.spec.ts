@@ -5,8 +5,8 @@ import {
   visitCreatedEventVersion,
   VisitCreatedEvent,
 } from '@app/contracts';
-import { MedicalRecordEventsController } from '@apps/emr-bc/medical-record/medical-record-events.controller';
-import { MedicalRecordsService } from '@apps/emr-bc/medical-record/medical-records.service';
+import { MedicalRecordEventsController } from '@apps/emr-bc/modules/medical-record/controllers/medical-record-events.controller';
+import { MedicalRecordsService } from '@apps/emr-bc/modules/medical-record/services/medical-records.service';
 
 describe('MedicalRecordEventsController', () => {
   const event: VisitCreatedEvent = {

@@ -1,41 +1,42 @@
-import { BadRequestException, Controller } from '@nestjs/common';
+import { Controller, NotFoundException } from '@nestjs/common';
 import { Ctx, EventPattern, Payload, RmqContext } from '@nestjs/microservices';
-import { StructuredLogger } from '@app/common';
-import { MedicalRecordsService } from './medical-records.service';
 import {
   hasValidEventMetadata,
   getEventIdForLog,
+  invoicePaidEventName,
+  invoicePaidEventVersion,
+  InvoicePaidEvent,
   isUuidV4,
-  visitCreatedEventName,
-  visitCreatedEventVersion,
-  VisitCreatedEvent,
 } from '@app/contracts';
 import type { Channel, ConsumeMessage } from 'amqplib';
+import { StructuredLogger } from '@app/common';
+import { VisitsService } from '../services/visits.service';
 
 /**
- * Consumes `visit.created` events from OPD and creates a medical record stub
- * with status `WAITING` so the EMR workflow can begin.
+ * Consumes `invoice.paid` events from Finance and closes the corresponding
+ * visit. Idempotent: a visit that is already `CLOSED` remains closed on
+ * duplicate events.
  */
 @Controller()
-export class MedicalRecordEventsController {
-  private readonly logger = new StructuredLogger('emr-bc');
+export class VisitEventsController {
+  private readonly logger = new StructuredLogger('opd-bc');
 
-  constructor(private readonly service: MedicalRecordsService) {}
+  constructor(private readonly service: VisitsService) {}
 
-  @EventPattern(visitCreatedEventName)
-  async handleVisitCreated(
+  @EventPattern(invoicePaidEventName)
+  async handleInvoicePaid(
     @Payload() event: unknown,
     @Ctx() context: RmqContext,
   ): Promise<void> {
     const channel = context.getChannelRef() as Channel;
     const message = context.getMessage() as ConsumeMessage;
 
-    if (!this.isVisitCreatedEvent(event)) {
+    if (!this.isInvoicePaidEvent(event)) {
       this.logger.warn({
         message: 'Invalid domain event discarded',
         context: {
           action: 'CONSUME_EVENT',
-          event_name: visitCreatedEventName,
+          event_name: invoicePaidEventName,
           event_id: getEventIdForLog(event),
           event_status: 'DISCARDED',
           error_type: 'InvalidEvent',
@@ -46,7 +47,7 @@ export class MedicalRecordEventsController {
     }
 
     try {
-      await this.service.processVisitCreated(event);
+      await this.service.processInvoicePaid(event);
       channel.ack(message);
       this.logger.log({
         message: 'Domain event processed',
@@ -59,11 +60,12 @@ export class MedicalRecordEventsController {
           event_name: event.metadata.eventName,
           event_id: event.metadata.eventId,
           visit_id: event.payload.visitId,
+          invoice_id: event.payload.invoiceId,
           event_status: 'ACKED',
         },
       });
     } catch (error: unknown) {
-      if (error instanceof BadRequestException) {
+      if (error instanceof NotFoundException) {
         this.logger.warn({
           message: 'Domain event discarded',
           trace: {
@@ -75,6 +77,7 @@ export class MedicalRecordEventsController {
             event_name: event.metadata.eventName,
             event_id: event.metadata.eventId,
             visit_id: event.payload.visitId,
+            invoice_id: event.payload.invoiceId,
             event_status: 'DISCARDED',
           },
           error,
@@ -94,6 +97,7 @@ export class MedicalRecordEventsController {
           event_name: event.metadata.eventName,
           event_id: event.metadata.eventId,
           visit_id: event.payload.visitId,
+          invoice_id: event.payload.invoiceId,
           event_status: 'REQUEUED',
         },
         error,
@@ -103,23 +107,22 @@ export class MedicalRecordEventsController {
     }
   }
 
-  private isVisitCreatedEvent(event: unknown): event is VisitCreatedEvent {
+  private isInvoicePaidEvent(event: unknown): event is InvoicePaidEvent {
     if (typeof event !== 'object' || event === null) {
       return false;
     }
 
-    const candidate = event as Partial<VisitCreatedEvent>;
+    const candidate = event as Partial<InvoicePaidEvent>;
     const payload = candidate.payload;
     return (
       hasValidEventMetadata(
         candidate.metadata,
-        visitCreatedEventName,
-        visitCreatedEventVersion,
+        invoicePaidEventName,
+        invoicePaidEventVersion,
       ) &&
       isUuidV4(payload?.visitId) &&
-      isUuidV4(payload.patientId) &&
-      typeof payload.timestamp === 'string' &&
-      !Number.isNaN(Date.parse(payload.timestamp))
+      isUuidV4(payload.invoiceId) &&
+      payload.status === 'PAID'
     );
   }
 }

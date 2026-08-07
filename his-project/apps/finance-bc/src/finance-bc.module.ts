@@ -4,7 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { createPostgresOptions } from '@app/common';
 import { FinanceHealthChecksController } from './health-checks.controller';
 import { FinanceHealthChecksService } from './health-checks.service';
-import { InvoiceModule } from '@apps/finance-bc/invoice/invoice.module';
+import { InvoiceModule } from '@apps/finance-bc/modules/invoice/invoice.module';
 import { CommonModule } from '@app/common';
 
 @Module({

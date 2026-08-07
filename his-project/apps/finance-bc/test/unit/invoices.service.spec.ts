@@ -14,8 +14,8 @@ import { of } from 'rxjs';
 import {
   Invoice,
   InvoiceStatus,
-} from '@apps/finance-bc/invoice/entities/invoice.entity';
-import { InvoicesService } from '@apps/finance-bc/invoice/invoices.service';
+} from '@apps/finance-bc/modules/invoice/entities/invoice.entity';
+import { InvoicesService } from '@apps/finance-bc/modules/invoice/services/invoices.service';
 
 describe('InvoicesService', () => {
   const repository = {

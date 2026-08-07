@@ -6,7 +6,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { Patient } from '@apps/opd-bc/patient/entities/patient.entity';
+import { Patient } from '@apps/opd-bc/modules/patient/entities/patient.entity';
 
 export enum VisitStatus {
   OPEN = 'OPEN',

@@ -1,5 +1,5 @@
-import { Patient } from '@apps/opd-bc/patient/entities/patient.entity';
-import { PatientsService } from '@apps/opd-bc/patient/patients.service';
+import { Patient } from '@apps/opd-bc/modules/patient/entities/patient.entity';
+import { PatientsService } from '@apps/opd-bc/modules/patient/services/patients.service';
 
 export function createMockPatientsService(): jest.Mocked<PatientsService> {
   return {

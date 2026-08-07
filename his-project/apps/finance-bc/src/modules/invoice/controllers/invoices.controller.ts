@@ -7,8 +7,8 @@ import {
   ParseUUIDPipe,
   Patch,
 } from '@nestjs/common';
-import { InvoicesService } from './invoices.service';
-import { PayInvoiceDTO } from './dto/pay-invoice.dto';
+import { InvoicesService } from '../services/invoices.service';
+import { PayInvoiceDTO } from '../dto/pay-invoice.dto';
 
 @Controller('invoices')
 export class InvoicesController {

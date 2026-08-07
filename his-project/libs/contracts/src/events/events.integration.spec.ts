@@ -16,28 +16,31 @@ import {
 } from '@app/common';
 
 // OPD
-import { VisitsService as OpdVisitsService } from '@apps/opd-bc/visit/visits.service';
-import { Visit, VisitStatus } from '@apps/opd-bc/visit/entities/visit.entity';
-import { Patient } from '@apps/opd-bc/patient/entities/patient.entity';
-import { CreateVisitDTO } from '@apps/opd-bc/visit/dto/create-visit.dto';
-import { VisitEventsController } from '@apps/opd-bc/visit/visit-events.controller';
+import { VisitsService as OpdVisitsService } from '@apps/opd-bc/modules/visit/services/visits.service';
+import {
+  Visit,
+  VisitStatus,
+} from '@apps/opd-bc/modules/visit/entities/visit.entity';
+import { Patient } from '@apps/opd-bc/modules/patient/entities/patient.entity';
+import { CreateVisitDTO } from '@apps/opd-bc/modules/visit/dto/create-visit.dto';
+import { VisitEventsController } from '@apps/opd-bc/modules/visit/controllers/visit-events.controller';
 
 // EMR
-import { MedicalRecordsService } from '@apps/emr-bc/medical-record/medical-records.service';
+import { MedicalRecordsService } from '@apps/emr-bc/modules/medical-record/services/medical-records.service';
 import {
   MedicalRecord,
   RecordStatus,
-} from '@apps/emr-bc/medical-record/entities/medical-record.entity';
-import { UpdateMedicalRecordDTO } from '@apps/emr-bc/medical-record/dto/update-medical-record.dto';
-import { MedicalRecordEventsController } from '@apps/emr-bc/medical-record/medical-record-events.controller';
+} from '@apps/emr-bc/modules/medical-record/entities/medical-record.entity';
+import { UpdateMedicalRecordDTO } from '@apps/emr-bc/modules/medical-record/dto/update-medical-record.dto';
+import { MedicalRecordEventsController } from '@apps/emr-bc/modules/medical-record/controllers/medical-record-events.controller';
 
 // Finance
-import { InvoicesService } from '@apps/finance-bc/invoice/invoices.service';
+import { InvoicesService } from '@apps/finance-bc/modules/invoice/services/invoices.service';
 import {
   Invoice,
   InvoiceStatus,
-} from '@apps/finance-bc/invoice/entities/invoice.entity';
-import { InvoiceEventsController } from '@apps/finance-bc/invoice/invoice-events.controller';
+} from '@apps/finance-bc/modules/invoice/entities/invoice.entity';
+import { InvoiceEventsController } from '@apps/finance-bc/modules/invoice/controllers/invoice-events.controller';
 
 // Contracts
 import {

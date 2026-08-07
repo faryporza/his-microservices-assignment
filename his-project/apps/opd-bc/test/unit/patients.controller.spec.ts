@@ -1,5 +1,5 @@
-import { PatientsController } from '@apps/opd-bc/patient/patients.controller';
-import { UpdatePatientDTO } from '@apps/opd-bc/patient/dto/update-patient.dto';
+import { PatientsController } from '@apps/opd-bc/modules/patient/controllers/patients.controller';
+import { UpdatePatientDTO } from '@apps/opd-bc/modules/patient/dto/update-patient.dto';
 import {
   createMockPatient,
   createMockPatientsService,

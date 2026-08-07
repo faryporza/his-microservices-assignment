@@ -11,8 +11,8 @@ import {
   OutboxEventsService,
   StructuredLogger,
 } from '@app/common';
-import { CreateInvoiceDTO } from './dto/create-invoice.dto';
-import { Invoice, InvoiceStatus } from './entities/invoice.entity';
+import { CreateInvoiceDTO } from '../dto/create-invoice.dto';
+import { Invoice, InvoiceStatus } from '../entities/invoice.entity';
 import {
   invoicePaidEventName,
   invoicePaidEventVersion,

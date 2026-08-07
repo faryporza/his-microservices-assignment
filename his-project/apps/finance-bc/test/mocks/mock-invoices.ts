@@ -1,5 +1,5 @@
-import { Invoice } from '@apps/finance-bc/invoice/entities/invoice.entity';
-import { InvoicesService } from '@apps/finance-bc/invoice/invoices.service';
+import { Invoice } from '@apps/finance-bc/modules/invoice/entities/invoice.entity';
+import { InvoicesService } from '@apps/finance-bc/modules/invoice/services/invoices.service';
 
 export function createMockInvoicesService(): jest.Mocked<InvoicesService> {
   return {

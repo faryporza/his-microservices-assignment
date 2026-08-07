@@ -1,8 +1,8 @@
 import {
   MedicalRecord,
   RecordStatus,
-} from '@apps/emr-bc/medical-record/entities/medical-record.entity';
-import { MedicalRecordsService } from '@apps/emr-bc/medical-record/medical-records.service';
+} from '@apps/emr-bc/modules/medical-record/entities/medical-record.entity';
+import { MedicalRecordsService } from '@apps/emr-bc/modules/medical-record/services/medical-records.service';
 
 export function createMockMedicalRecordsService(): jest.Mocked<MedicalRecordsService> {
   return {

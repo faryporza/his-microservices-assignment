@@ -10,10 +10,10 @@ import {
   OutboxEventsService,
   StructuredLogger,
 } from '@app/common';
-import { MedicalRecord, RecordStatus } from './entities/medical-record.entity';
-import { CreateMedicalRecordDTO } from './dto/create-medical-record.dto';
-import { UpdateMedicalRecordDTO } from './dto/update-medical-record.dto';
-import { CompleteTreatmentDTO } from './dto/complete-treatment.dto';
+import { MedicalRecord, RecordStatus } from '../entities/medical-record.entity';
+import { CreateMedicalRecordDTO } from '../dto/create-medical-record.dto';
+import { UpdateMedicalRecordDTO } from '../dto/update-medical-record.dto';
+import { CompleteTreatmentDTO } from '../dto/complete-treatment.dto';
 import {
   treatmentCompletedEventName,
   treatmentCompletedEventVersion,

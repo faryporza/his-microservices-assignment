@@ -5,8 +5,8 @@ import {
   invoicePaidEventVersion,
   InvoicePaidEvent,
 } from '@app/contracts';
-import { VisitEventsController } from '@apps/opd-bc/visit/visit-events.controller';
-import { VisitsService } from '@apps/opd-bc/visit/visits.service';
+import { VisitEventsController } from '@apps/opd-bc/modules/visit/controllers/visit-events.controller';
+import { VisitsService } from '@apps/opd-bc/modules/visit/services/visits.service';
 
 describe('VisitEventsController', () => {
   const event: InvoicePaidEvent = {
