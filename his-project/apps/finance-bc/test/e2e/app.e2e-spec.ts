@@ -3,8 +3,13 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { FinanceBcModule } from '@apps/finance-bc/finance-bc.module';
 import { App } from 'supertest/types';
-import { createStrictValidationPipe } from '@app/common';
+import { createStrictValidationPipe, createTestApp } from '@app/common';
 import { randomUUID } from 'node:crypto';
+import { DataSource } from 'typeorm';
+import {
+  Invoice,
+  InvoiceStatus,
+} from '@apps/finance-bc/invoice/entities/invoice.entity';
 
 describe('HealthChecksController (Finance e2e)', () => {
   let app: INestApplication;
@@ -14,7 +19,7 @@ describe('HealthChecksController (Finance e2e)', () => {
       imports: [FinanceBcModule],
     }).compile();
 
-    app = moduleFixture.createNestApplication();
+    app = createTestApp(moduleFixture);
     app.useGlobalPipes(createStrictValidationPipe());
     await app.init();
   });
@@ -47,5 +52,37 @@ describe('HealthChecksController (Finance e2e)', () => {
       .patch(`/invoices/${invoiceId}/pay`)
       .send({})
       .expect(404);
+  });
+
+  it('reads and pays a persisted invoice', async () => {
+    const visitId = randomUUID();
+    const repository = app.get(DataSource).getRepository(Invoice);
+    const invoice = await repository.save(
+      repository.create({
+        visit_id: visitId,
+        record_id: randomUUID(),
+        total_amount: '1500.00',
+        status: InvoiceStatus.PENDING,
+        correlation_id: 'e2e-correlation-id',
+        paid_at: null,
+      }),
+    );
+
+    await request(app.getHttpServer() as App)
+      .get(`/invoices/${visitId}`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body[0].id).toBe(invoice.id);
+        expect(body[0].status).toBe('PENDING');
+      });
+
+    await request(app.getHttpServer() as App)
+      .patch(`/invoices/${invoice.id}/pay`)
+      .send({ status: 'PAID' })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.status).toBe('PAID');
+        expect(body.paid_at).not.toBeNull();
+      });
   });
 });

@@ -1,6 +1,6 @@
-import { MedicalRecordsController } from './medical-records.controller';
-import { MedicalRecordsService } from './medical-records.service';
-import { CompleteTreatmentDTO } from './dto/complete-treatment.dto';
+import { MedicalRecordsController } from '@apps/emr-bc/medical-record/medical-records.controller';
+import { MedicalRecordsService } from '@apps/emr-bc/medical-record/medical-records.service';
+import { CompleteTreatmentDTO } from '@apps/emr-bc/medical-record/dto/complete-treatment.dto';
 
 describe('MedicalRecordsController', () => {
   it('keeps the legacy complete route mapped to completeTreatment', async () => {

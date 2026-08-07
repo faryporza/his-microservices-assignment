@@ -3,7 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { OpdBcModule } from '@apps/opd-bc/opd-bc.module';
 import { App } from 'supertest/types';
-import { createStrictValidationPipe } from '@app/common';
+import { createStrictValidationPipe, createTestApp } from '@app/common';
 import { randomUUID } from 'node:crypto';
 
 describe('HealthChecksController (OPD e2e)', () => {
@@ -14,7 +14,7 @@ describe('HealthChecksController (OPD e2e)', () => {
       imports: [OpdBcModule],
     }).compile();
 
-    app = moduleFixture.createNestApplication();
+    app = createTestApp(moduleFixture);
     app.useGlobalPipes(createStrictValidationPipe());
     await app.init();
   });
@@ -77,5 +77,46 @@ describe('HealthChecksController (OPD e2e)', () => {
     await request(app.getHttpServer() as App)
       .delete(`/patients/${randomUUID()}`)
       .expect(404);
+  });
+
+  it('completes patient and visit CRUD with persisted state', async () => {
+    const suffix = randomUUID().slice(0, 8);
+    const patient = await request(app.getHttpServer() as App)
+      .post('/patients')
+      .send({
+        hn: `HN-E2E-${suffix}`,
+        first_name: 'Ada',
+        last_name: 'Lovelace',
+        id_card: `E2E-${suffix}`,
+      })
+      .expect(201);
+
+    expect(patient.body.status).toBeUndefined();
+    const patientId = patient.body.id as string;
+
+    const visit = await request(app.getHttpServer() as App)
+      .post('/visits')
+      .send({ patient_id: patientId })
+      .expect(201);
+    expect(visit.body.status).toBe('OPEN');
+
+    await request(app.getHttpServer() as App)
+      .patch(`/patients/${patientId}`)
+      .send({ first_name: 'Augusta' })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.first_name).toBe('Augusta');
+      });
+
+    await request(app.getHttpServer() as App)
+      .get(`/patients/${patientId}`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.id).toBe(patientId);
+      });
+
+    await request(app.getHttpServer() as App)
+      .delete(`/patients/${patientId}`)
+      .expect(204);
   });
 });

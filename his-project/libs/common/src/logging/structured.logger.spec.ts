@@ -128,4 +128,54 @@ describe('StructuredLogger', () => {
       level: 'warn',
     });
   });
+
+  it('supports explicit log levels, framework errors, and nested sanitization', () => {
+    const stdout = jest
+      .spyOn(process.stdout, 'write')
+      .mockImplementation(() => true);
+    const stderr = jest
+      .spyOn(process.stderr, 'write')
+      .mockImplementation(() => true);
+    const logger = new StructuredLogger('opd-bc', '1.2.0');
+    logger.setLogLevels(['error']);
+
+    logger.debug({ message: 'hidden', context: {} });
+    logger.log(new Error('database password=hidden'), 'NestFactory');
+    logger.error({
+      message: 'failed',
+      trace: { traceId: ' '.repeat(129) },
+      user: { id: 'user-1', role: 'doctor' },
+      context: {
+        nested: { token: 'hidden', values: ['1234567890123', 'safe'] },
+      },
+    });
+
+    expect(stdout).not.toHaveBeenCalled();
+    expect(stderr).toHaveBeenCalledTimes(1);
+    const payload = JSON.parse(String(stderr.mock.calls[0][0])) as {
+      user: Record<string, string>;
+      context: Record<string, unknown>;
+    };
+    expect(payload.user).toEqual({ id: 'user-1', role: 'doctor' });
+    expect(payload.context).toEqual({
+      nested: { token: '[REDACTED]', values: ['[REDACTED_NUMBER]', 'safe'] },
+    });
+  });
+
+  it('normalizes invalid levels and unknown values safely', () => {
+    process.env.LOG_LEVEL = 'not-a-level';
+    const write = jest
+      .spyOn(process.stdout, 'write')
+      .mockImplementation(() => true);
+    const logger = new StructuredLogger('opd-bc', '1.2.0');
+
+    logger.verbose({ message: { unexpected: true }, context: {} });
+    logger.log(null);
+
+    expect(write).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(String(write.mock.calls[0][0]))).toMatchObject({
+      level: 'debug',
+      message: 'Framework lifecycle event',
+    });
+  });
 });

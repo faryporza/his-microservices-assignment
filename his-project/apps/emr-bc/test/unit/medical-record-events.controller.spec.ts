@@ -1,52 +1,52 @@
 import { RmqContext } from '@nestjs/microservices';
 import { StructuredLogger } from '@app/common';
 import {
-  treatmentCompletedEventName,
-  treatmentCompletedEventVersion,
-  TreatmentCompletedEvent,
+  visitCreatedEventName,
+  visitCreatedEventVersion,
+  VisitCreatedEvent,
 } from '@app/contracts';
-import { InvoiceEventsController } from './invoice-events.controller';
-import { InvoicesService } from './invoices.service';
+import { MedicalRecordEventsController } from '@apps/emr-bc/medical-record/medical-record-events.controller';
+import { MedicalRecordsService } from '@apps/emr-bc/medical-record/medical-records.service';
 
-describe('InvoiceEventsController', () => {
-  const event: TreatmentCompletedEvent = {
+describe('MedicalRecordEventsController', () => {
+  const event: VisitCreatedEvent = {
     metadata: {
       eventId: '7c9e6679-7425-40de-944b-e07fc1f90ae7',
-      eventName: treatmentCompletedEventName,
-      version: treatmentCompletedEventVersion,
+      eventName: visitCreatedEventName,
+      version: visitCreatedEventVersion,
       occurredAt: '2026-08-01T00:00:00.000Z',
       correlationId: 'correlation-id',
       traceId: 'trace-id',
     },
     payload: {
       visitId: '550e8400-e29b-41d4-a716-446655440000',
-      recordId: '6ba7b810-9dad-41d1-80b4-00c04fd430c8',
-      treatmentCost: '1500.00',
+      patientId: '6ba7b810-9dad-41d1-80b4-00c04fd430c8',
+      timestamp: '2026-08-01T00:00:00.000Z',
     },
   };
   const service = {
-    processTreatmentCompleted: jest.fn(),
-  } as unknown as jest.Mocked<InvoicesService>;
+    processVisitCreated: jest.fn(),
+  } as unknown as jest.Mocked<MedicalRecordsService>;
   const channel = { ack: jest.fn(), nack: jest.fn() };
   const message = { content: Buffer.from('{}') };
   const context = {
     getChannelRef: () => channel,
     getMessage: () => message,
   } as unknown as RmqContext;
-  const consumer = new InvoiceEventsController(service);
+  const consumer = new MedicalRecordEventsController(service);
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service.processTreatmentCompleted.mockResolvedValue(undefined);
+    service.processVisitCreated.mockResolvedValue(undefined);
   });
 
-  it('ACKs only after invoice and event marker are committed', async () => {
-    await consumer.handleTreatmentCompleted(event, context);
+  it('ACKs only after business logic succeeds', async () => {
+    await consumer.handleVisitCreated(event, context);
 
-    expect(service.processTreatmentCompleted).toHaveBeenCalledWith(event);
+    expect(service.processVisitCreated).toHaveBeenCalledWith(event);
     expect(channel.ack).toHaveBeenCalledWith(message);
     expect(
-      service.processTreatmentCompleted.mock.invocationCallOrder[0],
+      service.processVisitCreated.mock.invocationCallOrder[0],
     ).toBeLessThan(channel.ack.mock.invocationCallOrder[0]);
   });
 
@@ -54,12 +54,12 @@ describe('InvoiceEventsController', () => {
     const log = jest
       .spyOn(StructuredLogger.prototype, 'warn')
       .mockImplementation();
-    await consumer.handleTreatmentCompleted(
-      { ...event, payload: { ...event.payload, treatmentCost: '-1' } },
+    await consumer.handleVisitCreated(
+      { ...event, payload: { ...event.payload, visitId: 'invalid' } },
       context,
     );
 
-    expect(service.processTreatmentCompleted).not.toHaveBeenCalled();
+    expect(service.processVisitCreated).not.toHaveBeenCalled();
     expect(channel.nack).toHaveBeenCalledWith(message, false, false);
     expect(log).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -74,11 +74,11 @@ describe('InvoiceEventsController', () => {
 
   it('NACKs transient failures and requeues', async () => {
     const error = new Error('database unavailable');
-    service.processTreatmentCompleted.mockRejectedValue(error);
+    service.processVisitCreated.mockRejectedValue(error);
 
-    await expect(
-      consumer.handleTreatmentCompleted(event, context),
-    ).rejects.toThrow(error);
+    await expect(consumer.handleVisitCreated(event, context)).rejects.toThrow(
+      error,
+    );
 
     expect(channel.ack).not.toHaveBeenCalled();
     expect(channel.nack).toHaveBeenCalledWith(message, false, true);

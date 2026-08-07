@@ -11,8 +11,11 @@ import {
   OutboxEventsService,
 } from '@app/common';
 import { of } from 'rxjs';
-import { Invoice, InvoiceStatus } from './entities/invoice.entity';
-import { InvoicesService } from './invoices.service';
+import {
+  Invoice,
+  InvoiceStatus,
+} from '@apps/finance-bc/invoice/entities/invoice.entity';
+import { InvoicesService } from '@apps/finance-bc/invoice/invoices.service';
 
 describe('InvoicesService', () => {
   const repository = {

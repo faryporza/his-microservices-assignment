@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { EmrHealthChecksController } from './health-checks.controller';
-import { EmrHealthChecksService } from './health-checks.service';
+import { EmrHealthChecksController } from '@apps/emr-bc/health-checks.controller';
+import { EmrHealthChecksService } from '@apps/emr-bc/health-checks.service';
 
 describe('EmrHealthChecksController', () => {
   let healthChecksController: EmrHealthChecksController;

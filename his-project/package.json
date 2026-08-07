@@ -12,14 +12,22 @@
     "start:dev": "nest start opd-bc --watch",
     "start:debug": "nest start opd-bc --debug --watch",
     "start:prod": "node dist/apps/opd-bc/main",
+    "start:prod:opd": "node dist/apps/opd-bc/main",
+    "start:prod:emr": "node dist/apps/emr-bc/main",
+    "start:prod:finance": "node dist/apps/finance-bc/main",
     "start:emr": "nest start emr-bc",
     "start:finance": "nest start finance-bc",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+    "lint:check": "eslint \"{src,apps,libs,test}/**/*.ts\"",
     "test": "jest",
+    "test:opd": "jest --config apps/opd-bc/jest.config.js",
+    "test:emr": "jest --config apps/emr-bc/jest.config.js",
+    "test:finance": "jest --config apps/finance-bc/jest.config.js",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./apps/opd-bc/test/jest-e2e.json && jest --config ./apps/emr-bc/test/jest-e2e.json && jest --config ./apps/finance-bc/test/jest-e2e.json"
+    "test:e2e": "jest --config ./apps/opd-bc/test/jest-e2e.json && jest --config ./apps/emr-bc/test/jest-e2e.json && jest --config ./apps/finance-bc/test/jest-e2e.json",
+    "test:flow": "node test/e2e/live-flow.e2e.mjs"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
@@ -64,33 +72,5 @@
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.20.0"
-  },
-  "jest": {
-    "moduleFileExtensions": [
-      "js",
-      "json",
-      "ts"
-    ],
-    "rootDir": ".",
-    "testRegex": ".*\\.spec\\.ts$",
-    "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
-    },
-    "collectCoverageFrom": [
-      "**/*.(t|j)s"
-    ],
-    "coverageDirectory": "./coverage",
-    "testEnvironment": "node",
-    "roots": [
-      "<rootDir>/apps/",
-      "<rootDir>/libs/"
-    ],
-    "moduleNameMapper": {
-      "^@apps/opd-bc(|/.*)$": "<rootDir>/apps/opd-bc/src/$1",
-      "^@apps/finance-bc(|/.*)$": "<rootDir>/apps/finance-bc/src/$1",
-      "^@apps/emr-bc(|/.*)$": "<rootDir>/apps/emr-bc/src/$1",
-      "^@app/common(|/.*)$": "<rootDir>/libs/common/src/$1",
-      "^@app/contracts(|/.*)$": "<rootDir>/libs/contracts/src/$1"
-    }
   }
 }

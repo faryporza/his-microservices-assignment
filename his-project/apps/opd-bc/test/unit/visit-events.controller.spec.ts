@@ -1,65 +1,64 @@
 import { RmqContext } from '@nestjs/microservices';
 import { StructuredLogger } from '@app/common';
 import {
-  visitCreatedEventName,
-  visitCreatedEventVersion,
-  VisitCreatedEvent,
+  invoicePaidEventName,
+  invoicePaidEventVersion,
+  InvoicePaidEvent,
 } from '@app/contracts';
-import { MedicalRecordEventsController } from './medical-record-events.controller';
-import { MedicalRecordsService } from './medical-records.service';
+import { VisitEventsController } from '@apps/opd-bc/visit/visit-events.controller';
+import { VisitsService } from '@apps/opd-bc/visit/visits.service';
 
-describe('MedicalRecordEventsController', () => {
-  const event: VisitCreatedEvent = {
+describe('VisitEventsController', () => {
+  const event: InvoicePaidEvent = {
     metadata: {
       eventId: '7c9e6679-7425-40de-944b-e07fc1f90ae7',
-      eventName: visitCreatedEventName,
-      version: visitCreatedEventVersion,
+      eventName: invoicePaidEventName,
+      version: invoicePaidEventVersion,
       occurredAt: '2026-08-01T00:00:00.000Z',
       correlationId: 'correlation-id',
       traceId: 'trace-id',
     },
     payload: {
       visitId: '550e8400-e29b-41d4-a716-446655440000',
-      patientId: '6ba7b810-9dad-41d1-80b4-00c04fd430c8',
-      timestamp: '2026-08-01T00:00:00.000Z',
+      invoiceId: '6ba7b810-9dad-41d1-80b4-00c04fd430c8',
+      status: 'PAID',
     },
   };
   const service = {
-    processVisitCreated: jest.fn(),
-  } as unknown as jest.Mocked<MedicalRecordsService>;
+    processInvoicePaid: jest.fn(),
+  } as unknown as jest.Mocked<VisitsService>;
   const channel = { ack: jest.fn(), nack: jest.fn() };
   const message = { content: Buffer.from('{}') };
   const context = {
     getChannelRef: () => channel,
     getMessage: () => message,
   } as unknown as RmqContext;
-  const consumer = new MedicalRecordEventsController(service);
+  const consumer = new VisitEventsController(service);
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service.processVisitCreated.mockResolvedValue(undefined);
+    service.processInvoicePaid.mockResolvedValue(undefined);
   });
 
-  it('ACKs only after business logic succeeds', async () => {
-    await consumer.handleVisitCreated(event, context);
+  it('ACKs successful and duplicate invoice.paid events', async () => {
+    await consumer.handleInvoicePaid(event, context);
+    await consumer.handleInvoicePaid(event, context);
 
-    expect(service.processVisitCreated).toHaveBeenCalledWith(event);
-    expect(channel.ack).toHaveBeenCalledWith(message);
-    expect(
-      service.processVisitCreated.mock.invocationCallOrder[0],
-    ).toBeLessThan(channel.ack.mock.invocationCallOrder[0]);
+    expect(service.processInvoicePaid).toHaveBeenCalledTimes(2);
+    expect(channel.ack).toHaveBeenCalledTimes(2);
+    expect(channel.nack).not.toHaveBeenCalled();
   });
 
   it('NACKs invalid messages without requeueing', async () => {
     const log = jest
       .spyOn(StructuredLogger.prototype, 'warn')
       .mockImplementation();
-    await consumer.handleVisitCreated(
-      { ...event, payload: { ...event.payload, visitId: 'invalid' } },
+    await consumer.handleInvoicePaid(
+      { ...event, payload: { ...event.payload, status: 'PENDING' } },
       context,
     );
 
-    expect(service.processVisitCreated).not.toHaveBeenCalled();
+    expect(service.processInvoicePaid).not.toHaveBeenCalled();
     expect(channel.nack).toHaveBeenCalledWith(message, false, false);
     expect(log).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -74,9 +73,9 @@ describe('MedicalRecordEventsController', () => {
 
   it('NACKs transient failures and requeues', async () => {
     const error = new Error('database unavailable');
-    service.processVisitCreated.mockRejectedValue(error);
+    service.processInvoicePaid.mockRejectedValue(error);
 
-    await expect(consumer.handleVisitCreated(event, context)).rejects.toThrow(
+    await expect(consumer.handleInvoicePaid(event, context)).rejects.toThrow(
       error,
     );
 

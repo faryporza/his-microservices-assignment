@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { OpdHealthChecksController } from './health-checks.controller';
-import { OpdHealthChecksService } from './health-checks.service';
+import { OpdHealthChecksController } from '@apps/opd-bc/health-checks.controller';
+import { OpdHealthChecksService } from '@apps/opd-bc/health-checks.service';
 
 describe('OpdHealthChecksController', () => {
   let healthChecksController: OpdHealthChecksController;
