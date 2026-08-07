@@ -106,7 +106,7 @@ X-Correlation-Id: 550e8400-e29b-41d4-a716-446655440000
 | `emr_db`      | `medical_records`  | `pk_medical_records`  | `uq_medical_records_visit_id`           |
 | `finance_db`  | `invoices`         | `pk_invoices`         | `uq_invoices_visit_id`                  |
 | service-local | `processed_events` | `pk_processed_events` | `uq_processed_events_event_id`          |
-| service-local | `outbox_events`    | `pk_outbox_events`     | `uq_outbox_events_event_id`, `idx_outbox_events_published_at` |
+| service-local | `outbox_events`    | `pk_outbox_events`    | `uq_outbox_events_event_id`, `idx_outbox_events_published_at` |
 
 All table and column names are `snake_case`; tables are plural. Cross-service
 references such as `visit_id` are scalar UUIDs and never database foreign keys.
@@ -120,6 +120,8 @@ From `his-project/`:
 ```bash
 npm install
 npm test -- --runInBand
+npm run lint:check
+npm run test:cov
 npm run test:e2e
 npm run build
 ```

@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "HIS Microservices",
-    "description": "Happy-path collection for the OPD → EMR → Finance event flow.",
+    "name": "HIS Microservices — repeatable business flow",
+    "description": "Repeatable OPD → EMR → Finance flow with unique patient data, eventual-consistency retries, and state assertions.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -11,38 +11,60 @@
     { "key": "patient_id", "value": "" },
     { "key": "visit_id", "value": "" },
     { "key": "record_id", "value": "" },
-    { "key": "invoice_id", "value": "" }
+    { "key": "invoice_id", "value": "" },
+    { "key": "retry_count", "value": "0" }
   ],
   "item": [
     {
-      "name": "1. Register patient",
-      "request": {
-        "method": "POST",
-        "header": [{ "key": "Content-Type", "value": "application/json" }],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"hn\": \"HN-POSTMAN-001\",\n  \"first_name\": \"Somchai\",\n  \"last_name\": \"Jaidee\",\n  \"id_card\": \"1101700203456\"\n}"
-        },
-        "url": {
-          "raw": "{{opd_base_url}}/patients",
-          "host": ["{{opd_base_url}}"],
-          "path": ["patients"]
-        }
-      },
+      "name": "1. Register unique patient",
       "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const suffix = Date.now().toString();",
+              "pm.collectionVariables.set('test_suffix', suffix);",
+              "pm.collectionVariables.set('retry_count', '0');"
+            ]
+          }
+        },
         {
           "listen": "test",
           "script": {
             "exec": [
               "pm.test('patient created', function () { pm.response.to.have.status(201); });",
-              "pm.collectionVariables.set('patient_id', pm.response.json().id);"
+              "const body = pm.response.json();",
+              "pm.expect(body.id).to.be.a('string');",
+              "pm.collectionVariables.set('patient_id', body.id);"
             ]
           }
         }
-      ]
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"hn\": \"HN-POSTMAN-{{test_suffix}}\",\n  \"first_name\": \"Somchai\",\n  \"last_name\": \"Jaidee\",\n  \"id_card\": \"ID-POSTMAN-{{test_suffix}}\"\n}"
+        },
+        "url": "{{opd_base_url}}/patients"
+      }
     },
     {
       "name": "2. Open visit",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('visit opened', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "pm.expect(body.status).to.eql('OPEN');",
+              "pm.collectionVariables.set('visit_id', body.id);"
+            ]
+          }
+        }
+      ],
       "request": {
         "method": "POST",
         "header": [
@@ -53,49 +75,51 @@
           "mode": "raw",
           "raw": "{\n  \"patient_id\": \"{{patient_id}}\"\n}"
         },
-        "url": {
-          "raw": "{{opd_base_url}}/visits",
-          "host": ["{{opd_base_url}}"],
-          "path": ["visits"]
-        }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "exec": [
-              "pm.test('visit opened', function () { pm.response.to.have.status(201); });",
-              "pm.collectionVariables.set('visit_id', pm.response.json().id);"
-            ]
-          }
-        }
-      ]
+        "url": "{{opd_base_url}}/visits"
+      }
     },
     {
-      "name": "3. Read waiting medical record",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{emr_base_url}}/records/visit/{{visit_id}}",
-          "host": ["{{emr_base_url}}"],
-          "path": ["records", "visit", "{{visit_id}}"]
-        }
-      },
+      "name": "3. Wait for medical record",
       "event": [
         {
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test('record is waiting', function () { pm.response.to.have.status(200); });",
-              "pm.collectionVariables.set('record_id', pm.response.json()[0].id);"
+              "const maxRetries = 20;",
+              "const body = pm.response.json();",
+              "if (pm.response.code === 200 && Array.isArray(body) && body.length > 0) {",
+              "  pm.test('waiting record created', function () { pm.expect(body[0].status).to.eql('WAITING'); });",
+              "  pm.collectionVariables.set('record_id', body[0].id);",
+              "  pm.collectionVariables.set('retry_count', '0');",
+              "} else {",
+              "  const retryCount = Number(pm.collectionVariables.get('retry_count') || '0') + 1;",
+              "  pm.collectionVariables.set('retry_count', String(retryCount));",
+              "  pm.test('record endpoint is retryable', function () { pm.expect([200, 404]).to.include(pm.response.code); });",
+              "  if (retryCount < maxRetries) pm.execution.setNextRequest('3. Wait for medical record');",
+              "  else pm.expect.fail('Medical record was not created in time');",
+              "}"
             ]
           }
         }
-      ]
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{emr_base_url}}/records/visit/{{visit_id}}"
+      }
     },
     {
       "name": "4. Complete treatment",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('treatment completed', function () { pm.response.to.have.status(200); });",
+              "pm.expect(pm.response.json().status).to.eql('COMPLETED');"
+            ]
+          }
+        }
+      ],
       "request": {
         "method": "PATCH",
         "header": [
@@ -104,40 +128,54 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"doctor_id\": \"doctor-001\",\n  \"diagnosis\": \"Influenza\",\n  \"treatment_note\": \"Rest and fluids\",\n  \"treatment_cost\": 1500\n}"
+          "raw": "{\n  \"doctor_id\": \"doctor-001\",\n  \"diagnosis\": \"Influenza\",\n  \"treatment_note\": \"Rest and fluids\",\n  \"treatment_cost\": 1500,\n  \"status\": \"COMPLETED\"\n}"
         },
-        "url": {
-          "raw": "{{emr_base_url}}/records/{{record_id}}/complete",
-          "host": ["{{emr_base_url}}"],
-          "path": ["records", "{{record_id}}", "complete"]
-        }
+        "url": "{{emr_base_url}}/records/{{record_id}}"
       }
     },
     {
-      "name": "5. Read invoice",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{finance_base_url}}/invoices/{{visit_id}}",
-          "host": ["{{finance_base_url}}"],
-          "path": ["invoices", "{{visit_id}}"]
-        }
-      },
+      "name": "5. Wait for pending invoice",
       "event": [
         {
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test('invoice created', function () { pm.response.to.have.status(200); });",
-              "pm.collectionVariables.set('invoice_id', pm.response.json()[0].id);"
+              "const maxRetries = 20;",
+              "const body = pm.response.json();",
+              "if (pm.response.code === 200 && Array.isArray(body) && body.length > 0) {",
+              "  pm.test('pending invoice created', function () { pm.expect(body[0].status).to.eql('PENDING'); });",
+              "  pm.collectionVariables.set('invoice_id', body[0].id);",
+              "  pm.collectionVariables.set('retry_count', '0');",
+              "} else {",
+              "  const retryCount = Number(pm.collectionVariables.get('retry_count') || '0') + 1;",
+              "  pm.collectionVariables.set('retry_count', String(retryCount));",
+              "  pm.test('invoice endpoint is retryable', function () { pm.expect([200, 404]).to.include(pm.response.code); });",
+              "  if (retryCount < maxRetries) pm.execution.setNextRequest('5. Wait for pending invoice');",
+              "  else pm.expect.fail('Invoice was not created in time');",
+              "}"
             ]
           }
         }
-      ]
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{finance_base_url}}/invoices/{{visit_id}}"
+      }
     },
     {
       "name": "6. Pay invoice",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('invoice paid', function () { pm.response.to.have.status(200); });",
+              "pm.expect(pm.response.json().status).to.eql('PAID');",
+              "pm.expect(pm.response.json().paid_at).not.to.eql(null);"
+            ]
+          }
+        }
+      ],
       "request": {
         "method": "PATCH",
         "header": [
@@ -148,23 +186,35 @@
           "mode": "raw",
           "raw": "{\n  \"status\": \"PAID\"\n}"
         },
-        "url": {
-          "raw": "{{finance_base_url}}/invoices/{{invoice_id}}/pay",
-          "host": ["{{finance_base_url}}"],
-          "path": ["invoices", "{{invoice_id}}", "pay"]
-        }
+        "url": "{{finance_base_url}}/invoices/{{invoice_id}}/pay"
       }
     },
     {
-      "name": "7. Verify closed visit",
+      "name": "7. Wait for closed visit",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const maxRetries = 20;",
+              "const body = pm.response.json();",
+              "if (pm.response.code === 200 && body.status === 'CLOSED') {",
+              "  pm.test('visit closed', function () { pm.expect(body.status).to.eql('CLOSED'); });",
+              "  pm.collectionVariables.set('retry_count', '0');",
+              "} else {",
+              "  const retryCount = Number(pm.collectionVariables.get('retry_count') || '0') + 1;",
+              "  pm.collectionVariables.set('retry_count', String(retryCount));",
+              "  pm.test('visit endpoint is retryable', function () { pm.expect(pm.response.code).to.eql(200); });",
+              "  if (retryCount < maxRetries) pm.execution.setNextRequest('7. Wait for closed visit');",
+              "  else pm.expect.fail('Visit was not closed in time');",
+              "}"
+            ]
+          }
+        }
+      ],
       "request": {
         "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{opd_base_url}}/visits/{{visit_id}}",
-          "host": ["{{opd_base_url}}"],
-          "path": ["visits", "{{visit_id}}"]
-        }
+        "url": "{{opd_base_url}}/visits/{{visit_id}}"
       }
     }
   ]
