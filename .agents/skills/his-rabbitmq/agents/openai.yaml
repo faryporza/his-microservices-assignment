@@ -1,0 +1,6 @@
+interface:
+  display_name: "HIS RabbitMQ"
+  short_description: "Implement durable HIS event-driven messaging"
+  default_prompt: "Use $his-rabbitmq to implement this HIS RabbitMQ event flow."
+policy:
+  allow_implicit_invocation: true

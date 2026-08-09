@@ -80,8 +80,8 @@ GET http://localhost:3001/records/visit/<VISIT_UUID>
 
 ### 4. หมอบันทึกผลการรักษา
 
-ใช้ Medical Record ที่ EMR สร้างอัตโนมัติในขั้นตอนก่อนหน้า ไม่ต้อง `POST /records`
-ซ้ำ เพราะ `visit_id` มี unique constraint
+ใน happy path ให้ใช้ Medical Record ที่ EMR สร้างอัตโนมัติในขั้นตอนก่อนหน้า
+จึงไม่ต้องเรียก `POST /records` ซ้ำ เพราะ `visit_id` มี unique constraint
 
 ```http
 PATCH http://localhost:3001/records/<RECORD_UUID>/complete
@@ -191,6 +191,7 @@ that are still pending, and consumers remain idempotent if a publish is retried.
 | OPD | `GET` | `/visits/:id` | ดู Visit ตาม ID |
 | OPD | `GET` | `/patients/:patientId/visits` | ดู Visit ของ Patient |
 | EMR | `GET` | `/records` | ดู Record ทั้งหมด |
+| EMR | `POST` | `/records` | สร้าง Medical Record |
 | EMR | `GET` | `/records/:id` | ดู Record ตาม ID |
 | EMR | `GET` | `/records/visit/:visitId` | ดู Record ตาม Visit |
 | EMR | `PATCH` | `/records/:id` | แก้ไข/บันทึกผลการรักษา |
