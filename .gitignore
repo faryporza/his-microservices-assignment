@@ -11,10 +11,7 @@ coverage/
 !.env.example
 
 # Skill & Guidelines
-SKILL.md
-.agents/
 skills-lock.json
-AGENTS.md
 
 # Test Reports
 TEST_RESULTS.md
