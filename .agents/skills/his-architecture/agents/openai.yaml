@@ -1,6 +1,0 @@
-interface:
-  display_name: "HIS Architecture"
-  short_description: "Protect service boundaries and database ownership"
-  default_prompt: "Use $his-architecture to review this HIS design change."
-policy:
-  allow_implicit_invocation: true

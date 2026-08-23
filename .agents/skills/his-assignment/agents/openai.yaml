@@ -1,6 +1,0 @@
-interface:
-  display_name: "HIS Assignment"
-  short_description: "Audit and complete the required HIS project scope"
-  default_prompt: "Use $his-assignment to audit this repository against the HIS assignment and Blueprint."
-policy:
-  allow_implicit_invocation: true

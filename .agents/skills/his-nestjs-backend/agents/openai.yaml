@@ -1,6 +1,0 @@
-interface:
-  display_name: "HIS NestJS Backend"
-  short_description: "Build consistent NestJS bounded contexts"
-  default_prompt: "Use $his-nestjs-backend to implement this HIS backend change."
-policy:
-  allow_implicit_invocation: true

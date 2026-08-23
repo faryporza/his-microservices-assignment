@@ -1,6 +1,0 @@
-interface:
-  display_name: "HIS Testing"
-  short_description: "Verify HIS services, databases, and event flows"
-  default_prompt: "Use $his-testing to test this HIS change completely."
-policy:
-  allow_implicit_invocation: true
