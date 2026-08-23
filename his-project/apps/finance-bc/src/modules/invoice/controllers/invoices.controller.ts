@@ -7,9 +7,11 @@ import {
   ParseUUIDPipe,
   Patch,
 } from '@nestjs/common';
+import { ResourceType } from '@app/common';
 import { InvoicesService } from '../services/invoices.service';
 import { PayInvoiceDTO } from '../dto/pay-invoice.dto';
 
+@ResourceType('invoices')
 @Controller('invoices')
 export class InvoicesController {
   constructor(private readonly invoicesService: InvoicesService) {}

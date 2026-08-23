@@ -7,9 +7,11 @@ import {
   ParseUUIDPipe,
   Post,
 } from '@nestjs/common';
+import { ResourceType } from '@app/common';
 import { VisitsService } from '../services/visits.service';
 import { CreateVisitDTO } from '../dto/create-visit.dto';
 
+@ResourceType('visits')
 @Controller()
 export class VisitsController {
   constructor(private readonly visitsService: VisitsService) {}

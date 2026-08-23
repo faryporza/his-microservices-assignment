@@ -9,6 +9,7 @@
     "build": "nest build opd-bc && nest build emr-bc && nest build finance-bc",
     "format": "prettier --write \"apps/**/*.ts\" \"libs/**/*.ts\"",
     "start": "nest start opd-bc",
+    "start:all": "concurrently -n opd,emr,finance -c blue,green,magenta \"npm run start:dev\" \"npm run start:emr\" \"npm run start:finance\"",
     "start:dev": "nest start opd-bc --watch",
     "start:debug": "nest start opd-bc --debug --watch",
     "start:prod": "node dist/apps/opd-bc/main",

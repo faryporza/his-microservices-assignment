@@ -15,7 +15,7 @@ describe('HealthChecksController (EMR e2e)', () => {
       imports: [EmrBcModule],
     }).compile();
 
-    app = createTestApp(moduleFixture);
+    app = createTestApp(moduleFixture, 'emr-bc');
     await app.init();
   });
 
@@ -32,8 +32,8 @@ describe('HealthChecksController (EMR e2e)', () => {
       .expect('Hello World!');
   });
 
-  it('rejects invalid medical record fields', () => {
-    return request(app.getHttpServer() as App)
+  it('rejects invalid medical record fields', async () => {
+    const res = await request(app.getHttpServer() as App)
       .post('/records')
       .send({
         visit_id: 'not-a-uuid',
@@ -43,20 +43,28 @@ describe('HealthChecksController (EMR e2e)', () => {
         unexpected: true,
       })
       .expect(400);
+
+    expect(res.body.status.code).toBe(400001);
+    expect(res.body.status.message).toBe('Validation Failed');
+    expect(res.body.errors.length).toBeGreaterThan(0);
   });
 
   it('validates the medical record update URI before business logic', async () => {
-    await request(app.getHttpServer() as App)
+    const invalidStatus = await request(app.getHttpServer() as App)
       .patch(`/records/${randomUUID()}`)
       .send({ status: 'INVALID' })
       .expect(400);
 
-    await request(app.getHttpServer() as App)
+    expect(invalidStatus.body.status.code).toBe(400001);
+
+    const unexpectedField = await request(app.getHttpServer() as App)
       .patch(`/records/${randomUUID()}`)
       .send({ unexpected: true })
       .expect(400);
 
-    await request(app.getHttpServer() as App)
+    expect(unexpectedField.body.status.code).toBe(400001);
+
+    const notFound = await request(app.getHttpServer() as App)
       .patch(`/records/${randomUUID()}`)
       .send({
         status: 'COMPLETED',
@@ -64,9 +72,12 @@ describe('HealthChecksController (EMR e2e)', () => {
         treatment_cost: 100,
       })
       .expect(404);
+
+    expect(notFound.body.status.code).toBe(404);
+    expect(notFound.body.status.message).toBe('Resource Not Found');
   });
 
-  it('creates, reads, and completes a medical record', async () => {
+  it('creates, reads, and completes a medical record with Blueprint JSON:API format', async () => {
     const visitId = randomUUID();
     const created = await request(app.getHttpServer() as App)
       .post('/records')
@@ -80,14 +91,20 @@ describe('HealthChecksController (EMR e2e)', () => {
       })
       .expect(201);
 
-    const recordId = created.body.id as string;
-    expect(created.body.status).toBe('WAITING');
+    expect(created.body.status.code).toBe(201000);
+    expect(created.body.data.type).toBe('medical-records');
+    expect(created.body.data.attributes.status).toBe('WAITING');
+    expect(created.body.data.attributes.visit_id).toBe(visitId);
+    const recordId = created.body.data.id as string;
 
     await request(app.getHttpServer() as App)
       .get(`/records/${recordId}`)
       .expect(200)
       .expect(({ body }) => {
-        expect(body.visit_id).toBe(visitId);
+        expect(body.status.code).toBe(200000);
+        expect(body.data.type).toBe('medical-records');
+        expect(body.data.id).toBe(recordId);
+        expect(body.data.attributes.visit_id).toBe(visitId);
       });
 
     await request(app.getHttpServer() as App)
@@ -95,8 +112,11 @@ describe('HealthChecksController (EMR e2e)', () => {
       .send({ status: 'COMPLETED', treatment_cost: 1750 })
       .expect(200)
       .expect(({ body }) => {
-        expect(body.status).toBe('COMPLETED');
-        expect(Number(body.treatment_cost)).toBe(1750);
+        expect(body.status.code).toBe(200000);
+        expect(body.data.type).toBe('medical-records');
+        expect(body.data.id).toBe(recordId);
+        expect(body.data.attributes.status).toBe('COMPLETED');
+        expect(Number(body.data.attributes.treatment_cost)).toBe(1750);
       });
   });
 });

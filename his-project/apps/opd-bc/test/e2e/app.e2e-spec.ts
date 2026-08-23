@@ -15,7 +15,7 @@ describe('HealthChecksController (OPD e2e)', () => {
       imports: [OpdBcModule],
     }).compile();
 
-    app = createTestApp(moduleFixture);
+    app = createTestApp(moduleFixture, 'opd-bc');
     await app.init();
   });
 
@@ -32,13 +32,23 @@ describe('HealthChecksController (OPD e2e)', () => {
       .expect('Hello World!');
   });
 
-  it('rejects missing and non-whitelisted patient fields', async () => {
-    await request(app.getHttpServer() as App)
+  it('rejects missing and non-whitelisted patient fields with Blueprint validation format', async () => {
+    const missingRes = await request(app.getHttpServer() as App)
       .post('/patients')
       .send({ first_name: 'Ada', last_name: 'Lovelace', id_card: 'ID-1' })
       .expect(400);
 
-    await request(app.getHttpServer() as App)
+    expect(missingRes.body.status.code).toBe(400001);
+    expect(missingRes.body.status.message).toBe('Validation Failed');
+    expect(missingRes.body.errors.length).toBeGreaterThan(0);
+    expect(
+      missingRes.body.errors.some(
+        (e: { source?: { pointer?: string } }) =>
+          e.source?.pointer === '/data/attributes/hn',
+      ),
+    ).toBe(true);
+
+    const camelCaseRes = await request(app.getHttpServer() as App)
       .post('/patients')
       .send({
         hn: 'HN-CAMEL-CASE',
@@ -48,7 +58,9 @@ describe('HealthChecksController (OPD e2e)', () => {
       })
       .expect(400);
 
-    await request(app.getHttpServer() as App)
+    expect(camelCaseRes.body.status.code).toBe(400001);
+
+    const nonWhitelistedRes = await request(app.getHttpServer() as App)
       .post('/patients')
       .send({
         hn: 'HN-STRICT',
@@ -58,30 +70,41 @@ describe('HealthChecksController (OPD e2e)', () => {
         role: 'ADMIN',
       })
       .expect(400);
+
+    expect(nonWhitelistedRes.body.status.code).toBe(400001);
   });
 
   it('validates visit and update-patient DTOs', async () => {
-    await request(app.getHttpServer() as App)
+    const invalidVisit = await request(app.getHttpServer() as App)
       .post('/visits')
       .send({ patient_id: 'not-a-uuid' })
       .expect(400);
 
-    await request(app.getHttpServer() as App)
+    expect(invalidVisit.body.status.code).toBe(400001);
+
+    const invalidUpdate = await request(app.getHttpServer() as App)
       .patch(`/patients/${randomUUID()}`)
       .send({ unknownField: true })
       .expect(400);
 
-    await request(app.getHttpServer() as App)
+    expect(invalidUpdate.body.status.code).toBe(400001);
+
+    const notFoundUpdate = await request(app.getHttpServer() as App)
       .patch(`/patients/${randomUUID()}`)
       .send({ first_name: 'Grace' })
       .expect(404);
 
-    await request(app.getHttpServer() as App)
+    expect(notFoundUpdate.body.status.code).toBe(404);
+    expect(notFoundUpdate.body.status.message).toBe('Resource Not Found');
+
+    const notFoundDelete = await request(app.getHttpServer() as App)
       .delete(`/patients/${randomUUID()}`)
       .expect(404);
+
+    expect(notFoundDelete.body.status.code).toBe(404);
   });
 
-  it('completes patient and visit CRUD with persisted state', async () => {
+  it('completes patient and visit CRUD with persisted state and Blueprint JSON:API format', async () => {
     const suffix = randomUUID().slice(0, 8);
     const patient = await request(app.getHttpServer() as App)
       .post('/patients')
@@ -93,28 +116,43 @@ describe('HealthChecksController (OPD e2e)', () => {
       })
       .expect(201);
 
-    expect(patient.body.status).toBeUndefined();
-    const patientId = patient.body.id as string;
+    expect(patient.body.status.code).toBe(201000);
+    expect(patient.body.status.message).toBe('Request Succeeded');
+    expect(patient.body.data.type).toBe('patients');
+    expect(patient.body.data.attributes.hn).toBe(`HN-E2E-${suffix}`);
+    expect(patient.body.data.attributes.first_name).toBe('Ada');
+    expect(patient.body.links.self).toBe('/patients');
+    const patientId = patient.body.data.id as string;
 
     const visit = await request(app.getHttpServer() as App)
       .post('/visits')
       .send({ patient_id: patientId })
       .expect(201);
-    expect(visit.body.status).toBe('OPEN');
+
+    expect(visit.body.status.code).toBe(201000);
+    expect(visit.body.data.type).toBe('visits');
+    expect(visit.body.data.attributes.patient_id).toBe(patientId);
+    expect(visit.body.data.attributes.status).toBe('OPEN');
 
     await request(app.getHttpServer() as App)
       .patch(`/patients/${patientId}`)
       .send({ first_name: 'Augusta' })
       .expect(200)
       .expect(({ body }) => {
-        expect(body.first_name).toBe('Augusta');
+        expect(body.status.code).toBe(200000);
+        expect(body.data.type).toBe('patients');
+        expect(body.data.id).toBe(patientId);
+        expect(body.data.attributes.first_name).toBe('Augusta');
       });
 
     await request(app.getHttpServer() as App)
       .get(`/patients/${patientId}`)
       .expect(200)
       .expect(({ body }) => {
-        expect(body.id).toBe(patientId);
+        expect(body.status.code).toBe(200000);
+        expect(body.data.type).toBe('patients');
+        expect(body.data.id).toBe(patientId);
+        expect(body.data.attributes.last_name).toBe('Lovelace');
       });
 
     await request(app.getHttpServer() as App)

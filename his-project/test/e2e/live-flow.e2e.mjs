@@ -57,7 +57,7 @@ async function waitForService(name, baseUrl) {
 async function createVisit() {
   await waitForService('OPD', baseUrls.opd);
   const suffix = randomUUID().replaceAll('-', '').slice(0, 12);
-  const patient = await requestJson(`${baseUrls.opd}/patients`, {
+  const patientRes = await requestJson(`${baseUrls.opd}/patients`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
@@ -67,28 +67,33 @@ async function createVisit() {
       id_card: `LIVE-${suffix}`,
     }),
   });
-  const visit = await requestJson(`${baseUrls.opd}/visits`, {
+  const patientId = patientRes.data.id;
+  const visitRes = await requestJson(`${baseUrls.opd}/visits`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ patient_id: patient.id }),
+    body: JSON.stringify({ patient_id: patientId }),
   });
-  if (visit.status !== 'OPEN') {
-    throw new Error(`Expected OPEN visit, received ${visit.status}`);
+  const visitId = visitRes.data.id;
+  const visitStatus = visitRes.data.attributes.status;
+  if (visitStatus !== 'OPEN') {
+    throw new Error(`Expected OPEN visit, received ${visitStatus}`);
   }
-  await writeFile(stateFile, JSON.stringify({ visitId: visit.id }, null, 2));
-  return visit.id;
+  await writeFile(stateFile, JSON.stringify({ visitId }, null, 2));
+  return visitId;
 }
 
 async function completeVisit(visitId) {
   await waitForService('EMR', baseUrls.emr);
   await waitForService('Finance', baseUrls.finance);
 
-  const records = await waitFor('EMR waiting record', async () => {
+  const recordsRes = await waitFor('EMR waiting record', async () => {
     const value = await requestJson(`${baseUrls.emr}/records/visit/${visitId}`);
-    return Array.isArray(value) && value.length > 0 ? value : undefined;
+    const list = Array.isArray(value?.data) ? value.data : undefined;
+    return list && list.length > 0 ? list : undefined;
   });
-  const record = records[0];
-  const completed = await requestJson(`${baseUrls.emr}/records/${record.id}`, {
+  const record = recordsRes[0];
+  const recordId = record.id;
+  const completedRes = await requestJson(`${baseUrls.emr}/records/${recordId}`, {
     method: 'PATCH',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
@@ -99,37 +104,43 @@ async function completeVisit(visitId) {
       status: 'COMPLETED',
     }),
   });
-  if (completed.status !== 'COMPLETED') {
-    throw new Error(`Expected COMPLETED record, received ${completed.status}`);
+  const completedStatus = completedRes.data.attributes.status;
+  if (completedStatus !== 'COMPLETED') {
+    throw new Error(`Expected COMPLETED record, received ${completedStatus}`);
   }
 
-  const invoices = await waitFor('Finance pending invoice', async () => {
+  const invoicesRes = await waitFor('Finance pending invoice', async () => {
     const value = await requestJson(`${baseUrls.finance}/invoices/${visitId}`);
-    return Array.isArray(value) && value.length > 0 ? value : undefined;
+    const list = Array.isArray(value?.data) ? value.data : undefined;
+    return list && list.length > 0 ? list : undefined;
   });
-  const invoice = invoices[0];
-  const paid = await requestJson(
-    `${baseUrls.finance}/invoices/${invoice.id}/pay`,
+  const invoice = invoicesRes[0];
+  const invoiceId = invoice.id;
+  const paidRes = await requestJson(
+    `${baseUrls.finance}/invoices/${invoiceId}/pay`,
     {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ status: 'PAID' }),
     },
   );
-  if (paid.status !== 'PAID') {
-    throw new Error(`Expected PAID invoice, received ${paid.status}`);
+  const paidStatus = paidRes.data.attributes.status;
+  if (paidStatus !== 'PAID') {
+    throw new Error(`Expected PAID invoice, received ${paidStatus}`);
   }
 
-  const closedVisit = await waitFor('OPD closed visit', async () => {
+  const closedVisitRes = await waitFor('OPD closed visit', async () => {
     const value = await requestJson(`${baseUrls.opd}/visits/${visitId}`);
-    return value.status === 'CLOSED' ? value : undefined;
+    const status = value?.data?.attributes?.status;
+    return status === 'CLOSED' ? value : undefined;
   });
+  const finalStatus = closedVisitRes.data.attributes.status;
   console.log(
     JSON.stringify({
       visitId,
-      recordId: record.id,
-      invoiceId: invoice.id,
-      status: closedVisit.status,
+      recordId,
+      invoiceId,
+      status: finalStatus,
     }),
   );
 }
