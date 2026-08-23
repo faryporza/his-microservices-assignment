@@ -12,6 +12,8 @@ coverage/
 
 # Skill & Guidelines
 skills-lock.json
+AGENTS.md
+GEMINI.md
 
 # Test Reports
 TEST_RESULTS.md
