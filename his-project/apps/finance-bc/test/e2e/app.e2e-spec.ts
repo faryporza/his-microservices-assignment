@@ -20,7 +20,7 @@ describe('HealthChecksController (Finance e2e)', () => {
       imports: [FinanceBcModule],
     }).compile();
 
-    app = createTestApp(moduleFixture);
+    app = createTestApp(moduleFixture, 'finance-bc');
     await app.init();
   });
 
@@ -40,23 +40,32 @@ describe('HealthChecksController (Finance e2e)', () => {
   it('rejects non-whitelisted and invalid PayInvoiceDTO fields', async () => {
     const invoiceId = randomUUID();
 
-    await request(app.getHttpServer() as App)
+    const invalidDate = await request(app.getHttpServer() as App)
       .patch(`/invoices/${invoiceId}/pay`)
       .send({ paid_at: new Date().toISOString() })
       .expect(400);
 
-    await request(app.getHttpServer() as App)
+    expect(invalidDate.body.status.code).toBe(400001);
+    expect(invalidDate.body.status.message).toBe('Validation Failed');
+    expect(invalidDate.body.errors.length).toBeGreaterThan(0);
+
+    const invalidStatus = await request(app.getHttpServer() as App)
       .patch(`/invoices/${invoiceId}/pay`)
       .send({ status: 'PENDING' })
       .expect(400);
 
-    await request(app.getHttpServer() as App)
+    expect(invalidStatus.body.status.code).toBe(400001);
+
+    const notFound = await request(app.getHttpServer() as App)
       .patch(`/invoices/${invoiceId}/pay`)
       .send({})
       .expect(404);
+
+    expect(notFound.body.status.code).toBe(404000);
+    expect(notFound.body.status.message).toBe('Resource Not Found');
   });
 
-  it('reads and pays a persisted invoice', async () => {
+  it('reads and pays a persisted invoice with Blueprint JSON:API format', async () => {
     const visitId = randomUUID();
     const repository = app.get(DataSource).getRepository(Invoice);
     const invoice = await repository.save(
@@ -74,8 +83,11 @@ describe('HealthChecksController (Finance e2e)', () => {
       .get(`/invoices/${visitId}`)
       .expect(200)
       .expect(({ body }) => {
-        expect(body[0].id).toBe(invoice.id);
-        expect(body[0].status).toBe('PENDING');
+        expect(body.status.code).toBe(200000);
+        expect(Array.isArray(body.data)).toBe(true);
+        expect(body.data[0].type).toBe('invoices');
+        expect(body.data[0].id).toBe(invoice.id);
+        expect(body.data[0].attributes.status).toBe('PENDING');
       });
 
     await request(app.getHttpServer() as App)
@@ -83,8 +95,11 @@ describe('HealthChecksController (Finance e2e)', () => {
       .send({ status: 'PAID' })
       .expect(200)
       .expect(({ body }) => {
-        expect(body.status).toBe('PAID');
-        expect(body.paid_at).not.toBeNull();
+        expect(body.status.code).toBe(200000);
+        expect(body.data.type).toBe('invoices');
+        expect(body.data.id).toBe(invoice.id);
+        expect(body.data.attributes.status).toBe('PAID');
+        expect(body.data.attributes.paid_at).not.toBeNull();
       });
   });
 });

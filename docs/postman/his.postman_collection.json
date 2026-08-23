@@ -32,10 +32,19 @@
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test('patient created', function () { pm.response.to.have.status(201); });",
-              "const body = pm.response.json();",
-              "pm.expect(body.id).to.be.a('string');",
-              "pm.collectionVariables.set('patient_id', body.id);"
+              "pm.test('patient created', function () {",
+              "  pm.response.to.have.status(201);",
+              "  const body = pm.response.json();",
+              "  const patientId = body.data ? body.data.id : body.id;",
+              "  pm.expect(patientId).to.be.a('string');",
+              "  if (body.status && body.status.code) {",
+              "    pm.expect(body.status.code).to.eql(201000);",
+              "  }",
+              "  if (body.data && body.data.type) {",
+              "    pm.expect(body.data.type).to.eql('patients');",
+              "  }",
+              "  pm.collectionVariables.set('patient_id', patientId);",
+              "});"
             ]
           }
         }
@@ -57,10 +66,20 @@
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test('visit opened', function () { pm.response.to.have.status(201); });",
-              "const body = pm.response.json();",
-              "pm.expect(body.status).to.eql('OPEN');",
-              "pm.collectionVariables.set('visit_id', body.id);"
+              "pm.test('visit opened', function () {",
+              "  pm.response.to.have.status(201);",
+              "  const body = pm.response.json();",
+              "  const visitId = body.data ? body.data.id : body.id;",
+              "  const status = body.data && body.data.attributes ? body.data.attributes.status : body.status;",
+              "  pm.expect(status).to.eql('OPEN');",
+              "  if (body.status && body.status.code) {",
+              "    pm.expect(body.status.code).to.eql(201000);",
+              "  }",
+              "  if (body.data && body.data.type) {",
+              "    pm.expect(body.data.type).to.eql('visits');",
+              "  }",
+              "  pm.collectionVariables.set('visit_id', visitId);",
+              "});"
             ]
           }
         }
@@ -87,9 +106,15 @@
             "exec": [
               "const maxRetries = 20;",
               "const body = pm.response.json();",
-              "if (pm.response.code === 200 && Array.isArray(body) && body.length > 0) {",
-              "  pm.test('waiting record created', function () { pm.expect(body[0].status).to.eql('WAITING'); });",
-              "  pm.collectionVariables.set('record_id', body[0].id);",
+              "const records = body && Array.isArray(body.data) ? body.data : (Array.isArray(body) ? body : []);",
+              "if (pm.response.code === 200 && records.length > 0) {",
+              "  pm.test('waiting record created', function () {",
+              "    const record = records[0];",
+              "    const status = record.attributes ? record.attributes.status : record.status;",
+              "    pm.expect(status).to.eql('WAITING');",
+              "  });",
+              "  const recordId = records[0].id;",
+              "  pm.collectionVariables.set('record_id', recordId);",
               "  pm.collectionVariables.set('retry_count', '0');",
               "} else {",
               "  const retryCount = Number(pm.collectionVariables.get('retry_count') || '0') + 1;",
@@ -114,8 +139,15 @@
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test('treatment completed', function () { pm.response.to.have.status(200); });",
-              "pm.expect(pm.response.json().status).to.eql('COMPLETED');"
+              "pm.test('treatment completed', function () {",
+              "  pm.response.to.have.status(200);",
+              "  const body = pm.response.json();",
+              "  const status = body.data && body.data.attributes ? body.data.attributes.status : body.status;",
+              "  pm.expect(status).to.eql('COMPLETED');",
+              "  if (body.status && body.status.code) {",
+              "    pm.expect(body.status.code).to.eql(200000);",
+              "  }",
+              "});"
             ]
           }
         }
@@ -142,9 +174,15 @@
             "exec": [
               "const maxRetries = 20;",
               "const body = pm.response.json();",
-              "if (pm.response.code === 200 && Array.isArray(body) && body.length > 0) {",
-              "  pm.test('pending invoice created', function () { pm.expect(body[0].status).to.eql('PENDING'); });",
-              "  pm.collectionVariables.set('invoice_id', body[0].id);",
+              "const invoices = body && Array.isArray(body.data) ? body.data : (Array.isArray(body) ? body : []);",
+              "if (pm.response.code === 200 && invoices.length > 0) {",
+              "  pm.test('pending invoice created', function () {",
+              "    const invoice = invoices[0];",
+              "    const status = invoice.attributes ? invoice.attributes.status : invoice.status;",
+              "    pm.expect(status).to.eql('PENDING');",
+              "  });",
+              "  const invoiceId = invoices[0].id;",
+              "  pm.collectionVariables.set('invoice_id', invoiceId);",
               "  pm.collectionVariables.set('retry_count', '0');",
               "} else {",
               "  const retryCount = Number(pm.collectionVariables.get('retry_count') || '0') + 1;",
@@ -169,9 +207,17 @@
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test('invoice paid', function () { pm.response.to.have.status(200); });",
-              "pm.expect(pm.response.json().status).to.eql('PAID');",
-              "pm.expect(pm.response.json().paid_at).not.to.eql(null);"
+              "pm.test('invoice paid', function () {",
+              "  pm.response.to.have.status(200);",
+              "  const body = pm.response.json();",
+              "  const status = body.data && body.data.attributes ? body.data.attributes.status : body.status;",
+              "  const paidAt = body.data && body.data.attributes ? body.data.attributes.paid_at : body.paid_at;",
+              "  pm.expect(status).to.eql('PAID');",
+              "  pm.expect(paidAt).not.to.eql(null);",
+              "  if (body.status && body.status.code) {",
+              "    pm.expect(body.status.code).to.eql(200000);",
+              "  }",
+              "});"
             ]
           }
         }
@@ -198,8 +244,14 @@
             "exec": [
               "const maxRetries = 20;",
               "const body = pm.response.json();",
-              "if (pm.response.code === 200 && body.status === 'CLOSED') {",
-              "  pm.test('visit closed', function () { pm.expect(body.status).to.eql('CLOSED'); });",
+              "const status = body && body.data && body.data.attributes ? body.data.attributes.status : (body ? body.status : undefined);",
+              "if (pm.response.code === 200 && status === 'CLOSED') {",
+              "  pm.test('visit closed', function () {",
+              "    pm.expect(status).to.eql('CLOSED');",
+              "    if (body.status && body.status.code) {",
+              "      pm.expect(body.status.code).to.eql(200000);",
+              "    }",
+              "  });",
               "  pm.collectionVariables.set('retry_count', '0');",
               "} else {",
               "  const retryCount = Number(pm.collectionVariables.get('retry_count') || '0') + 1;",

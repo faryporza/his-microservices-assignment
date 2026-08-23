@@ -8,11 +8,13 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
+import { ResourceType } from '@app/common';
 import { MedicalRecordsService } from '../services/medical-records.service';
 import { CreateMedicalRecordDTO } from '../dto/create-medical-record.dto';
 import { UpdateMedicalRecordDTO } from '../dto/update-medical-record.dto';
 import { CompleteTreatmentDTO } from '../dto/complete-treatment.dto';
 
+@ResourceType('medical-records')
 @Controller('records')
 export class MedicalRecordsController {
   constructor(private readonly medicalRecordsService: MedicalRecordsService) {}

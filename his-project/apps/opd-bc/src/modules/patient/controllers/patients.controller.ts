@@ -10,10 +10,12 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
+import { ResourceType } from '@app/common';
 import { PatientsService } from '../services/patients.service';
 import { CreatePatientDTO } from '../dto/create-patient.dto';
 import { UpdatePatientDTO } from '../dto/update-patient.dto';
 
+@ResourceType('patients')
 @Controller('patients')
 export class PatientsController {
   constructor(private readonly patientsService: PatientsService) {}
