@@ -1,12 +1,23 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsNotEmpty, IsString, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 import { createStrictValidationPipe } from './strict-validation.pipe';
 import { ValidationException } from '../exceptions/validation.exception';
 import { ArgumentMetadata } from '@nestjs/common';
+
+class AddressDTO {
+  @IsString()
+  @IsNotEmpty()
+  street!: string;
+}
 
 class TestDTO {
   @IsString()
   @IsNotEmpty()
   first_name!: string;
+
+  @ValidateNested()
+  @Type(() => AddressDTO)
+  address?: AddressDTO;
 }
 
 describe('createStrictValidationPipe', () => {
@@ -37,6 +48,23 @@ describe('createStrictValidationPipe', () => {
       expect(valError.errors[0].source?.pointer).toBe(
         '/data/attributes/first_name',
       );
+    }
+  });
+
+  it('formats nested field validation errors with slash separator in pointer', async () => {
+    const input = { first_name: 'Ada', address: { street: '' } };
+
+    try {
+      await pipe.transform(input, metadata);
+      fail('Should have thrown ValidationException');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ValidationException);
+      const valError = error as ValidationException;
+      expect(
+        valError.errors.some(
+          (e) => e.source?.pointer === '/data/attributes/address/street',
+        ),
+      ).toBe(true);
     }
   });
 

@@ -67,14 +67,14 @@ async function createVisit() {
       id_card: `LIVE-${suffix}`,
     }),
   });
-  const patientId = patientRes.data?.id ?? patientRes.id;
+  const patientId = patientRes.data.id;
   const visitRes = await requestJson(`${baseUrls.opd}/visits`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ patient_id: patientId }),
   });
-  const visitId = visitRes.data?.id ?? visitRes.id;
-  const visitStatus = visitRes.data?.attributes?.status ?? visitRes.status;
+  const visitId = visitRes.data.id;
+  const visitStatus = visitRes.data.attributes.status;
   if (visitStatus !== 'OPEN') {
     throw new Error(`Expected OPEN visit, received ${visitStatus}`);
   }
@@ -88,7 +88,7 @@ async function completeVisit(visitId) {
 
   const recordsRes = await waitFor('EMR waiting record', async () => {
     const value = await requestJson(`${baseUrls.emr}/records/visit/${visitId}`);
-    const list = Array.isArray(value?.data) ? value.data : Array.isArray(value) ? value : undefined;
+    const list = Array.isArray(value?.data) ? value.data : undefined;
     return list && list.length > 0 ? list : undefined;
   });
   const record = recordsRes[0];
@@ -104,15 +104,14 @@ async function completeVisit(visitId) {
       status: 'COMPLETED',
     }),
   });
-  const completedStatus =
-    completedRes.data?.attributes?.status ?? completedRes.status;
+  const completedStatus = completedRes.data.attributes.status;
   if (completedStatus !== 'COMPLETED') {
     throw new Error(`Expected COMPLETED record, received ${completedStatus}`);
   }
 
   const invoicesRes = await waitFor('Finance pending invoice', async () => {
     const value = await requestJson(`${baseUrls.finance}/invoices/${visitId}`);
-    const list = Array.isArray(value?.data) ? value.data : Array.isArray(value) ? value : undefined;
+    const list = Array.isArray(value?.data) ? value.data : undefined;
     return list && list.length > 0 ? list : undefined;
   });
   const invoice = invoicesRes[0];
@@ -125,18 +124,17 @@ async function completeVisit(visitId) {
       body: JSON.stringify({ status: 'PAID' }),
     },
   );
-  const paidStatus = paidRes.data?.attributes?.status ?? paidRes.status;
+  const paidStatus = paidRes.data.attributes.status;
   if (paidStatus !== 'PAID') {
     throw new Error(`Expected PAID invoice, received ${paidStatus}`);
   }
 
   const closedVisitRes = await waitFor('OPD closed visit', async () => {
     const value = await requestJson(`${baseUrls.opd}/visits/${visitId}`);
-    const status = value?.data?.attributes?.status ?? value?.status;
+    const status = value?.data?.attributes?.status;
     return status === 'CLOSED' ? value : undefined;
   });
-  const finalStatus =
-    closedVisitRes.data?.attributes?.status ?? closedVisitRes.status;
+  const finalStatus = closedVisitRes.data.attributes.status;
   console.log(
     JSON.stringify({
       visitId,

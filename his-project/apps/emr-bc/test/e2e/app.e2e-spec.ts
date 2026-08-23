@@ -73,7 +73,7 @@ describe('HealthChecksController (EMR e2e)', () => {
       })
       .expect(404);
 
-    expect(notFound.body.status.code).toBe(404000);
+    expect(notFound.body.status.code).toBe(404);
     expect(notFound.body.status.message).toBe('Resource Not Found');
   });
 

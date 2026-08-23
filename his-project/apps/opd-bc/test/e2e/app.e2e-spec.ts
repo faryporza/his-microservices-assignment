@@ -94,14 +94,14 @@ describe('HealthChecksController (OPD e2e)', () => {
       .send({ first_name: 'Grace' })
       .expect(404);
 
-    expect(notFoundUpdate.body.status.code).toBe(404000);
+    expect(notFoundUpdate.body.status.code).toBe(404);
     expect(notFoundUpdate.body.status.message).toBe('Resource Not Found');
 
     const notFoundDelete = await request(app.getHttpServer() as App)
       .delete(`/patients/${randomUUID()}`)
       .expect(404);
 
-    expect(notFoundDelete.body.status.code).toBe(404000);
+    expect(notFoundDelete.body.status.code).toBe(404);
   });
 
   it('completes patient and visit CRUD with persisted state and Blueprint JSON:API format', async () => {

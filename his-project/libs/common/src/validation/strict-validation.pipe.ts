@@ -13,7 +13,7 @@ export function createStrictValidationPipe(): ValidationPipe {
       function flattenErrors(errors: ValidationError[], parentPath = ''): void {
         for (const error of errors) {
           const currentPath = parentPath
-            ? `${parentPath}.${error.property}`
+            ? `${parentPath}/${error.property}`
             : error.property;
 
           if (error.constraints) {

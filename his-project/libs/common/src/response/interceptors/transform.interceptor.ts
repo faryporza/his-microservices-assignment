@@ -12,9 +12,16 @@ import { map } from 'rxjs/operators';
 import { RESOURCE_TYPE_KEY } from '../decorators/resource-type.decorator';
 import {
   ApiCollectionResponse,
+  ApiPaginatedResponse,
   ApiResourceObject,
   ApiSingleResponse,
+  PaginationMeta,
 } from '../response.types';
+
+interface PaginatedPayload {
+  data: unknown[];
+  pagination: PaginationMeta;
+}
 
 @Injectable()
 export class TransformInterceptor implements NestInterceptor {
@@ -42,6 +49,29 @@ export class TransformInterceptor implements NestInterceptor {
 
         const statusCode = response.statusCode || Number(HttpStatus.OK);
         const businessCode = statusCode * 1000;
+
+        if (this.isPaginated(data)) {
+          const transformedCollection = data.data.map((item) =>
+            this.transformResource(item, resourceType),
+          ) as ApiResourceObject<Record<string, unknown>>[];
+
+          const result: ApiPaginatedResponse<Record<string, unknown>> = {
+            status: {
+              code: businessCode,
+              message: 'Request Succeeded',
+            },
+            data: transformedCollection,
+            meta: {
+              timestamp: new Date().toISOString(),
+              pagination: data.pagination,
+            },
+            links: {
+              self: request.originalUrl || request.url,
+            },
+          };
+
+          return result;
+        }
 
         if (Array.isArray(data)) {
           const transformedCollection = data.map((item) =>
@@ -86,6 +116,23 @@ export class TransformInterceptor implements NestInterceptor {
 
         return result;
       }),
+    );
+  }
+
+  private isPaginated(data: unknown): data is PaginatedPayload {
+    if (typeof data !== 'object' || data === null) {
+      return false;
+    }
+
+    const candidate = data as Record<string, unknown>;
+    return (
+      Array.isArray(candidate.data) &&
+      typeof candidate.pagination === 'object' &&
+      candidate.pagination !== null &&
+      typeof (candidate.pagination as Record<string, unknown>).page ===
+        'number' &&
+      typeof (candidate.pagination as Record<string, unknown>).page_size ===
+        'number'
     );
   }
 

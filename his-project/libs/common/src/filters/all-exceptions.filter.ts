@@ -68,21 +68,29 @@ export class AllExceptionsFilter implements ExceptionFilter {
       : Number(HttpStatus.INTERNAL_SERVER_ERROR);
   }
 
+  private getErrorCode(exception: unknown, status: number): number {
+    if (exception instanceof ValidationException) {
+      return exception.businessCode;
+    }
+    if (exception instanceof InvalidParameterException) {
+      return exception.businessCode;
+    }
+    return status;
+  }
+
   private buildErrorResponse(
     exception: unknown,
     status: number,
     request: Request,
   ): ApiErrorResponse {
-    let businessCode = status * 1000;
+    const businessCode = this.getErrorCode(exception, status);
     let message = this.getDefaultStatusMessage(status);
     let errors: ApiErrorObject[] = [];
 
     if (exception instanceof ValidationException) {
-      businessCode = exception.businessCode;
       message = exception.message || 'Validation Failed';
       errors = exception.errors;
     } else if (exception instanceof InvalidParameterException) {
-      businessCode = exception.businessCode;
       message = exception.message || 'Invalid Parameter';
       errors = exception.errors;
     } else if (exception instanceof HttpException) {
@@ -136,14 +144,16 @@ export class AllExceptionsFilter implements ExceptionFilter {
         ];
       }
     } else {
+      const isUnavailable = status === Number(HttpStatus.SERVICE_UNAVAILABLE);
       errors = [
         {
           code: String(businessCode),
-          title: 'Internal Server Error',
-          detail:
-            status === Number(HttpStatus.SERVICE_UNAVAILABLE)
-              ? 'Service unavailable'
-              : 'Internal server error',
+          title: isUnavailable
+            ? 'Service Unavailable'
+            : 'Internal Server Error',
+          detail: isUnavailable
+            ? 'Service unavailable'
+            : 'Internal server error',
         },
       ];
     }

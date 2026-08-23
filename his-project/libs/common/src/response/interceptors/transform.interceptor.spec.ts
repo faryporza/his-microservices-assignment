@@ -2,7 +2,11 @@ import { ExecutionContext, HttpStatus } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { lastValueFrom, of } from 'rxjs';
 import { TransformInterceptor } from './transform.interceptor';
-import { ApiCollectionResponse, ApiSingleResponse } from '../response.types';
+import {
+  ApiCollectionResponse,
+  ApiPaginatedResponse,
+  ApiSingleResponse,
+} from '../response.types';
 
 describe('TransformInterceptor', () => {
   let interceptor: TransformInterceptor;
@@ -123,6 +127,45 @@ describe('TransformInterceptor', () => {
       type: 'patients',
       id: '2',
       attributes: { hn: 'HN-002' },
+    });
+  });
+
+  it('wraps paginated resources with meta pagination', async () => {
+    const context = createMockContext(
+      'patients',
+      HttpStatus.OK,
+      '/patients?page=1&page_size=10',
+    );
+    const paginated = {
+      data: [
+        { id: '1', hn: 'HN-001' },
+        { id: '2', hn: 'HN-002' },
+      ],
+      pagination: {
+        page: 1,
+        page_size: 10,
+        total: 2,
+        total_pages: 1,
+      },
+    };
+    const next = { handle: () => of(paginated) };
+
+    const result = (await lastValueFrom(
+      interceptor.intercept(context, next),
+    )) as ApiPaginatedResponse<unknown>;
+
+    expect(result.status.code).toBe(200000);
+    expect(result.data).toHaveLength(2);
+    expect(result.data[0]).toEqual({
+      type: 'patients',
+      id: '1',
+      attributes: { hn: 'HN-001' },
+    });
+    expect(result.meta.pagination).toEqual({
+      page: 1,
+      page_size: 10,
+      total: 2,
+      total_pages: 1,
     });
   });
 

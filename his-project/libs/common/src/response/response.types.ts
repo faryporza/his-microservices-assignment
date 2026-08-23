@@ -3,8 +3,18 @@ export interface ApiResponseStatus {
   message: string;
 }
 
+export interface PaginationMeta {
+  page: number;
+  page_size: number;
+  total?: number;
+  total_records?: number;
+  total_pages?: number;
+  [key: string]: unknown;
+}
+
 export interface ApiResponseMeta {
   timestamp: string;
+  pagination?: PaginationMeta;
   [key: string]: unknown;
 }
 
@@ -30,6 +40,13 @@ export interface ApiCollectionResponse<T = Record<string, unknown>> {
   status: ApiResponseStatus;
   data: ApiResourceObject<T>[];
   meta: ApiResponseMeta;
+  links: ApiResponseLinks;
+}
+
+export interface ApiPaginatedResponse<T = Record<string, unknown>> {
+  status: ApiResponseStatus;
+  data: ApiResourceObject<T>[];
+  meta: ApiResponseMeta & { pagination: PaginationMeta };
   links: ApiResponseLinks;
 }
 

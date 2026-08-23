@@ -111,7 +111,7 @@ describe('AllExceptionsFilter', () => {
     expect(sentResponse.errors[0].source?.parameter).toBe('page');
   });
 
-  it('formats standard NotFoundException with code 404000', () => {
+  it('formats standard NotFoundException with code 404', () => {
     const notFound = new NotFoundException("Patient with ID '123' not found");
 
     filter.catch(notFound, host);
@@ -121,12 +121,12 @@ describe('AllExceptionsFilter', () => {
 
     expect(sentResponse).toEqual({
       status: {
-        code: 404000,
+        code: 404,
         message: 'Resource Not Found',
       },
       errors: [
         {
-          code: '404000',
+          code: '404',
           title: 'Not Found',
           detail: "Patient with ID '123' not found",
         },
@@ -140,7 +140,7 @@ describe('AllExceptionsFilter', () => {
     });
   });
 
-  it('formats unhandled application exceptions as 500000', () => {
+  it('formats unhandled application exceptions as 500', () => {
     const error = new Error('Unexpected logic failure');
 
     filter.catch(error, host);
@@ -150,12 +150,13 @@ describe('AllExceptionsFilter', () => {
     );
     const sentResponse = responseJson.mock.calls[0][0] as ApiErrorResponse;
 
-    expect(sentResponse.status.code).toBe(500000);
+    expect(sentResponse.status.code).toBe(500);
     expect(sentResponse.status.message).toBe('Internal server error');
     expect(sentResponse.errors[0].title).toBe('Internal Server Error');
+    expect(sentResponse.errors[0].code).toBe('500');
   });
 
-  it('formats infrastructure exceptions as 503000', () => {
+  it('formats infrastructure exceptions as 503 with Service Unavailable title', () => {
     const error = new Error('Database connection failed');
 
     filter.catch(error, host);
@@ -163,9 +164,10 @@ describe('AllExceptionsFilter', () => {
     expect(responseStatus).toHaveBeenCalledWith(HttpStatus.SERVICE_UNAVAILABLE);
     const sentResponse = responseJson.mock.calls[0][0] as ApiErrorResponse;
 
-    expect(sentResponse.status.code).toBe(503000);
+    expect(sentResponse.status.code).toBe(503);
     expect(sentResponse.status.message).toBe('Service unavailable');
-    expect(sentResponse.errors[0].title).toBe('Internal Server Error');
+    expect(sentResponse.errors[0].title).toBe('Service Unavailable');
+    expect(sentResponse.errors[0].code).toBe('503');
   });
 
   it('sets trace headers and emits structured error logs', () => {
