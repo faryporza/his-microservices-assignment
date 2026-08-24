@@ -338,8 +338,8 @@ describe('Event-driven data flow integration', () => {
         treatmentEvent!.payload as TreatmentCompletedEvent
       ).payload;
       expect(treatmentPayload.visitId).toBe(visit.id);
-      expect(treatmentPayload.treatmentCost).toBe('1500');
-      expect(typeof treatmentPayload.treatmentCost).toBe('string');
+      expect(treatmentPayload.treatmentCost).toBe(1500);
+      expect(typeof treatmentPayload.treatmentCost).toBe('number');
 
       // Step 5: Finance consumer receives treatment.completed → creates invoice
       let invoiceId = '';
@@ -524,9 +524,9 @@ describe('Event-driven data flow integration', () => {
       const payload = (treatmentEvent!.payload as TreatmentCompletedEvent)
         .payload;
 
-      // treatmentCost must be a string
-      expect(typeof payload.treatmentCost).toBe('string');
-      expect(payload.treatmentCost).toBe('12345.67');
+      // treatmentCost is a number
+      expect(typeof payload.treatmentCost).toBe('number');
+      expect(payload.treatmentCost).toBe(12345.67);
       expect(payload.visitId).toBe(visitId);
       expect(payload.recordId).toBe(recordId);
     });

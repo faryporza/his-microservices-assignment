@@ -21,7 +21,7 @@ describe('InvoiceEventsController', () => {
     payload: {
       visitId: '550e8400-e29b-41d4-a716-446655440000',
       recordId: '6ba7b810-9dad-41d1-80b4-00c04fd430c8',
-      treatmentCost: '1500.00',
+      treatmentCost: 1500.0,
     },
   };
   const service = {

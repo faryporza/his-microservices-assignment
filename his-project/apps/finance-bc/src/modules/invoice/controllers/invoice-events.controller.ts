@@ -123,9 +123,12 @@ export class InvoiceEventsController {
         treatmentCompletedEventVersion,
       ) &&
       isUuidV4(payload?.visitId) &&
-      isUuidV4(payload.recordId) &&
-      typeof payload.treatmentCost === 'string' &&
-      /^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/.test(payload.treatmentCost)
+      isUuidV4(payload?.recordId) &&
+      ((typeof payload?.treatmentCost === 'number' &&
+        !Number.isNaN(payload.treatmentCost) &&
+        payload.treatmentCost >= 0) ||
+        (typeof payload?.treatmentCost === 'string' &&
+          /^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/.test(payload.treatmentCost)))
     );
   }
 }
