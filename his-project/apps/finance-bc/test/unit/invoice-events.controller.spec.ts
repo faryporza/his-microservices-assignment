@@ -21,7 +21,7 @@ describe('InvoiceEventsController', () => {
     payload: {
       visitId: '550e8400-e29b-41d4-a716-446655440000',
       recordId: '6ba7b810-9dad-41d1-80b4-00c04fd430c8',
-      treatmentCost: '1500.00',
+      treatmentCost: 1500.0,
     },
   };
   const service = {
@@ -55,7 +55,7 @@ describe('InvoiceEventsController', () => {
       .spyOn(StructuredLogger.prototype, 'warn')
       .mockImplementation();
     await consumer.handleTreatmentCompleted(
-      { ...event, payload: { ...event.payload, treatmentCost: '-1' } },
+      { ...event, payload: { ...event.payload, treatmentCost: -1 } },
       context,
     );
 
@@ -69,6 +69,62 @@ describe('InvoiceEventsController', () => {
         }),
       }),
     );
+    log.mockRestore();
+  });
+
+  it('rejects treatmentCost as string', async () => {
+    const log = jest
+      .spyOn(StructuredLogger.prototype, 'warn')
+      .mockImplementation();
+    await consumer.handleTreatmentCompleted(
+      {
+        ...event,
+        payload: {
+          ...event.payload,
+          treatmentCost: '1500.00' as unknown as number,
+        },
+      },
+      context,
+    );
+
+    expect(service.processTreatmentCompleted).not.toHaveBeenCalled();
+    expect(channel.nack).toHaveBeenCalledWith(message, false, false);
+    log.mockRestore();
+  });
+
+  it('rejects non-finite treatmentCost', async () => {
+    const log = jest
+      .spyOn(StructuredLogger.prototype, 'warn')
+      .mockImplementation();
+
+    // Infinity
+    await consumer.handleTreatmentCompleted(
+      {
+        ...event,
+        payload: {
+          ...event.payload,
+          treatmentCost: Infinity,
+        },
+      },
+      context,
+    );
+    expect(service.processTreatmentCompleted).not.toHaveBeenCalled();
+    expect(channel.nack).toHaveBeenCalledWith(message, false, false);
+
+    // NaN
+    await consumer.handleTreatmentCompleted(
+      {
+        ...event,
+        payload: {
+          ...event.payload,
+          treatmentCost: NaN,
+        },
+      },
+      context,
+    );
+    expect(service.processTreatmentCompleted).not.toHaveBeenCalled();
+    expect(channel.nack).toHaveBeenCalledWith(message, false, false);
+
     log.mockRestore();
   });
 

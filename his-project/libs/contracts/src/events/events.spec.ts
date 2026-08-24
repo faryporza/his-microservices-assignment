@@ -213,7 +213,7 @@ describe('treatment.completed event', () => {
     const payload: TreatmentCompletedPayload = {
       visitId: 'vis-123',
       recordId: 'rec-789',
-      treatmentCost: '1500.00',
+      treatmentCost: 1500.0,
     };
 
     const event: TreatmentCompletedEvent = {
@@ -228,29 +228,25 @@ describe('treatment.completed event', () => {
     expect(event.metadata.version).toBe(treatmentCompletedEventVersion);
     expect(event.payload.visitId).toBe('vis-123');
     expect(event.payload.recordId).toBe('rec-789');
-    expect(event.payload.treatmentCost).toBe('1500.00');
+    expect(event.payload.treatmentCost).toBe(1500.0);
   });
 
-  it('should carry treatmentCost as a string to preserve decimal precision', () => {
+  it('should carry treatmentCost as a number matching the assignment schema', () => {
     const payload: TreatmentCompletedPayload = {
       visitId: 'vis-1',
       recordId: 'rec-1',
-      treatmentCost: '9999.99',
+      treatmentCost: 9999.99,
     };
-    expect(typeof payload.treatmentCost).toBe('string');
-    // Should not be a number
-    expect(typeof payload.treatmentCost).not.toBe('number');
+    expect(typeof payload.treatmentCost).toBe('number');
   });
 
-  it('should support high-precision decimal values as strings', () => {
+  it('should support decimal treatmentCost values', () => {
     const payload: TreatmentCompletedPayload = {
       visitId: 'vis-1',
       recordId: 'rec-1',
-      treatmentCost: '1234567.89',
+      treatmentCost: 12345.67,
     };
-    expect(payload.treatmentCost).toBe('1234567.89');
-    // Verify it can be parsed to a decimal without precision loss
-    expect(parseFloat(payload.treatmentCost)).toBe(1234567.89);
+    expect(payload.treatmentCost).toBe(12345.67);
   });
 });
 
@@ -405,7 +401,7 @@ describe('Event flow contracts', () => {
       payload: {
         visitId: visitEvent.payload.visitId,
         recordId: 'rec-1',
-        treatmentCost: '2500.00',
+        treatmentCost: 2500.0,
       },
     };
     expect(treatmentEvent.payload.visitId).toBe(visitEvent.payload.visitId);
@@ -442,7 +438,7 @@ describe('Event flow contracts', () => {
     const treatmentPayload: TreatmentCompletedPayload = {
       visitId,
       recordId: 'rec-1',
-      treatmentCost: '100.00',
+      treatmentCost: 100.0,
     };
 
     const invoicePayload: InvoicePaidPayload = {
