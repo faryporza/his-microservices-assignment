@@ -1,23 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { PartialType } from '@nestjs/swagger';
+import { CreatePatientDTO } from './create-patient.dto';
 
-export class UpdatePatientDTO {
-  @IsOptional()
-  @IsString()
-  @IsNotEmpty()
-  hn?: string;
-
-  @IsOptional()
-  @IsString()
-  @IsNotEmpty()
-  first_name?: string;
-
-  @IsOptional()
-  @IsString()
-  @IsNotEmpty()
-  last_name?: string;
-
-  @IsOptional()
-  @IsString()
-  @IsNotEmpty()
-  id_card?: string;
-}
+export class UpdatePatientDTO extends PartialType(CreatePatientDTO) {}

@@ -1,5 +1,6 @@
 import { NestFactory, Reflector } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import {
   AllExceptionsFilter,
   createStrictValidationPipe,
@@ -24,6 +25,18 @@ async function bootstrap() {
     new TransformInterceptor(reflector),
   );
   app.useGlobalFilters(new AllExceptionsFilter(logger));
+
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('OPD Microservice (opd-bc)')
+    .setDescription(
+      'Outpatient Department API - Patient Registration & Visit Management',
+    )
+    .setVersion('1.0')
+    .addTag('Patients')
+    .addTag('Visits')
+    .build();
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('docs', app, document);
 
   const rmqService = app.get(RabbitMqOptionsService);
   app.connectMicroservice(

@@ -1,5 +1,6 @@
 import { NestFactory, Reflector } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import {
   AllExceptionsFilter,
   createStrictValidationPipe,
@@ -24,6 +25,17 @@ async function bootstrap() {
     new TransformInterceptor(reflector),
   );
   app.useGlobalFilters(new AllExceptionsFilter(logger));
+
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('Finance Microservice (finance-bc)')
+    .setDescription(
+      'Billing & Finance API - Invoice Management & Payment Processing',
+    )
+    .setVersion('1.0')
+    .addTag('Invoices')
+    .build();
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('docs', app, document);
 
   const rmqService = app.get(RabbitMqOptionsService);
   app.connectMicroservice(
