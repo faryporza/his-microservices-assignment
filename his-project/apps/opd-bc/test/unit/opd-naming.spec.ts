@@ -39,7 +39,7 @@ describe('OPD persistence naming', () => {
     );
   });
 
-  it('uses snake_case visit columns and the named patient foreign key', () => {
+  it('uses snake_case visit columns, index, and the named patient foreign key', () => {
     const metadata = dataSource.getMetadata(Visit);
 
     expect(metadata.tableName).toBe('visits');
@@ -47,7 +47,12 @@ describe('OPD persistence naming', () => {
       'pk_visits',
     );
     expect(metadata.columns.map((column) => column.databaseName)).toEqual(
-      expect.arrayContaining(['patient_id', 'visit_date']),
+      expect.arrayContaining(['patient_id', 'visit_date', 'updated_at']),
+    );
+    expect(metadata.indices).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'idx_visits_patient_id' }),
+      ]),
     );
     expect(metadata.foreignKeys).toEqual(
       expect.arrayContaining([

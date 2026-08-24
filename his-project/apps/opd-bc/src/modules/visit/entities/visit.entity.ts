@@ -3,8 +3,10 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { Patient } from '@apps/opd-bc/modules/patient/entities/patient.entity';
 
@@ -14,6 +16,7 @@ export enum VisitStatus {
 }
 
 @Entity('visits')
+@Index('idx_visits_patient_id', ['patient_id'])
 export class Visit {
   @PrimaryGeneratedColumn('uuid', { primaryKeyConstraintName: 'pk_visits' })
   id!: string;
@@ -39,4 +42,7 @@ export class Visit {
     default: VisitStatus.OPEN,
   })
   status!: VisitStatus;
+
+  @UpdateDateColumn()
+  updated_at!: Date;
 }
