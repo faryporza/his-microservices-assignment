@@ -13,9 +13,9 @@ import {
 import type { Channel, ConsumeMessage } from 'amqplib';
 
 /**
- * Consumes `treatment.completed` events from EMR and creates a pending invoice
- * in Finance. The `treatmentCost` is carried as a string to preserve decimal
- * precision; the service normalizes it before persisting.
+ * Consumes `treatment.completed` events from EMR and creates a pending invoice.
+ * `treatmentCost` is received as a number according to the assignment event
+ * contract and normalized before PostgreSQL decimal persistence.
  */
 @Controller()
 export class InvoiceEventsController {
@@ -124,11 +124,9 @@ export class InvoiceEventsController {
       ) &&
       isUuidV4(payload?.visitId) &&
       isUuidV4(payload?.recordId) &&
-      ((typeof payload?.treatmentCost === 'number' &&
-        !Number.isNaN(payload.treatmentCost) &&
-        payload.treatmentCost >= 0) ||
-        (typeof payload?.treatmentCost === 'string' &&
-          /^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/.test(payload.treatmentCost)))
+      typeof payload?.treatmentCost === 'number' &&
+      Number.isFinite(payload.treatmentCost) &&
+      payload.treatmentCost >= 0
     );
   }
 }
