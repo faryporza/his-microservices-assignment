@@ -28,5 +28,6 @@ export function createMockVisit(): Visit {
     },
     visit_date: new Date('2026-08-07T00:00:00.000Z'),
     status: 'OPEN',
-  } as Visit;
+    updated_at: new Date('2026-08-07T00:00:00.000Z'),
+  } as unknown as Visit;
 }
