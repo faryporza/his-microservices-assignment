@@ -1,13 +1,13 @@
 # HIS Microservices
 
 Hospital Information System implemented as a NestJS monorepo with three
-bounded contexts:
+bounded contexts conforming to the [Enterprise Backend Blueprint](https://iots1.github.io/enterprise-backend-blueprint/):
 
-| Service | HTTP base URL           | Database     | Owns                  |
-| ------- | ----------------------- | ------------ | --------------------- |
-| OPD     | `http://localhost:3000` | `opd_db`     | patients and visits   |
-| EMR     | `http://localhost:3001` | `emr_db`     | medical records       |
-| Finance | `http://localhost:3002` | `finance_db` | invoices and payments |
+| Service | HTTP base URL           | Swagger UI               | Database     | Owns                  |
+| ------- | ----------------------- | ------------------------ | ------------ | --------------------- |
+| OPD     | `http://localhost:3000` | `http://localhost:3000/docs` | `opd_db`     | patients and visits   |
+| EMR     | `http://localhost:3001` | `http://localhost:3001/docs` | `emr_db`     | medical records       |
+| Finance | `http://localhost:3002` | `http://localhost:3002/docs` | `finance_db` | invoices and payments |
 
 ## Event flow
 
@@ -23,7 +23,62 @@ bounded contexts:
 Event payload contracts deliberately remain camelCase for compatibility.
 Entity and HTTP DTO properties use `snake_case`.
 
-## HTTP request payloads
+## Standardized JSON:API Response Envelope
+
+All HTTP responses are formatted into standard envelopes by `TransformInterceptor` and `AllExceptionsFilter`:
+
+### Success Envelope (`status`, `data`, `meta`, `links`)
+```json
+{
+  "status": {
+    "code": 201000,
+    "message": "Request Succeeded"
+  },
+  "data": {
+    "type": "patients",
+    "id": "6ba7b810-9dad-41d1-80b4-00c04fd430c8",
+    "attributes": {
+      "hn": "HN000001",
+      "first_name": "Somchai",
+      "last_name": "Jaidee",
+      "id_card": "1101700203456",
+      "created_at": "2026-08-24T10:00:00.000Z",
+      "updated_at": "2026-08-24T10:00:00.000Z"
+    }
+  },
+  "meta": {
+    "timestamp": "2026-08-24T10:00:00.000Z"
+  },
+  "links": {
+    "self": "/patients"
+  }
+}
+```
+
+### Error Envelope (`status`, `errors`, `meta`, `links`)
+```json
+{
+  "status": {
+    "code": 404,
+    "message": "Resource Not Found"
+  },
+  "errors": [
+    {
+      "code": "404",
+      "title": "NotFoundException",
+      "detail": "Patient with ID '...' not found"
+    }
+  ],
+  "meta": {
+    "timestamp": "2026-08-24T10:00:00.000Z"
+  },
+  "links": {
+    "self": "/patients/..."
+  }
+}
+```
+
+## HTTP Request & Response Endpoints
 
 All request bodies must use `snake_case`. UUID values below are examples.
 
@@ -102,7 +157,7 @@ X-Correlation-Id: 550e8400-e29b-41d4-a716-446655440000
 | Database      | Table              | Primary key           | Unique / foreign key                    |
 | ------------- | ------------------ | --------------------- | --------------------------------------- |
 | `opd_db`      | `patients`         | `pk_patients`         | `uq_patients_hn`, `uq_patients_id_card` |
-| `opd_db`      | `visits`           | `pk_visits`           | `fk_visits_patients`                    |
+| `opd_db`      | `visits`           | `pk_visits`           | `fk_visits_patients`, `idx_visits_patient_id` |
 | `emr_db`      | `medical_records`  | `pk_medical_records`  | `uq_medical_records_visit_id`           |
 | `finance_db`  | `invoices`         | `pk_invoices`         | `uq_invoices_visit_id`                  |
 | service-local | `processed_events` | `pk_processed_events` | `uq_processed_events_event_id`          |
