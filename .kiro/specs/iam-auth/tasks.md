@@ -184,7 +184,7 @@
   - _Boundary: OPD Security Integration_
   - _Depends: 2.2, 2.3_
 
-- [ ] 4.2 (P) Apply authentication and authorization guards to EMR microservice
+- [x] 4.2 (P) Apply authentication and authorization guards to EMR microservice
   - **Git Branch**: `feat/emr-bc-auth-protection`
   - **Base Branch**: `planning/iam-auth`
   - **Dependencies**: 2.2 (`feat/common-jwt-auth-guard`), 2.3 (`feat/common-roles-guard`)
