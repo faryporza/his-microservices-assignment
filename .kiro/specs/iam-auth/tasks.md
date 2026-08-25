@@ -40,7 +40,7 @@
   - _Boundary: Redis Infrastructure_
 
 - [ ] 2. Shared authentication guards, authorization decorators, and token verification
-- [ ] 2.1 (P) Implement user role definitions and route access decorators
+- [x] 2.1 (P) Implement user role definitions and route access decorators
   - **Git Branch**: `feat/common-auth-decorators`
   - **Base Branch**: `planning/iam-auth`
   - **Dependencies**: None

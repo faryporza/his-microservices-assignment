@@ -20,3 +20,8 @@ export * from './redis/redis.constants';
 export * from './redis/redis.types';
 export * from './redis/redis.service';
 export * from './redis/redis.module';
+export * from './auth/constants/user-roles.enum';
+export * from './auth/interfaces/authenticated-user.interface';
+export * from './auth/decorators/roles.decorator';
+export * from './auth/decorators/public.decorator';
+export * from './auth/decorators/current-user.decorator';
