@@ -1,0 +1,262 @@
+# Implementation Plan: Identity & Access Management (iam-auth)
+
+> **Git Workflow & Branching Policies**:
+> - **Planning & Source of Truth**: `planning/iam-auth`
+> - **Never implement directly on `main`**.
+> - Each sub-task corresponds to an independently reviewable branch following the naming convention `feat/<slug>`, `fix/<slug>`, `test/<slug>`, or `refactor/<slug>`.
+> - If a task depends on an unmerged preceding task, the dependent branch is explicitly designated as its base.
+> - Merging is manual and reviewer-gated.
+
+---
+
+- [ ] 1. Foundation and infrastructure setup for authentication and session caching
+- [x] 1.1 Configure Redis cache container and database initialization script
+  - **Git Branch**: `feat/redis-and-iam-db-init`
+  - **Base Branch**: `planning/iam-auth`
+  - **Dependencies**: None
+  - **Expected Files/Modules**: `docker-compose.yml`, `docker/postgres/init.sql`, `his-project/.env.example`
+  - **Implementation Details**:
+    - Add Redis 7 service to `docker-compose.yml` with port mapping `6379:6379`
+    - Add `CREATE DATABASE iam_db;` to `docker/postgres/init.sql`
+    - Add `IAM_PORT=3003`, `IAM_DATABASE_NAME=iam_db`, `REDIS_HOST=localhost`, `REDIS_PORT=6379`, `JWT_SECRET` to `.env.example`
+  - **Acceptance Criteria**: Requirement 8.3
+  - **Required Tests**: Container configuration verification and schema startup check
+  - _Requirements: 8.3_
+  - _Boundary: Infrastructure Configuration_
+
+- [x] 1.2 (P) Implement Redis client module and connection lifecycle provider in shared library
+  - **Git Branch**: `feat/shared-redis-module`
+  - **Base Branch**: `feat/redis-and-iam-db-init`
+  - **Dependencies**: 1.1 (`feat/redis-and-iam-db-init`)
+  - **Expected Files/Modules**: `libs/common/src/redis/redis.module.ts`, `libs/common/src/redis/redis.service.ts`, `libs/common/src/redis/redis.config.ts`, `libs/common/src/redis/redis.service.spec.ts`
+  - **Implementation Details**:
+    - Implement `RedisModule` and `RedisService` in `@app/common` wrapping `ioredis`
+    - Implement session metadata caching (`createSession`, `getSession`, `revokeSession`, `revokeAllUserSessions`)
+    - Implement token blacklist operations (`blacklistAccessToken`, `isAccessTokenBlacklisted`)
+    - Configure automatic reconnection strategy and fail-closed error propagation
+  - **Acceptance Criteria**: Requirements 3.1, 8.2, 8.3
+  - **Required Tests**: Unit tests in `libs/common/src/redis/redis.service.spec.ts` covering session lifecycle and blacklist methods
+  - _Requirements: 3.1, 8.2, 8.3_
+  - _Boundary: Redis Infrastructure_
+
+- [ ] 2. Shared authentication guards, authorization decorators, and token verification
+- [ ] 2.1 (P) Implement user role definitions and route access decorators
+  - **Git Branch**: `feat/common-auth-decorators`
+  - **Base Branch**: `planning/iam-auth`
+  - **Dependencies**: None
+  - **Expected Files/Modules**: `libs/common/src/auth/constants/user-roles.enum.ts`, `libs/common/src/auth/decorators/roles.decorator.ts`, `libs/common/src/auth/decorators/public.decorator.ts`, `libs/common/src/auth/decorators/current-user.decorator.ts`, `libs/common/src/auth/interfaces/authenticated-user.interface.ts`
+  - **Implementation Details**:
+    - Define `UserRole` enum (`ADMIN`, `DOCTOR`, `NURSE`, `FINANCE_STAFF`, `PATIENT`)
+    - Implement `@Roles(...roles: UserRole[])` decorator using NestJS `SetMetadata`
+    - Implement `@Public()` decorator to bypass authentication on open routes
+    - Implement `@CurrentUser()` parameter decorator to extract authenticated user payload from request
+  - **Acceptance Criteria**: Requirements 1.4, 4.1, 5.4, 7.4
+  - **Required Tests**: Unit tests verifying metadata attachment and reflection retrieval
+  - _Requirements: 1.4, 4.1, 5.4, 7.4_
+  - _Boundary: Common Auth Decorators_
+
+- [ ] 2.2 Implement JWT authentication guard with Redis session and blacklist validation
+  - **Git Branch**: `feat/common-jwt-auth-guard`
+  - **Base Branch**: `feat/shared-redis-module`
+  - **Dependencies**: 1.2 (`feat/shared-redis-module`), 2.1 (`feat/common-auth-decorators`)
+  - **Expected Files/Modules**: `libs/common/src/auth/guards/jwt-auth.guard.ts`, `libs/common/src/auth/auth-common.module.ts`, `libs/common/src/auth/guards/jwt-auth.guard.spec.ts`
+  - **Implementation Details**:
+    - Implement `JwtAuthGuard` implementing NestJS `CanActivate`
+    - Bypass token verification when route handler or controller has `@Public()` metadata
+    - Extract `Bearer <token>` from `Authorization` header and verify JWT signature using `@nestjs/jwt`
+    - Check token JTI against Redis blacklist (`isAccessTokenBlacklisted`)
+    - Verify active session in Redis (`getSession(userId, sid)`)
+    - Throw `UnauthorizedException` (401) on missing, expired, malformed, blacklisted, or revoked token
+    - Catch Redis connection errors, emit structured error log, and throw `ServiceUnavailableException` (503) to fail closed
+    - Attach authenticated user payload and trace metadata to `request.user`
+  - **Acceptance Criteria**: Requirements 3.1, 3.4, 5.1, 5.3, 5.4, 7.1, 7.2, 7.4, 8.2
+  - **Required Tests**: Unit tests in `libs/common/src/auth/guards/jwt-auth.guard.spec.ts` covering valid token, expired token, blacklisted JTI, missing header, and Redis failure
+  - _Requirements: 3.1, 3.4, 5.1, 5.3, 5.4, 7.1, 7.2, 7.4, 8.2_
+  - _Boundary: Common Auth Guards_
+  - _Depends: 1.2, 2.1_
+
+- [ ] 2.3 (P) Implement role-based access control guard for endpoint authorization
+  - **Git Branch**: `feat/common-roles-guard`
+  - **Base Branch**: `feat/common-auth-decorators`
+  - **Dependencies**: 2.1 (`feat/common-auth-decorators`)
+  - **Expected Files/Modules**: `libs/common/src/auth/guards/roles.guard.ts`, `libs/common/src/auth/guards/roles.guard.spec.ts`
+  - **Implementation Details**:
+    - Implement `RolesGuard` implementing NestJS `CanActivate`
+    - Extract required roles from route handler and class metadata via `Reflector`
+    - Compare `request.user.role` against required roles
+    - Allow execution if route has no `@Roles()` restriction or if user role matches
+    - Throw `ForbiddenException` (403) formatted in Blueprint JSON:API error envelope on role mismatch
+  - **Acceptance Criteria**: Requirements 4.1, 5.2, 5.3
+  - **Required Tests**: Unit tests in `libs/common/src/auth/guards/roles.guard.spec.ts` covering allowed role, forbidden role, and unannotated routes
+  - _Requirements: 4.1, 5.2, 5.3_
+  - _Boundary: Common RBAC Guards_
+  - _Depends: 2.1_
+
+- [ ] 3. Core IAM microservice application and user identity management
+- [ ] 3.1 Scaffold IAM microservice project structure, configuration, and user persistence
+  - **Git Branch**: `feat/iam-bc-scaffold-and-user-entity`
+  - **Base Branch**: `feat/redis-and-iam-db-init`
+  - **Dependencies**: 1.1 (`feat/redis-and-iam-db-init`)
+  - **Expected Files/Modules**: `apps/iam-bc/src/main.ts`, `apps/iam-bc/src/iam-bc.module.ts`, `apps/iam-bc/src/health-checks.controller.ts`, `apps/iam-bc/src/health-checks.service.ts`, `apps/iam-bc/src/modules/user/entities/user.entity.ts`, `apps/iam-bc/src/modules/user/services/users.service.ts`, `apps/iam-bc/src/modules/auth/services/password-hash.service.ts`, `apps/iam-bc/test/unit/user-naming.spec.ts`, `apps/iam-bc/test/unit/users.service.spec.ts`, `nest-cli.json`, `tsconfig.json`, `package.json`
+  - **Implementation Details**:
+    - Configure `iam-bc` application in `nest-cli.json`, `tsconfig.json` paths, and `package.json` scripts (`start:iam`, `test:iam`)
+    - Implement `User` TypeORM entity (table: `users`, constraints: `pk_users`, `uq_users_username`, `uq_users_email`, enum: `user_role_enum`)
+    - Implement `PasswordHashService` with salted one-way hashing (`argon2` or `bcrypt`)
+    - Implement `UsersService` for user creation and lookup by username/email/id
+    - Bootstrap `main.ts` with global validation pipe, logging, exception filters, and Swagger setup
+  - **Acceptance Criteria**: Requirements 1.1, 1.4, 6.3, 7.3
+  - **Required Tests**: `apps/iam-bc/test/unit/user-naming.spec.ts` and `users.service.spec.ts`
+  - _Requirements: 1.1, 1.4, 6.3, 7.3_
+  - _Boundary: IAM Application Scaffolding_
+  - _Depends: 1.1_
+
+- [ ] 3.2 Implement user registration endpoint with password complexity validation
+  - **Git Branch**: `feat/iam-user-registration`
+  - **Base Branch**: `feat/iam-bc-scaffold-and-user-entity`
+  - **Dependencies**: 3.1 (`feat/iam-bc-scaffold-and-user-entity`)
+  - **Expected Files/Modules**: `apps/iam-bc/src/modules/auth/dto/register-user.dto.ts`, `apps/iam-bc/src/modules/auth/controllers/auth.controller.ts`, `apps/iam-bc/src/modules/auth/services/auth.service.ts`, `apps/iam-bc/src/modules/auth/auth.module.ts`, `apps/iam-bc/test/unit/auth.controller.spec.ts`
+  - **Implementation Details**:
+    - Create `RegisterUserDTO` with `@IsEmail()`, `@IsString()`, `@IsEnum(UserRole)`, and password complexity validation (min 8 chars, mixed case, digit, symbol)
+    - Implement `POST /auth/register` annotated with `@Public()` and `@ResourceType('users')`
+    - Check for duplicate username or email and throw `ConflictException` (409) if already registered
+    - Hash password and persist user with active status
+    - Emit structured security audit log for registration events without logging password
+  - **Acceptance Criteria**: Requirements 1.1, 1.2, 1.3, 6.1, 6.2, 7.1, 7.3
+  - **Required Tests**: Unit tests in `auth.controller.spec.ts` and `auth.service.spec.ts` covering successful registration, duplicate 409 conflict, and complexity validation
+  - _Requirements: 1.1, 1.2, 1.3, 6.1, 6.2, 7.1, 7.3_
+  - _Boundary: IAM Registration_
+  - _Depends: 3.1_
+
+- [ ] 3.3 Implement user login endpoint and token pair issuance
+  - **Git Branch**: `feat/iam-user-login-and-token-issuance`
+  - **Base Branch**: `feat/iam-user-registration`
+  - **Dependencies**: 1.2 (`feat/shared-redis-module`), 3.1 (`feat/iam-bc-scaffold-and-user-entity`)
+  - **Expected Files/Modules**: `apps/iam-bc/src/modules/auth/dto/login-user.dto.ts`, `apps/iam-bc/src/modules/auth/controllers/auth.controller.ts`, `apps/iam-bc/src/modules/auth/services/auth.service.ts`
+  - **Implementation Details**:
+    - Create `LoginUserDTO` accepting `username` (or `email`) and `password`
+    - Implement `POST /auth/login` annotated with `@Public()`
+    - Verify user exists and is active; verify password hash via `PasswordHashService`
+    - Return generic `UnauthorizedException` (401) on invalid credentials or inactive account
+    - Generate short-lived Access Token (15m, payload: `sub`, `username`, `role`, `sid`, `jti`) and long-lived Refresh Token (7d, payload: `sub`, `sid`, `jti`)
+    - Cache session metadata in Redis (`auth:session:{userId}:{sessionId}`) with 7d TTL and add to `auth:user_sessions:{userId}` set
+    - Implement `GET /auth/me` returning current user profile from `request.user`
+  - **Acceptance Criteria**: Requirements 2.1, 2.2, 2.3, 2.4, 6.4, 7.1, 7.2, 7.3
+  - **Required Tests**: Unit tests in `auth.controller.spec.ts` and `auth.service.spec.ts` covering valid login, invalid password, inactive user, and `/auth/me` profile retrieval
+  - _Requirements: 2.1, 2.2, 2.3, 2.4, 6.4, 7.1, 7.2, 7.3_
+  - _Boundary: IAM Authentication_
+  - _Depends: 1.2, 3.1_
+
+- [ ] 3.4 Implement token refresh, stateful logout, and token-theft protection
+  - **Git Branch**: `feat/iam-token-refresh-and-logout`
+  - **Base Branch**: `feat/iam-user-login-and-token-issuance`
+  - **Dependencies**: 1.2 (`feat/shared-redis-module`), 3.3 (`feat/iam-user-login-and-token-issuance`)
+  - **Expected Files/Modules**: `apps/iam-bc/src/modules/auth/dto/refresh-token.dto.ts`, `apps/iam-bc/src/modules/auth/controllers/auth.controller.ts`, `apps/iam-bc/src/modules/auth/services/auth.service.ts`
+  - **Implementation Details**:
+    - Create `RefreshTokenDTO` validating `refresh_token` string
+    - Implement `POST /auth/refresh` annotated with `@Public()`
+    - Verify refresh token JWT signature; extract `sub`, `sid`, and `jti`
+    - Look up session in Redis (`getSession(userId, sid)`)
+    - If `refreshTokenJti` does not match active session in Redis (token reuse / replay), treat as theft: revoke all sessions in `revokeAllUserSessions(userId)` and throw `UnauthorizedException` (401)
+    - If valid: issue new Access Token and Refresh Token pair, update `refreshTokenJti` in Redis session
+    - Implement `POST /auth/logout` extracting access token JTI and session ID
+    - Add access token JTI to Redis blacklist (`blacklistAccessToken(jti, remainingTtl)`) and delete session key from Redis (`revokeSession(userId, sid)`)
+    - Ensure logout is idempotent (returns success even if session is already removed)
+  - **Acceptance Criteria**: Requirements 3.2, 3.3, 3.5, 7.1, 8.1
+  - **Required Tests**: Unit tests in `auth.service.spec.ts` covering token refresh rotation, reuse revocation of all user sessions, and idempotent logout
+  - _Requirements: 3.2, 3.3, 3.5, 7.1, 8.1_
+  - _Boundary: IAM Session Lifecycle_
+  - _Depends: 1.2, 3.3_
+
+- [ ] 4. Cross-service security integration across OPD, EMR, and Finance
+- [ ] 4.1 Apply authentication and authorization guards to OPD microservice
+  - **Git Branch**: `feat/opd-bc-auth-protection`
+  - **Base Branch**: `planning/iam-auth`
+  - **Dependencies**: 2.2 (`feat/common-jwt-auth-guard`), 2.3 (`feat/common-roles-guard`)
+  - **Expected Files/Modules**: `apps/opd-bc/src/opd-bc.module.ts`, `apps/opd-bc/src/modules/patient/controllers/patients.controller.ts`, `apps/opd-bc/src/modules/visit/controllers/visits.controller.ts`, `apps/opd-bc/src/health-checks.controller.ts`
+  - **Implementation Details**:
+    - Import `AuthCommonModule` into `OpdBcModule` and bind `JwtAuthGuard` and `RolesGuard` globally
+    - Annotate `PatientsController` with `@Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE)` for mutation/list, and `@Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.PATIENT)` for `findOne`
+    - Annotate `VisitsController` with `@Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE)` for `create`/`findAll`, and `@Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.PATIENT)` for `findOne`/`findByPatientId`
+    - Annotate `HealthChecksController` with `@Public()`
+  - **Acceptance Criteria**: Requirements 4.1, 4.2, 5.1, 5.2, 5.4
+  - **Required Tests**: `apps/opd-bc/test/unit/patients.controller.spec.ts` and `visits.controller.spec.ts`
+  - _Requirements: 4.1, 4.2, 5.1, 5.2, 5.4_
+  - _Boundary: OPD Security Integration_
+  - _Depends: 2.2, 2.3_
+
+- [ ] 4.2 (P) Apply authentication and authorization guards to EMR microservice
+  - **Git Branch**: `feat/emr-bc-auth-protection`
+  - **Base Branch**: `planning/iam-auth`
+  - **Dependencies**: 2.2 (`feat/common-jwt-auth-guard`), 2.3 (`feat/common-roles-guard`)
+  - **Expected Files/Modules**: `apps/emr-bc/src/emr-bc.module.ts`, `apps/emr-bc/src/modules/medical-record/controllers/medical-records.controller.ts`, `apps/emr-bc/src/health-checks.controller.ts`
+  - **Implementation Details**:
+    - Import `AuthCommonModule` into `EmrBcModule` and bind `JwtAuthGuard` and `RolesGuard` globally
+    - Annotate `MedicalRecordsController` methods:
+      - `create`, `update`, `completeTreatment`: `@Roles(UserRole.DOCTOR)`
+      - `findAll`, `findOne`, `findByVisitId`: `@Roles(UserRole.DOCTOR, UserRole.NURSE, UserRole.ADMIN, UserRole.PATIENT)`
+    - Annotate `HealthChecksController` with `@Public()`
+  - **Acceptance Criteria**: Requirements 4.1, 4.3, 4.4, 5.1, 5.2, 5.4
+  - **Required Tests**: `apps/emr-bc/test/unit/medical-records.controller.spec.ts`
+  - _Requirements: 4.1, 4.3, 4.4, 5.1, 5.2, 5.4_
+  - _Boundary: EMR Security Integration_
+  - _Depends: 2.2, 2.3_
+
+- [ ] 4.3 (P) Apply authentication and authorization guards to Finance microservice
+  - **Git Branch**: `feat/finance-bc-auth-protection`
+  - **Base Branch**: `planning/iam-auth`
+  - **Dependencies**: 2.2 (`feat/common-jwt-auth-guard`), 2.3 (`feat/common-roles-guard`)
+  - **Expected Files/Modules**: `apps/finance-bc/src/finance-bc.module.ts`, `apps/finance-bc/src/modules/invoice/controllers/invoices.controller.ts`, `apps/finance-bc/src/health-checks.controller.ts`
+  - **Implementation Details**:
+    - Import `AuthCommonModule` into `FinanceBcModule` and bind `JwtAuthGuard` and `RolesGuard` globally
+    - Annotate `InvoicesController` methods:
+      - `pay`: `@Roles(UserRole.FINANCE_STAFF, UserRole.ADMIN)`
+      - `findAll`: `@Roles(UserRole.FINANCE_STAFF, UserRole.ADMIN)`
+      - `findByVisitId`: `@Roles(UserRole.FINANCE_STAFF, UserRole.ADMIN, UserRole.PATIENT)`
+    - Annotate `HealthChecksController` with `@Public()`
+  - **Acceptance Criteria**: Requirements 4.1, 4.5, 4.6, 5.1, 5.2, 5.4
+  - **Required Tests**: `apps/finance-bc/test/unit/invoices.controller.spec.ts`
+  - _Requirements: 4.1, 4.5, 4.6, 5.1, 5.2, 5.4_
+  - _Boundary: Finance Security Integration_
+  - _Depends: 2.2, 2.3_
+
+- [ ] 5. Testing utilities, regression verification, and end-to-end security test suites
+- [ ] 5.1 Update test utilities and verify backward compatibility of all existing tests
+  - **Git Branch**: `test/auth-test-helpers-and-regression`
+  - **Base Branch**: `planning/iam-auth`
+  - **Dependencies**: 2.2 (`feat/common-jwt-auth-guard`), 4.1, 4.2, 4.3
+  - **Expected Files/Modules**: `libs/common/src/testing/testing.helpers.ts`, `apps/opd-bc/test/e2e/app.e2e-spec.ts`, `apps/emr-bc/test/e2e/app.e2e-spec.ts`, `apps/finance-bc/test/e2e/app.e2e-spec.ts`
+  - **Implementation Details**:
+    - Implement `createMockJwtToken(user: Partial<AuthenticatedUser>)` in `testing.helpers.ts`
+    - Update `createTestApp` in `testing.helpers.ts` to seamlessly handle guard validation in test environments
+    - Run full test suite (`npm test`) across all 34 test suites
+    - Confirm all 142 existing unit tests continue to pass with 100% success rate
+    - Confirm RabbitMQ event choreography and naming convention tests pass
+  - **Acceptance Criteria**: Requirements 5.1, 5.2, 7.4
+  - **Required Tests**: Complete unit test execution (`npm test`) across monorepo
+  - _Requirements: 5.1, 5.2, 7.4_
+  - _Boundary: Test Infrastructure & Backward Compatibility_
+  - _Depends: 2.2, 4.1, 4.2, 4.3_
+
+- [ ] 5.2 Implement end-to-end security integration test suites
+  - **Git Branch**: `test/e2e-iam-and-cross-service-rbac`
+  - **Base Branch**: `test/auth-test-helpers-and-regression`
+  - **Dependencies**: 3.2, 3.3, 3.4, 4.1, 4.2, 4.3, 5.1
+  - **Expected Files/Modules**: `apps/iam-bc/test/e2e/auth.e2e-spec.ts`, `apps/iam-bc/test/jest-e2e.json`, `package.json`
+  - **Implementation Details**:
+    - Implement `apps/iam-bc/test/e2e/auth.e2e-spec.ts` testing the complete authentication lifecycle:
+      - Register new user (`POST /auth/register`)
+      - Authenticate and receive token pair (`POST /auth/login`)
+      - Retrieve self profile (`GET /auth/me`)
+      - Refresh token and receive rotated pair (`POST /auth/refresh`)
+      - Logout and verify session revocation (`POST /auth/logout`)
+      - Verify revoked token is rejected with `401 Unauthorized`
+    - Implement cross-service RBAC E2E test assertions:
+      - Verify unauthenticated requests to protected endpoints in OPD, EMR, and Finance return `401 Unauthorized`
+      - Verify Doctor token can complete medical records, but returns `403 Forbidden` on invoice payment
+      - Verify Finance Staff token can process invoice payments, but returns `403 Forbidden` on medical record creation
+    - Register IAM in `npm run test:e2e` script
+  - **Acceptance Criteria**: Requirements 1.1, 2.1, 3.1, 3.2, 3.3, 3.4, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 5.1, 5.2, 5.3
+  - **Required Tests**: Execution of `npm run test:e2e` across all microservices
+  - _Requirements: 1.1, 2.1, 3.1, 3.2, 3.3, 3.4, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 5.1, 5.2, 5.3_
+  - _Boundary: End-to-End Security Validation_
+  - _Depends: 3.2, 3.3, 3.4, 4.1, 4.2, 4.3, 5.1_
