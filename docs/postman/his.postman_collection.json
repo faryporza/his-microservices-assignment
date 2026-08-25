@@ -1000,7 +1000,79 @@
       "name": "6. End-to-End Repeatable Choreography Flow",
       "item": [
         {
-          "name": "Step 01. Authenticate Nurse",
+          "name": "Step 01. Ensure Nurse Registered",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Nurse registered or exists', function () {",
+                  "  pm.expect([201, 409]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"nurse_test_user\",\n  \"email\": \"nurse_test@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"Florence\",\n  \"last_name\": \"Nightingale\",\n  \"role\": \"NURSE\"\n}"
+            },
+            "url": "{{iam_base_url}}/auth/register"
+          }
+        },
+        {
+          "name": "Step 02. Ensure Doctor Registered",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Doctor registered or exists', function () {",
+                  "  pm.expect([201, 409]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"doctor_test_user\",\n  \"email\": \"doctor_test@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"John\",\n  \"last_name\": \"Watson\",\n  \"role\": \"DOCTOR\"\n}"
+            },
+            "url": "{{iam_base_url}}/auth/register"
+          }
+        },
+        {
+          "name": "Step 03. Ensure Finance Staff Registered",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Finance staff registered or exists', function () {",
+                  "  pm.expect([201, 409]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"finance_test_user\",\n  \"email\": \"finance_test@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"Penny\",\n  \"last_name\": \"Accountant\",\n  \"role\": \"FINANCE_STAFF\"\n}"
+            },
+            "url": "{{iam_base_url}}/auth/register"
+          }
+        },
+        {
+          "name": "Step 04. Authenticate Nurse",
           "event": [
             {
               "listen": "test",
@@ -1027,7 +1099,7 @@
           }
         },
         {
-          "name": "Step 02. Authenticate Doctor",
+          "name": "Step 05. Authenticate Doctor",
           "event": [
             {
               "listen": "test",
@@ -1055,7 +1127,7 @@
           }
         },
         {
-          "name": "Step 03. Authenticate Finance Staff",
+          "name": "Step 06. Authenticate Finance Staff",
           "event": [
             {
               "listen": "test",
@@ -1083,7 +1155,7 @@
           }
         },
         {
-          "name": "Step 04. Register Unique Patient",
+          "name": "Step 07. Register Unique Patient",
           "event": [
             {
               "listen": "test",
@@ -1115,7 +1187,7 @@
           }
         },
         {
-          "name": "Step 05. Open Visit (Outbox emits visit.created)",
+          "name": "Step 08. Open Visit (Outbox emits visit.created)",
           "event": [
             {
               "listen": "test",
@@ -1148,7 +1220,7 @@
           }
         },
         {
-          "name": "Step 06. Wait for EMR to Consume visit.created",
+          "name": "Step 09. Wait for EMR to Consume visit.created",
           "event": [
             {
               "listen": "test",
@@ -1169,7 +1241,7 @@
                   "  pm.collectionVariables.set('retry_count', String(retryCount));",
                   "  pm.test('Record endpoint is retryable', function () { pm.expect([200, 404]).to.include(pm.response.code); });",
                   "  if (retryCount < maxRetries) {",
-                  "    pm.execution.setNextRequest('Step 06. Wait for EMR to Consume visit.created');",
+                  "    pm.execution.setNextRequest('Step 09. Wait for EMR to Consume visit.created');",
                   "  } else {",
                   "    pm.expect.fail('Medical record was not created in time via RabbitMQ');",
                   "  }",
@@ -1185,7 +1257,7 @@
           }
         },
         {
-          "name": "Step 07. Doctor Completes Treatment (Outbox emits treatment.completed)",
+          "name": "Step 10. Doctor Completes Treatment (Outbox emits treatment.completed)",
           "event": [
             {
               "listen": "test",
@@ -1218,7 +1290,7 @@
           }
         },
         {
-          "name": "Step 08. Wait for Finance to Consume treatment.completed",
+          "name": "Step 11. Wait for Finance to Consume treatment.completed",
           "event": [
             {
               "listen": "test",
@@ -1240,7 +1312,7 @@
                   "  pm.collectionVariables.set('retry_count', String(retryCount));",
                   "  pm.test('Invoice endpoint is retryable', function () { pm.expect([200, 404]).to.include(pm.response.code); });",
                   "  if (retryCount < maxRetries) {",
-                  "    pm.execution.setNextRequest('Step 08. Wait for Finance to Consume treatment.completed');",
+                  "    pm.execution.setNextRequest('Step 11. Wait for Finance to Consume treatment.completed');",
                   "  } else {",
                   "    pm.expect.fail('Invoice was not created in time via RabbitMQ');",
                   "  }",
@@ -1256,7 +1328,7 @@
           }
         },
         {
-          "name": "Step 09. Finance Staff Pays Invoice (Outbox emits invoice.paid)",
+          "name": "Step 12. Finance Staff Pays Invoice (Outbox emits invoice.paid)",
           "event": [
             {
               "listen": "test",
@@ -1289,7 +1361,7 @@
           }
         },
         {
-          "name": "Step 10. Wait for OPD to Consume invoice.paid & Close Visit",
+          "name": "Step 13. Wait for OPD to Consume invoice.paid & Close Visit",
           "event": [
             {
               "listen": "test",
@@ -1309,7 +1381,7 @@
                   "  pm.collectionVariables.set('retry_count', String(retryCount));",
                   "  pm.test('Visit endpoint is retryable', function () { pm.expect(pm.response.code).to.eql(200); });",
                   "  if (retryCount < maxRetries) {",
-                  "    pm.execution.setNextRequest('Step 10. Wait for OPD to Consume invoice.paid & Close Visit');",
+                  "    pm.execution.setNextRequest('Step 13. Wait for OPD to Consume invoice.paid & Close Visit');",
                   "  } else {",
                   "    pm.expect.fail('Visit was not closed in time via RabbitMQ');",
                   "  }",
@@ -1325,7 +1397,7 @@
           }
         },
         {
-          "name": "Step 11. Rotate Doctor Token",
+          "name": "Step 14. Rotate Doctor Token",
           "event": [
             {
               "listen": "test",
@@ -1354,7 +1426,7 @@
           }
         },
         {
-          "name": "Step 12. Logout Doctor & Terminate Session",
+          "name": "Step 15. Logout Doctor & Terminate Session",
           "event": [
             {
               "listen": "test",
