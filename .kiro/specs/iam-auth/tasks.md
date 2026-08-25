@@ -110,7 +110,7 @@
   - _Boundary: IAM Application Scaffolding_
   - _Depends: 1.1_
 
-- [ ] 3.2 Implement user registration endpoint with password complexity validation
+- [x] 3.2 Implement user registration endpoint with password complexity validation
   - **Git Branch**: `feat/iam-user-registration`
   - **Base Branch**: `feat/iam-bc-scaffold-and-user-entity`
   - **Dependencies**: 3.1 (`feat/iam-bc-scaffold-and-user-entity`)

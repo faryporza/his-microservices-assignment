@@ -5,7 +5,7 @@ import { createPostgresOptions, CommonModule } from '@app/common';
 import { IamHealthChecksController } from './health-checks.controller';
 import { IamHealthChecksService } from './health-checks.service';
 import { UserModule } from './modules/user/user.module';
-import { PasswordHashService } from './modules/auth/services/password-hash.service';
+import { AuthModule } from './modules/auth/auth.module';
 
 @Module({
   imports: [
@@ -26,9 +26,10 @@ import { PasswordHashService } from './modules/auth/services/password-hash.servi
     }),
     CommonModule,
     UserModule,
+    AuthModule,
   ],
   controllers: [IamHealthChecksController],
-  providers: [IamHealthChecksService, PasswordHashService],
-  exports: [UserModule, PasswordHashService],
+  providers: [IamHealthChecksService],
+  exports: [UserModule, AuthModule],
 })
 export class IamBcModule {}
