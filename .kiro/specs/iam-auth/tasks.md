@@ -9,7 +9,7 @@
 
 ---
 
-- [ ] 1. Foundation and infrastructure setup for authentication and session caching
+- [x] 1. Foundation and infrastructure setup for authentication and session caching
 - [x] 1.1 Configure Redis cache container and database initialization script
   - **Git Branch**: `feat/redis-and-iam-db-init`
   - **Base Branch**: `planning/iam-auth`
@@ -39,7 +39,7 @@
   - _Requirements: 3.1, 8.2, 8.3_
   - _Boundary: Redis Infrastructure_
 
-- [ ] 2. Shared authentication guards, authorization decorators, and token verification
+- [x] 2. Shared authentication guards, authorization decorators, and token verification
 - [x] 2.1 (P) Implement user role definitions and route access decorators
   - **Git Branch**: `feat/common-auth-decorators`
   - **Base Branch**: `planning/iam-auth`
@@ -92,7 +92,7 @@
   - _Boundary: Common RBAC Guards_
   - _Depends: 2.1_
 
-- [ ] 3. Core IAM microservice application and user identity management
+- [x] 3. Core IAM microservice application and user identity management
 - [x] 3.1 Scaffold IAM microservice project structure, configuration, and user persistence
   - **Git Branch**: `feat/iam-bc-scaffold-and-user-entity`
   - **Base Branch**: `feat/redis-and-iam-db-init`
@@ -167,7 +167,7 @@
   - _Boundary: IAM Session Lifecycle_
   - _Depends: 1.2, 3.3_
 
-- [ ] 4. Cross-service security integration across OPD, EMR, and Finance
+- [x] 4. Cross-service security integration across OPD, EMR, and Finance
 - [x] 4.1 Apply authentication and authorization guards to OPD microservice
   - **Git Branch**: `feat/opd-bc-auth-protection`
   - **Base Branch**: `planning/iam-auth`
@@ -219,7 +219,7 @@
   - _Boundary: Finance Security Integration_
   - _Depends: 2.2, 2.3_
 
-- [ ] 5. Testing utilities, regression verification, and end-to-end security test suites
+- [x] 5. Testing utilities, regression verification, and end-to-end security test suites
 - [x] 5.1 Update test utilities and verify backward compatibility of all existing tests
   - **Git Branch**: `test/auth-test-helpers-and-regression`
   - **Base Branch**: `planning/iam-auth`
@@ -260,3 +260,4 @@
   - _Requirements: 1.1, 2.1, 3.1, 3.2, 3.3, 3.4, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 5.1, 5.2, 5.3_
   - _Boundary: End-to-End Security Validation_
   - _Depends: 3.2, 3.3, 3.4, 4.1, 4.2, 4.3, 5.1_
+
