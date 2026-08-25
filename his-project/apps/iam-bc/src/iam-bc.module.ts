@@ -1,7 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { createPostgresOptions, CommonModule } from '@app/common';
+import {
+  createPostgresOptions,
+  CommonModule,
+  AuthCommonModule,
+} from '@app/common';
 import { IamHealthChecksController } from './health-checks.controller';
 import { IamHealthChecksService } from './health-checks.service';
 import { UserModule } from './modules/user/user.module';
@@ -25,6 +29,7 @@ import { AuthModule } from './modules/auth/auth.module';
         ),
     }),
     CommonModule,
+    AuthCommonModule,
     UserModule,
     AuthModule,
   ],

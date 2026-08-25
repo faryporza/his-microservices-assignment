@@ -127,7 +127,7 @@
   - _Boundary: IAM Registration_
   - _Depends: 3.1_
 
-- [ ] 3.3 Implement user login endpoint and token pair issuance
+- [x] 3.3 Implement user login endpoint and token pair issuance
   - **Git Branch**: `feat/iam-user-login-and-token-issuance`
   - **Base Branch**: `feat/iam-user-registration`
   - **Dependencies**: 1.2 (`feat/shared-redis-module`), 3.1 (`feat/iam-bc-scaffold-and-user-entity`)

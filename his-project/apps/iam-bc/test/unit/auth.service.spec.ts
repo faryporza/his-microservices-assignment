@@ -1,17 +1,21 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ConflictException } from '@nestjs/common';
+import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { AuthService } from '@apps/iam-bc/modules/auth/services/auth.service';
 import { UsersService } from '@apps/iam-bc/modules/user/services/users.service';
 import { PasswordHashService } from '@apps/iam-bc/modules/auth/services/password-hash.service';
-import { UserRole } from '@app/common';
+import { RedisService, UserRole } from '@app/common';
 import { User } from '@apps/iam-bc/modules/user/entities/user.entity';
 
-describe('AuthService - Register', () => {
+describe('AuthService', () => {
   let service: AuthService;
   let usersService: jest.Mocked<UsersService>;
   let passwordHashService: jest.Mocked<PasswordHashService>;
+  let jwtService: jest.Mocked<JwtService>;
+  let redisService: jest.Mocked<RedisService>;
 
-  const mockUser: User = {
+  const activeUser: User = {
     id: 'user-uuid-1',
     username: 'dr_watson',
     email: 'watson@baker.st',
@@ -24,9 +28,15 @@ describe('AuthService - Register', () => {
     updated_at: new Date('2026-08-25T12:00:00Z'),
   };
 
+  const inactiveUser: User = {
+    ...activeUser,
+    id: 'user-uuid-2',
+    is_active: false,
+  };
+
   beforeEach(async () => {
     usersService = {
-      create: jest.fn().mockResolvedValue(mockUser),
+      create: jest.fn().mockResolvedValue(activeUser),
       findByUsernameOrEmail: jest.fn(),
       findById: jest.fn(),
     } as unknown as jest.Mocked<UsersService>;
@@ -36,58 +46,163 @@ describe('AuthService - Register', () => {
       verifyPassword: jest.fn(),
     } as unknown as jest.Mocked<PasswordHashService>;
 
+    jwtService = {
+      signAsync: jest
+        .fn()
+        .mockResolvedValueOnce('mock_access_token')
+        .mockResolvedValueOnce('mock_refresh_token'),
+    } as unknown as jest.Mocked<JwtService>;
+
+    redisService = {
+      createSession: jest.fn().mockResolvedValue(undefined),
+      getSession: jest.fn(),
+      revokeSession: jest.fn(),
+      isAccessTokenBlacklisted: jest.fn(),
+    } as unknown as jest.Mocked<RedisService>;
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
         { provide: UsersService, useValue: usersService },
         { provide: PasswordHashService, useValue: passwordHashService },
+        { provide: JwtService, useValue: jwtService },
+        { provide: RedisService, useValue: redisService },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn((key: string, def?: string) => def ?? 'test-secret'),
+          },
+        },
       ],
     }).compile();
 
     service = module.get<AuthService>(AuthService);
   });
 
-  it('should hash password and create user, returning user without password_hash', async () => {
-    const result = await service.register({
-      username: 'dr_watson',
-      email: 'watson@baker.st',
-      password: 'Password123!',
-      first_name: 'John',
-      last_name: 'Watson',
-      role: UserRole.DOCTOR,
-    });
-
-    expect(passwordHashService.hashPassword).toHaveBeenCalledWith(
-      'Password123!',
-    );
-    expect(usersService.create).toHaveBeenCalledWith({
-      username: 'dr_watson',
-      email: 'watson@baker.st',
-      password_hash: 'hashed_secret',
-      first_name: 'John',
-      last_name: 'Watson',
-      role: UserRole.DOCTOR,
-    });
-
-    expect((result as Record<string, unknown>).password_hash).toBeUndefined();
-    expect(result.id).toBe('user-uuid-1');
-    expect(result.username).toBe('dr_watson');
-    expect(result.email).toBe('watson@baker.st');
-  });
-
-  it('should propagate ConflictException when username/email is already taken', async () => {
-    usersService.create.mockRejectedValueOnce(
-      new ConflictException('Username already registered'),
-    );
-
-    await expect(
-      service.register({
+  describe('register', () => {
+    it('should hash password and create user, returning user without password_hash', async () => {
+      const result = await service.register({
         username: 'dr_watson',
         email: 'watson@baker.st',
         password: 'Password123!',
         first_name: 'John',
         last_name: 'Watson',
-      }),
-    ).rejects.toThrow(ConflictException);
+        role: UserRole.DOCTOR,
+      });
+
+      expect(passwordHashService.hashPassword).toHaveBeenCalledWith(
+        'Password123!',
+      );
+      expect(usersService.create).toHaveBeenCalledWith({
+        username: 'dr_watson',
+        email: 'watson@baker.st',
+        password_hash: 'hashed_secret',
+        first_name: 'John',
+        last_name: 'Watson',
+        role: UserRole.DOCTOR,
+      });
+
+      expect((result as Record<string, unknown>).password_hash).toBeUndefined();
+      expect(result.id).toBe('user-uuid-1');
+      expect(result.username).toBe('dr_watson');
+      expect(result.email).toBe('watson@baker.st');
+    });
+
+    it('should propagate ConflictException when username/email is already taken', async () => {
+      usersService.create.mockRejectedValueOnce(
+        new ConflictException('Username already registered'),
+      );
+
+      await expect(
+        service.register({
+          username: 'dr_watson',
+          email: 'watson@baker.st',
+          password: 'Password123!',
+          first_name: 'John',
+          last_name: 'Watson',
+        }),
+      ).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('login', () => {
+    it('should authenticate user, create Redis session, and return token pair', async () => {
+      usersService.findByUsernameOrEmail.mockResolvedValueOnce(activeUser);
+      passwordHashService.verifyPassword.mockResolvedValueOnce(true);
+
+      const result = await service.login({
+        username: 'dr_watson',
+        password: 'Password123!',
+      });
+
+      expect(usersService.findByUsernameOrEmail).toHaveBeenCalledWith(
+        'dr_watson',
+      );
+      expect(passwordHashService.verifyPassword).toHaveBeenCalledWith(
+        'Password123!',
+        'hashed_secret',
+      );
+      expect(redisService.createSession).toHaveBeenCalled();
+      expect(jwtService.signAsync).toHaveBeenCalledTimes(2);
+
+      expect(result).toEqual({
+        access_token: 'mock_access_token',
+        refresh_token: 'mock_refresh_token',
+        token_type: 'Bearer',
+        expires_in: 900,
+      });
+    });
+
+    it('should throw UnauthorizedException when user does not exist', async () => {
+      usersService.findByUsernameOrEmail.mockResolvedValueOnce(null);
+
+      await expect(
+        service.login({
+          username: 'unknown_user',
+          password: 'Password123!',
+        }),
+      ).rejects.toThrow(new UnauthorizedException('Invalid credentials'));
+    });
+
+    it('should throw UnauthorizedException when password is invalid', async () => {
+      usersService.findByUsernameOrEmail.mockResolvedValueOnce(activeUser);
+      passwordHashService.verifyPassword.mockResolvedValueOnce(false);
+
+      await expect(
+        service.login({
+          username: 'dr_watson',
+          password: 'WrongPassword!',
+        }),
+      ).rejects.toThrow(new UnauthorizedException('Invalid credentials'));
+    });
+
+    it('should throw UnauthorizedException when user account is inactive', async () => {
+      usersService.findByUsernameOrEmail.mockResolvedValueOnce(inactiveUser);
+
+      await expect(
+        service.login({
+          username: 'dr_watson',
+          password: 'Password123!',
+        }),
+      ).rejects.toThrow(new UnauthorizedException('Account is disabled'));
+    });
+  });
+
+  describe('getProfile', () => {
+    it('should return sanitized user profile', async () => {
+      usersService.findById.mockResolvedValueOnce(activeUser);
+
+      const result = await service.getProfile({
+        id: 'user-uuid-1',
+        username: 'dr_watson',
+        role: UserRole.DOCTOR,
+      });
+
+      expect(usersService.findById).toHaveBeenCalledWith('user-uuid-1');
+      expect((result as Record<string, unknown>).password_hash).toBeUndefined();
+      expect(result.id).toBe('user-uuid-1');
+      expect(result.username).toBe('dr_watson');
+      expect(result.role).toBe(UserRole.DOCTOR);
+    });
   });
 });
