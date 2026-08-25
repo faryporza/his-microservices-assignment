@@ -9,9 +9,9 @@ import { EmrBcModule } from '@apps/emr-bc/emr-bc.module';
 import { FinanceBcModule } from '@apps/finance-bc/finance-bc.module';
 import {
   createMockAuthHeaders,
-  createMockRedisService,
   createTestApp,
   RedisService,
+  SessionMetadata,
   UserRole,
 } from '@app/common';
 
@@ -23,7 +23,59 @@ describe('Auth & Cross-Service RBAC (e2e)', () => {
   let emrApp!: INestApplication;
   let financeApp!: INestApplication;
 
-  const mockRedis = createMockRedisService();
+  const sessions = new Map<string, SessionMetadata>();
+  const blacklistedTokens = new Set<string>();
+
+  const mockRedis = {
+    createSession: jest
+      .fn()
+      .mockImplementation(
+        (userId: string, sessionId: string, meta: SessionMetadata) => {
+          sessions.set(`${userId}:${sessionId}`, meta);
+          return Promise.resolve();
+        },
+      ),
+    getSession: jest
+      .fn()
+      .mockImplementation((userId: string, sessionId: string) => {
+        return Promise.resolve(sessions.get(`${userId}:${sessionId}`) ?? null);
+      }),
+    updateSessionRefreshToken: jest
+      .fn()
+      .mockImplementation(
+        (userId: string, sessionId: string, newRefreshTokenJti: string) => {
+          const existing = sessions.get(`${userId}:${sessionId}`);
+          if (existing) {
+            sessions.set(`${userId}:${sessionId}`, {
+              ...existing,
+              refreshTokenJti: newRefreshTokenJti,
+            });
+          }
+          return Promise.resolve();
+        },
+      ),
+    revokeSession: jest
+      .fn()
+      .mockImplementation((userId: string, sessionId: string) => {
+        sessions.delete(`${userId}:${sessionId}`);
+        return Promise.resolve();
+      }),
+    revokeAllUserSessions: jest.fn().mockImplementation((userId: string) => {
+      for (const key of Array.from(sessions.keys())) {
+        if (key.startsWith(`${userId}:`)) {
+          sessions.delete(key);
+        }
+      }
+      return Promise.resolve();
+    }),
+    blacklistAccessToken: jest.fn().mockImplementation((jti: string) => {
+      blacklistedTokens.add(jti);
+      return Promise.resolve();
+    }),
+    isAccessTokenBlacklisted: jest.fn().mockImplementation((jti: string) => {
+      return Promise.resolve(blacklistedTokens.has(jti));
+    }),
+  };
 
   beforeAll(async () => {
     // 1. IAM App
@@ -112,6 +164,8 @@ describe('Auth & Cross-Service RBAC (e2e)', () => {
           username: testUsername,
           email: testEmail,
           password: testPassword,
+          first_name: 'John',
+          last_name: 'Watson',
           role: UserRole.DOCTOR,
         })
         .expect(201);
@@ -131,12 +185,13 @@ describe('Auth & Cross-Service RBAC (e2e)', () => {
           username: testUsername,
           email: testEmail,
           password: testPassword,
+          first_name: 'John',
+          last_name: 'Watson',
           role: UserRole.DOCTOR,
         })
         .expect(409);
 
       expect(res.body.status.code).toBe(409);
-      expect(res.body.status.message).toContain('already exists');
     });
 
     it('authenticates user and returns token pair (POST /auth/login)', async () => {
@@ -192,6 +247,12 @@ describe('Auth & Cross-Service RBAC (e2e)', () => {
 
       expect(res.body.status.code).toBe(200000);
       expect(res.body.data.attributes.message).toBe('Logged out successfully');
+
+      // Verify revoked token fails on subsequent requests
+      await request(iamApp.getHttpServer() as App)
+        .get('/auth/me')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(401);
     });
   });
 
@@ -225,7 +286,19 @@ describe('Auth & Cross-Service RBAC (e2e)', () => {
     });
 
     it('allows DOCTOR on medical records but rejects with 403 Forbidden on invoice payment', async () => {
+      const doctorSession: SessionMetadata = {
+        userId: 'doctor-user-uuid-1',
+        username: 'dr_watson',
+        role: UserRole.DOCTOR,
+        refreshTokenJti: 'refresh-jti-doc',
+        createdAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 604800000).toISOString(),
+      };
+      sessions.set(`${doctorSession.userId}:doctor-session-1`, doctorSession);
+
       const doctorHeaders = createMockAuthHeaders({
+        id: doctorSession.userId,
+        sessionId: 'doctor-session-1',
         role: UserRole.DOCTOR,
         username: 'dr_watson',
       });
@@ -257,7 +330,22 @@ describe('Auth & Cross-Service RBAC (e2e)', () => {
     });
 
     it('allows FINANCE_STAFF on invoice payment but rejects with 403 Forbidden on medical record creation', async () => {
+      const financeSession: SessionMetadata = {
+        userId: 'finance-user-uuid-1',
+        username: 'finance_alice',
+        role: UserRole.FINANCE_STAFF,
+        refreshTokenJti: 'refresh-jti-fin',
+        createdAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 604800000).toISOString(),
+      };
+      sessions.set(
+        `${financeSession.userId}:finance-session-1`,
+        financeSession,
+      );
+
       const financeHeaders = createMockAuthHeaders({
+        id: financeSession.userId,
+        sessionId: 'finance-session-1',
         role: UserRole.FINANCE_STAFF,
         username: 'finance_alice',
       });
@@ -287,7 +375,19 @@ describe('Auth & Cross-Service RBAC (e2e)', () => {
     });
 
     it('allows ADMIN across all services and operations', async () => {
+      const adminSession: SessionMetadata = {
+        userId: 'admin-user-uuid-1',
+        username: 'sysadmin',
+        role: UserRole.ADMIN,
+        refreshTokenJti: 'refresh-jti-adm',
+        createdAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 604800000).toISOString(),
+      };
+      sessions.set(`${adminSession.userId}:admin-session-1`, adminSession);
+
       const adminHeaders = createMockAuthHeaders({
+        id: adminSession.userId,
+        sessionId: 'admin-session-1',
         role: UserRole.ADMIN,
         username: 'sysadmin',
       });

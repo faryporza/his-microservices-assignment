@@ -9,6 +9,7 @@ import { StructuredLogger } from '../logging/structured.logger';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { UserRole } from '../auth/constants/user-roles.enum';
 import { RedisService } from '../redis/redis.service';
+import { SessionMetadata } from '../redis/redis.types';
 
 export function createTestingModule(
   controllers: Type<object>[] = [],
@@ -68,21 +69,66 @@ export function createMockAuthHeaders(
 }
 
 export function createMockRedisService(): Partial<RedisService> {
+  const sessions = new Map<string, SessionMetadata>();
+  const blacklistedTokens = new Set<string>();
+
   return {
-    createSession: jest.fn().mockResolvedValue(undefined),
-    getSession: jest.fn().mockImplementation((userId: string) => {
-      return Promise.resolve({
-        userId: userId || 'mock-user-uuid-1',
-        username: 'mock_admin',
-        role: UserRole.ADMIN,
-        refreshTokenJti: 'mock-refresh-jti-1',
-        createdAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 604800000).toISOString(),
-      });
+    createSession: jest
+      .fn()
+      .mockImplementation(
+        (userId: string, sessionId: string, meta: SessionMetadata) => {
+          sessions.set(`${userId}:${sessionId}`, meta);
+          return Promise.resolve();
+        },
+      ),
+    getSession: jest
+      .fn()
+      .mockImplementation((userId: string, sessionId: string) => {
+        return Promise.resolve(
+          sessions.get(`${userId}:${sessionId}`) ?? {
+            userId: userId || 'mock-user-uuid-1',
+            username: 'mock_admin',
+            role: UserRole.ADMIN,
+            refreshTokenJti: 'mock-refresh-jti-1',
+            createdAt: new Date().toISOString(),
+            expiresAt: new Date(Date.now() + 604800000).toISOString(),
+          },
+        );
+      }),
+    updateSessionRefreshToken: jest
+      .fn()
+      .mockImplementation(
+        (userId: string, sessionId: string, newRefreshTokenJti: string) => {
+          const existing = sessions.get(`${userId}:${sessionId}`);
+          if (existing) {
+            sessions.set(`${userId}:${sessionId}`, {
+              ...existing,
+              refreshTokenJti: newRefreshTokenJti,
+            });
+          }
+          return Promise.resolve();
+        },
+      ),
+    revokeSession: jest
+      .fn()
+      .mockImplementation((userId: string, sessionId: string) => {
+        sessions.delete(`${userId}:${sessionId}`);
+        return Promise.resolve();
+      }),
+    revokeAllUserSessions: jest.fn().mockImplementation((userId: string) => {
+      for (const key of Array.from(sessions.keys())) {
+        if (key.startsWith(`${userId}:`)) {
+          sessions.delete(key);
+        }
+      }
+      return Promise.resolve();
     }),
-    revokeSession: jest.fn().mockResolvedValue(undefined),
-    revokeAllUserSessions: jest.fn().mockResolvedValue(undefined),
-    blacklistAccessToken: jest.fn().mockResolvedValue(undefined),
-    isAccessTokenBlacklisted: jest.fn().mockResolvedValue(false),
+    blacklistAccessToken: jest.fn().mockImplementation((jti: string) => {
+      blacklistedTokens.add(jti);
+      return Promise.resolve();
+    }),
+    isAccessTokenBlacklisted: jest.fn().mockImplementation((jti: string) => {
+      return Promise.resolve(blacklistedTokens.has(jti));
+    }),
   };
 }
