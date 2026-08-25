@@ -8,6 +8,7 @@ import {
   Patch,
 } from '@nestjs/common';
 import {
+  ApiBearerAuth,
   ApiHeader,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -15,17 +16,19 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
-import { ResourceType } from '@app/common';
+import { ResourceType, Roles, UserRole } from '@app/common';
 import { InvoicesService } from '../services/invoices.service';
 import { PayInvoiceDTO } from '../dto/pay-invoice.dto';
 
 @ApiTags('Invoices')
+@ApiBearerAuth()
 @ResourceType('invoices')
 @Controller('invoices')
 export class InvoicesController {
   constructor(private readonly invoicesService: InvoicesService) {}
 
   @Get()
+  @Roles(UserRole.ADMIN, UserRole.FINANCE_STAFF)
   @ApiOperation({ summary: 'Retrieve all invoices' })
   @ApiOkResponse({ description: 'List of all invoices' })
   findAll() {
@@ -33,6 +36,7 @@ export class InvoicesController {
   }
 
   @Get(':visitId')
+  @Roles(UserRole.ADMIN, UserRole.FINANCE_STAFF, UserRole.PATIENT)
   @ApiOperation({ summary: 'Retrieve invoices by visit ID' })
   @ApiParam({
     name: 'visitId',
@@ -48,6 +52,7 @@ export class InvoicesController {
   }
 
   @Patch(':id/pay')
+  @Roles(UserRole.ADMIN, UserRole.FINANCE_STAFF)
   @ApiOperation({
     summary: 'Process invoice payment and trigger paid event',
   })

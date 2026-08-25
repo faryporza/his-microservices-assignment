@@ -11,6 +11,7 @@ import {
   Post,
 } from '@nestjs/common';
 import {
+  ApiBearerAuth,
   ApiCreatedResponse,
   ApiNoContentResponse,
   ApiNotFoundResponse,
@@ -19,18 +20,20 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
-import { ResourceType } from '@app/common';
+import { ResourceType, Roles, UserRole } from '@app/common';
 import { PatientsService } from '../services/patients.service';
 import { CreatePatientDTO } from '../dto/create-patient.dto';
 import { UpdatePatientDTO } from '../dto/update-patient.dto';
 
 @ApiTags('Patients')
+@ApiBearerAuth()
 @ResourceType('patients')
 @Controller('patients')
 export class PatientsController {
   constructor(private readonly patientsService: PatientsService) {}
 
   @Post()
+  @Roles(UserRole.ADMIN, UserRole.NURSE)
   @ApiOperation({ summary: 'Register a new patient' })
   @ApiCreatedResponse({ description: 'Patient successfully registered' })
   create(@Body() createPatientDto: CreatePatientDTO) {
@@ -38,6 +41,7 @@ export class PatientsController {
   }
 
   @Get()
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE)
   @ApiOperation({ summary: 'Retrieve all patients' })
   @ApiOkResponse({ description: 'List of all registered patients' })
   findAll() {
@@ -45,6 +49,7 @@ export class PatientsController {
   }
 
   @Get(':id')
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.PATIENT)
   @ApiOperation({ summary: 'Retrieve a patient by ID' })
   @ApiParam({
     name: 'id',
@@ -59,6 +64,7 @@ export class PatientsController {
   }
 
   @Patch(':id')
+  @Roles(UserRole.ADMIN, UserRole.NURSE)
   @ApiOperation({ summary: 'Update patient details by ID' })
   @ApiParam({
     name: 'id',
@@ -76,6 +82,7 @@ export class PatientsController {
   }
 
   @Delete(':id')
+  @Roles(UserRole.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a patient by ID' })
   @ApiParam({

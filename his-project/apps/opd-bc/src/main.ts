@@ -34,6 +34,7 @@ async function bootstrap() {
     .setVersion('1.0')
     .addTag('Patients')
     .addTag('Visits')
+    .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('docs', app, document);

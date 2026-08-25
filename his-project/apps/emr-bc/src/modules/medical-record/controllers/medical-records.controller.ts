@@ -9,6 +9,7 @@ import {
   Post,
 } from '@nestjs/common';
 import {
+  ApiBearerAuth,
   ApiCreatedResponse,
   ApiHeader,
   ApiNotFoundResponse,
@@ -17,19 +18,21 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
-import { ResourceType } from '@app/common';
+import { ResourceType, Roles, UserRole } from '@app/common';
 import { MedicalRecordsService } from '../services/medical-records.service';
 import { CreateMedicalRecordDTO } from '../dto/create-medical-record.dto';
 import { UpdateMedicalRecordDTO } from '../dto/update-medical-record.dto';
 import { CompleteTreatmentDTO } from '../dto/complete-treatment.dto';
 
 @ApiTags('Medical Records')
+@ApiBearerAuth()
 @ResourceType('medical-records')
 @Controller('records')
 export class MedicalRecordsController {
   constructor(private readonly medicalRecordsService: MedicalRecordsService) {}
 
   @Post()
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR)
   @ApiOperation({ summary: 'Create a new medical record' })
   @ApiCreatedResponse({ description: 'Medical record successfully created' })
   create(@Body() createDto: CreateMedicalRecordDTO) {
@@ -37,6 +40,7 @@ export class MedicalRecordsController {
   }
 
   @Get()
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE)
   @ApiOperation({ summary: 'Retrieve all medical records' })
   @ApiOkResponse({ description: 'List of all medical records' })
   findAll() {
@@ -44,6 +48,7 @@ export class MedicalRecordsController {
   }
 
   @Get(':id')
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.PATIENT)
   @ApiOperation({ summary: 'Retrieve a medical record by ID' })
   @ApiParam({
     name: 'id',
@@ -58,6 +63,7 @@ export class MedicalRecordsController {
   }
 
   @Get('visit/:visitId')
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.PATIENT)
   @ApiOperation({ summary: 'Retrieve medical records by visit ID' })
   @ApiParam({
     name: 'visitId',
@@ -73,6 +79,7 @@ export class MedicalRecordsController {
   }
 
   @Patch(':id')
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR)
   @ApiOperation({ summary: 'Update a medical record by ID' })
   @ApiParam({
     name: 'id',
@@ -107,6 +114,7 @@ export class MedicalRecordsController {
   }
 
   @Patch(':id/complete')
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR)
   @ApiOperation({
     summary: 'Complete medical treatment and trigger billing event',
   })

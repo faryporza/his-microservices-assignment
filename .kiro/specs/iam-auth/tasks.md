@@ -168,7 +168,7 @@
   - _Depends: 1.2, 3.3_
 
 - [ ] 4. Cross-service security integration across OPD, EMR, and Finance
-- [ ] 4.1 Apply authentication and authorization guards to OPD microservice
+- [x] 4.1 Apply authentication and authorization guards to OPD microservice
   - **Git Branch**: `feat/opd-bc-auth-protection`
   - **Base Branch**: `planning/iam-auth`
   - **Dependencies**: 2.2 (`feat/common-jwt-auth-guard`), 2.3 (`feat/common-roles-guard`)
@@ -184,7 +184,7 @@
   - _Boundary: OPD Security Integration_
   - _Depends: 2.2, 2.3_
 
-- [ ] 4.2 (P) Apply authentication and authorization guards to EMR microservice
+- [x] 4.2 (P) Apply authentication and authorization guards to EMR microservice
   - **Git Branch**: `feat/emr-bc-auth-protection`
   - **Base Branch**: `planning/iam-auth`
   - **Dependencies**: 2.2 (`feat/common-jwt-auth-guard`), 2.3 (`feat/common-roles-guard`)
@@ -201,7 +201,7 @@
   - _Boundary: EMR Security Integration_
   - _Depends: 2.2, 2.3_
 
-- [ ] 4.3 (P) Apply authentication and authorization guards to Finance microservice
+- [x] 4.3 (P) Apply authentication and authorization guards to Finance microservice
   - **Git Branch**: `feat/finance-bc-auth-protection`
   - **Base Branch**: `planning/iam-auth`
   - **Dependencies**: 2.2 (`feat/common-jwt-auth-guard`), 2.3 (`feat/common-roles-guard`)
@@ -220,7 +220,7 @@
   - _Depends: 2.2, 2.3_
 
 - [ ] 5. Testing utilities, regression verification, and end-to-end security test suites
-- [ ] 5.1 Update test utilities and verify backward compatibility of all existing tests
+- [x] 5.1 Update test utilities and verify backward compatibility of all existing tests
   - **Git Branch**: `test/auth-test-helpers-and-regression`
   - **Base Branch**: `planning/iam-auth`
   - **Dependencies**: 2.2 (`feat/common-jwt-auth-guard`), 4.1, 4.2, 4.3
@@ -237,7 +237,7 @@
   - _Boundary: Test Infrastructure & Backward Compatibility_
   - _Depends: 2.2, 4.1, 4.2, 4.3_
 
-- [ ] 5.2 Implement end-to-end security integration test suites
+- [x] 5.2 Implement end-to-end security integration test suites
   - **Git Branch**: `test/e2e-iam-and-cross-service-rbac`
   - **Base Branch**: `test/auth-test-helpers-and-regression`
   - **Dependencies**: 3.2, 3.3, 3.4, 4.1, 4.2, 4.3, 5.1

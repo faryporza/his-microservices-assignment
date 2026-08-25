@@ -83,6 +83,7 @@ export class AuthController {
   @Post('logout')
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
+  @ResourceType('auth')
   @ApiOperation({ summary: 'Revoke active session and blacklist access token' })
   @ApiResponse({
     status: HttpStatus.OK,

@@ -3,17 +3,27 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { EmrBcModule } from '@apps/emr-bc/emr-bc.module';
 import { App } from 'supertest/types';
-import { createTestApp } from '@app/common';
+import {
+  createMockAuthHeaders,
+  createMockRedisService,
+  createTestApp,
+  RedisService,
+  UserRole,
+} from '@app/common';
 import { randomUUID } from 'node:crypto';
 
 describe('HealthChecksController (EMR e2e)', () => {
   jest.setTimeout(30_000);
   let app!: INestApplication;
+  const doctorHeaders = createMockAuthHeaders({ role: UserRole.DOCTOR });
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [EmrBcModule],
-    }).compile();
+    })
+      .overrideProvider(RedisService)
+      .useValue(createMockRedisService())
+      .compile();
 
     app = createTestApp(moduleFixture, 'emr-bc');
     await app.init();
@@ -35,6 +45,7 @@ describe('HealthChecksController (EMR e2e)', () => {
   it('rejects invalid medical record fields', async () => {
     const res = await request(app.getHttpServer() as App)
       .post('/records')
+      .set(doctorHeaders)
       .send({
         visit_id: 'not-a-uuid',
         doctor_id: '',
@@ -52,6 +63,7 @@ describe('HealthChecksController (EMR e2e)', () => {
   it('validates the medical record update URI before business logic', async () => {
     const invalidStatus = await request(app.getHttpServer() as App)
       .patch(`/records/${randomUUID()}`)
+      .set(doctorHeaders)
       .send({ status: 'INVALID' })
       .expect(400);
 
@@ -59,6 +71,7 @@ describe('HealthChecksController (EMR e2e)', () => {
 
     const unexpectedField = await request(app.getHttpServer() as App)
       .patch(`/records/${randomUUID()}`)
+      .set(doctorHeaders)
       .send({ unexpected: true })
       .expect(400);
 
@@ -66,6 +79,7 @@ describe('HealthChecksController (EMR e2e)', () => {
 
     const notFound = await request(app.getHttpServer() as App)
       .patch(`/records/${randomUUID()}`)
+      .set(doctorHeaders)
       .send({
         status: 'COMPLETED',
         diagnosis: 'Flu',
@@ -81,6 +95,7 @@ describe('HealthChecksController (EMR e2e)', () => {
     const visitId = randomUUID();
     const created = await request(app.getHttpServer() as App)
       .post('/records')
+      .set(doctorHeaders)
       .send({
         visit_id: visitId,
         doctor_id: 'doctor-e2e',
@@ -99,6 +114,7 @@ describe('HealthChecksController (EMR e2e)', () => {
 
     await request(app.getHttpServer() as App)
       .get(`/records/${recordId}`)
+      .set(doctorHeaders)
       .expect(200)
       .expect(({ body }) => {
         expect(body.status.code).toBe(200000);
@@ -109,6 +125,7 @@ describe('HealthChecksController (EMR e2e)', () => {
 
     await request(app.getHttpServer() as App)
       .patch(`/records/${recordId}`)
+      .set(doctorHeaders)
       .send({ status: 'COMPLETED', treatment_cost: 1750 })
       .expect(200)
       .expect(({ body }) => {
