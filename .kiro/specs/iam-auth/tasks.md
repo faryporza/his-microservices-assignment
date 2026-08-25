@@ -24,9 +24,9 @@
   - _Requirements: 8.3_
   - _Boundary: Infrastructure Configuration_
 
-- [ ] 1.2 (P) Implement Redis client module and connection lifecycle provider in shared library
+- [x] 1.2 (P) Implement Redis client module and connection lifecycle provider in shared library
   - **Git Branch**: `feat/shared-redis-module`
-  - **Base Branch**: `planning/iam-auth`
+  - **Base Branch**: `feat/redis-and-iam-db-init`
   - **Dependencies**: 1.1 (`feat/redis-and-iam-db-init`)
   - **Expected Files/Modules**: `libs/common/src/redis/redis.module.ts`, `libs/common/src/redis/redis.service.ts`, `libs/common/src/redis/redis.config.ts`, `libs/common/src/redis/redis.service.spec.ts`
   - **Implementation Details**:
@@ -55,7 +55,7 @@
   - _Requirements: 1.4, 4.1, 5.4, 7.4_
   - _Boundary: Common Auth Decorators_
 
-- [ ] 2.2 Implement JWT authentication guard with Redis session and blacklist validation
+- [x] 2.2 Implement JWT authentication guard with Redis session and blacklist validation
   - **Git Branch**: `feat/common-jwt-auth-guard`
   - **Base Branch**: `feat/shared-redis-module`
   - **Dependencies**: 1.2 (`feat/shared-redis-module`), 2.1 (`feat/common-auth-decorators`)
