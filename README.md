@@ -1,29 +1,12 @@
-<div align="center">
-
 # Hospital Information System (HIS) Microservices
 
-### Production-Ready Event-Driven Microservices Architecture with NestJS 11, PostgreSQL, RabbitMQ & Redis
-
-ระบบสารสนเทศโรงพยาบาลระดับองค์กร (Hospital Information System) ที่ออกแบบตามมาตรฐาน **[Enterprise Backend Blueprint](https://iots1.github.io/enterprise-backend-blueprint/)**<br>
-แบ่งแยกขอบเขตการทำงานออกเป็น 4 Bounded Contexts (**IAM**, **OPD**, **EMR**, **Finance**)<br>
-พร้อมระบบความปลอดภัย Stateful JWT Authentication & Role-Based Access Control (RBAC), Transactional Outbox Pattern และ Idempotent Event Consumers
-
-[![NestJS](https://img.shields.io/badge/NestJS-11.0-E0234E?logo=nestjs&logoColor=white)](https://nestjs.com/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16.0-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![RabbitMQ](https://img.shields.io/badge/RabbitMQ-3.x-FF6600?logo=rabbitmq&logoColor=white)](https://www.rabbitmq.com/)
-[![Redis](https://img.shields.io/badge/Redis-7.x-DC382D?logo=redis&logoColor=white)](https://redis.io/)
-[![Unit Tests](https://img.shields.io/badge/Unit_Tests-47%20Suites%20%7C%20235%20Passed-brightgreen)](https://jestjs.io/)
-[![E2E Tests](https://img.shields.io/badge/E2E_Tests-4%20Suites%20%7C%2023%20Passed-brightgreen)](https://jestjs.io/)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-
-</div>
+Production-ready event-driven microservices architecture built with NestJS 11, PostgreSQL 16, RabbitMQ 3, and Redis 7, strictly aligned with the [Enterprise Backend Blueprint](https://iots1.github.io/enterprise-backend-blueprint/).
 
 ---
 
-## 1. ขอบเขตและสถาปัตยกรรมระบบ (System Architecture)
+## 1. System Overview & Architecture
 
-ระบบประกอบด้วย 4 Microservices แยกเป็นอิสระภายใน Monorepo (`his-project/apps/`):
+The system is organized into four distinct Bounded Contexts within a NestJS monorepo (`his-project/apps/`), communicating via event choreography and protected by a centralized Stateful JWT and Role-Based Access Control (RBAC) security layer:
 
 ```text
                ┌───────────────────────────────┐
@@ -41,112 +24,64 @@
         └─────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 🔹 Bounded Contexts Matrix
+### 🔹 Service Matrix
 
-| Microservice | Bounded Context | Port | Logical Database | บทบาทและหน้าที่หลัก | OpenAPI Docs |
-| :--- | :--- | ---: | :--- | :--- | :--- |
-| **`iam-bc`** | **IAM** | `3003` | `iam_db` | ยืนยันตัวตน, ลงทะเบียน, Login, Token Refresh/Revocation, RBAC | [http://localhost:3003/docs](http://localhost:3003/docs) |
-| **`opd-bc`** | **OPD** | `3000` | `opd_db` | จัดการข้อมูลผู้ป่วย (Patient), เปิด/ปิด Visit ของผู้ป่วย | [http://localhost:3000/docs](http://localhost:3000/docs) |
-| **`emr-bc`** | **EMR** | `3001` | `emr_db` | บันทึกเวชระเบียน (Medical Records), สรุปผลการรักษาและค่ารักษา | [http://localhost:3001/docs](http://localhost:3001/docs) |
-| **`finance-bc`**| **Finance** | `3002` | `finance_db` | จัดการใบแจ้งหนี้ (Invoice), ตรวจสอบและบันทึกการชำระเงิน | [http://localhost:3002/docs](http://localhost:3002/docs) |
+| Service | Bounded Context | HTTP Port | Logical Database | Message Queue | Primary Responsibilities | Swagger UI |
+| :--- | :--- | ---: | :--- | :--- | :--- | :--- |
+| **`iam-bc`** | **IAM** | `3003` | `iam_db` | — | User registration, login, token refresh/revocation, Redis session store & blacklist, RBAC validation | [http://localhost:3003/docs](http://localhost:3003/docs) |
+| **`opd-bc`** | **OPD** | `3000` | `opd_db` | `opd.events` | Patient registration, visit creation, visit status lifecycle (`OPEN` / `CLOSED`) | [http://localhost:3000/docs](http://localhost:3000/docs) |
+| **`emr-bc`** | **EMR** | `3001` | `emr_db` | `emr.events` | Medical record lifecycle (`WAITING` / `COMPLETED`), doctor diagnosis and treatment notes | [http://localhost:3001/docs](http://localhost:3001/docs) |
+| **`finance-bc`** | **Finance** | `3002` | `finance_db` | `finance.events` | Invoice management (`PENDING` / `PAID`), payment settlement | [http://localhost:3002/docs](http://localhost:3002/docs) |
 
-> 🔒 **Zero Cross-Database Joins Rule**: แต่ละ Service เชื่อมต่อเฉพาะ Logical Database ของตนเองเท่านั้น ไม่มีการ Query ข้าม Database หรือทำ Distributed Transaction ข้าม Service ข้อมูลเชื่อมโยงกันด้วย UUID เท่านั้น
-
----
-
-## 2. เริ่มต้นใช้งานด่วน (Quick Start)
-
-### สิ่งที่ต้องเตรียม (Prerequisites)
-- **Node.js**: `>= 20.x` (แนะนำ `22.x`)
-- **npm**: `>= 10.x`
-- **Docker Desktop** หรือ **Docker Engine & Compose**
-
-### 1. รัน Infrastructure Containers
-รันคำสั่งจาก Root Directory ของ Repository:
-```bash
-docker compose up -d
-```
-*บริการที่เริ่มทำงาน:*
-- **PostgreSQL 16**: `localhost:5432` (สร้าง `opd_db`, `emr_db`, `finance_db`, `iam_db` อัตโนมัติจาก `docker/postgres/init.sql`)
-- **RabbitMQ 3 Management**: `localhost:5672` (AMQP) และ [http://localhost:15672](http://localhost:15672) (UI: `guest` / `guest`)
-- **Redis 7**: `localhost:6379` (Stateful Session Store & Blacklist)
-
-### 2. ติดตั้ง Dependencies และเตรียม Environment
-```bash
-cd his-project
-npm install
-cp .env.example .env
-```
-
-### 3. รัน Microservices
-
-#### แบบรันทุก Service พร้อมกัน (Concurrently - แนะนำ):
-```bash
-npm run start:all
-```
-
-#### แบบแยกรันราย Service (Development Mode):
-```bash
-# Terminal 1 — IAM Service
-npm run start:iam
-
-# Terminal 2 — OPD Service
-npm run start:dev
-
-# Terminal 3 — EMR Service
-npm run start:emr
-
-# Terminal 4 — Finance Service
-npm run start:finance
-```
+> 🔒 **Database Isolation Principle**: A single PostgreSQL instance hosts four isolated logical databases. Cross-database queries and joins are strictly prohibited. Inter-service references use UUIDs only.
 
 ---
 
-## 3. วงจรการรักษาและ Event-Driven Flow (Core Workflow)
+## 2. Event-Driven Workflow & Reliability Patterns
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Staff as บุคลากรโรงพยาบาล
+    actor Staff as Hospital Staff
     participant IAM as iam-bc (3003)
     participant OPD as opd-bc (3000)
-    participant RMQ as RabbitMQ Broker
+    participant RMQ as RabbitMQ (his.events)
     participant EMR as emr-bc (3001)
     participant FIN as finance-bc (3002)
 
-    Staff->>IAM: 1. Login รับ Access Token (POST /auth/login)
+    Staff->>IAM: 1. Login to obtain Bearer Token (POST /auth/login)
     IAM-->>Staff: 200 OK { access_token, refresh_token }
 
-    Staff->>OPD: 2. สร้าง Visit ผู้ป่วย (POST /visits) [Bearer Token]
-    OPD->>OPD: บันทึก Visit (สถานะ: OPEN) และบันทึกลง outbox_events
-    OPD-)RMQ: Outbox Publisher เผยแพร่ Event: visit.created
-    RMQ-)EMR: Consumer รับ Event: visit.created
-    EMR->>EMR: บันทึก processed_events และสร้าง Medical Record (สถานะ: WAITING)
+    Staff->>OPD: 2. Create Visit for Patient (POST /visits) [Bearer Token]
+    OPD->>OPD: Insert Visit (status: OPEN) + Insert into outbox_events in single DB transaction
+    OPD-)RMQ: Outbox publisher sends domain event: visit.created
+    RMQ-)EMR: Consumer receives visit.created
+    EMR->>EMR: Insert processed_events + Insert Medical Record (status: WAITING)
 
-    Staff->>EMR: 3. แพทย์บันทึกผลการรักษา (PATCH /records/:id/complete) [Doctor Token]
-    EMR->>EMR: อัปเดต Record (COMPLETED) และบันทึกลง outbox_events
-    EMR-)RMQ: Outbox Publisher เผยแพร่ Event: treatment.completed (cost: 1500)
-    RMQ-)FIN: Consumer รับ Event: treatment.completed
-    FIN->>FIN: บันทึก processed_events และสร้าง Invoice (สถานะ: PENDING)
+    Staff->>EMR: 3. Doctor completes treatment (PATCH /records/:id/complete) [Doctor Token]
+    EMR->>EMR: Update Record (COMPLETED) + Insert into outbox_events in single DB transaction
+    EMR-)RMQ: Outbox publisher sends domain event: treatment.completed (cost: 1500)
+    RMQ-)FIN: Consumer receives treatment.completed
+    FIN->>FIN: Insert processed_events + Insert Invoice (status: PENDING, amount: 1500.00)
 
-    Staff->>FIN: 4. ชำระเงินค่ารักษา (PATCH /invoices/:id/pay) [Finance Token]
-    FIN->>FIN: อัปเดต Invoice (PAID) และบันทึกลง outbox_events
-    FIN-)RMQ: Outbox Publisher เผยแพร่ Event: invoice.paid
-    RMQ-)OPD: Consumer รับ Event: invoice.paid
-    OPD->>OPD: บันทึก processed_events และปิด Visit (สถานะ: CLOSED)
+    Staff->>FIN: 4. Process invoice payment (PATCH /invoices/:id/pay) [Finance Token]
+    FIN->>FIN: Update Invoice (PAID) + Insert into outbox_events in single DB transaction
+    FIN-)RMQ: Outbox publisher sends domain event: invoice.paid
+    RMQ-)OPD: Consumer receives invoice.paid
+    OPD->>OPD: Insert processed_events + Update Visit (status: CLOSED)
 ```
 
 ### 🔹 Transactional Outbox Pattern
-เพื่อแก้ปัญหา Dual-Write ทุก Microservice จัดเก็บ Event ลงตาราง `outbox_events` ใน Local Transaction เดียวกันกับการเปลี่ยนแปลงข้อมูลใน Database จากนั้น `OutboxEventsService` จะทำการดึงข้อมูลมา Publish ไปยัง RabbitMQ และเปลี่ยนสถานะเป็น `PUBLISHED`
+To prevent dual-write inconsistencies, state changes and outgoing domain events are written to the database in a single local transaction using TypeORM. An asynchronous publisher service polls and dispatches pending events from `outbox_events` to RabbitMQ, marking them as `PUBLISHED`.
 
 ### 🔹 Idempotent Event Consumers
-ทุก Event Consumer ทำงานร่วมกับตาราง `processed_events` (`event_id` UNIQUE) เพื่อตรวจสอบว่า Event ID ดังกล่าวได้รับการประมวลผลไปแล้วหรือไม่ ป้องกันการทำงานซ้ำซ้อนในสภาวะ At-Least-Once Delivery
+All message consumers track processed event IDs in the `processed_events` table (`event_id` UNIQUE). Duplicate deliveries resulting from network retries or at-least-once transport are acknowledged without re-executing business logic.
 
 ---
 
-## 4. ระบบความปลอดภัย, Authentication และ RBAC (IAM)
+## 3. Security, Authentication & Role-Based Access Control (RBAC)
 
-ระบบใช้ **Stateful JWT Authentication** ร่วมกับ **Redis 7 Session Store** และ **Role-Based Access Control (RBAC)**:
+The security architecture provides token-based authentication backed by Redis state management:
 
 ```mermaid
 flowchart TD
@@ -155,14 +90,14 @@ flowchart TD
     AuthCheck -- No --> Guard[JwtAuthGuard]
     
     Guard --> VerifyJWT{Valid JWT Signature & Exp?}
-    VerifyJWT -- No --> Err401A[401 Unauthorized: Invalid/Expired Token]
-    VerifyJWT -- Yes --> BlacklistCheck{Blacklisted in Redis?}
+    VerifyJWT -- No --> Err401A[401 Unauthorized: Invalid or Expired Token]
+    VerifyJWT -- Yes --> BlacklistCheck{JTI in Redis Blacklist?}
     
     BlacklistCheck -- Yes --> Err401B[401 Unauthorized: Revoked Token]
     BlacklistCheck -- No --> SessionCheck{Active Session in Redis?}
     
-    SessionCheck -- Redis Down --> Err503[503 Service Unavailable: Fail-Closed]
-    SessionCheck -- No --> Err401C[401 Unauthorized: Session Expired]
+    SessionCheck -- Redis Outage --> Err503[503 Service Unavailable: Fail-Closed]
+    SessionCheck -- No / Expired --> Err401C[401 Unauthorized: Session Inactive]
     SessionCheck -- Yes --> RoleGuard[RolesGuard]
     
     RoleGuard --> RoleCheck{User Role Matches @Roles?}
@@ -170,52 +105,52 @@ flowchart TD
     RoleCheck -- Yes --> Handler
 ```
 
-### 🔹 Token & Session Management
-1. **Access Token (15 นาที)**: Payload ประกอบด้วย `sub` (User ID), `username`, `role`, `sid` (Session ID), และ `jti` (Token ID)
-2. **Refresh Token (7 วัน)**: Payload ประกอบด้วย `sub`, `sid`, และ `jti`
-3. **Stateful Session Store (Redis)**: จัดเก็บสถานะ Session ที่ `auth:session:{userId}:{sessionId}` (TTL 7 วัน)
-4. **Token Rotation & Token-Theft Protection**: เมื่อเรียก `POST /auth/refresh` ระบบจะ Rotate Token คู่ใหม่ หากพบการนำ Refresh Token เก่าที่ถูกใช้ไปแล้วมาใช้ซ้ำ ระบบจะถือว่าเกิดการขโมย Token และทำการ **Revoke ทุก Session ของผู้ใช้นั้นทันที**
-5. **Instant Revocation on Logout**: เมื่อเรียก `POST /auth/logout` ระบบจะลบ Session ใน Redis และขึ้น Blacklist Access Token `jti` (`auth:blacklist:{jti}`) ตามเวลาอายุที่เหลืออยู่
-6. **Fail-Closed Resilience**: หาก Redis ขัดข้อง `JwtAuthGuard` จะปฏิเสธคำขอและตอบกลับด้วย `503 Service Unavailable` ทันทีเพื่อความปลอดภัย
+### 🔹 Security Specifications
+- **Access Token**: Short-lived (15 minutes), containing `sub` (User ID), `username`, `role`, `sid` (Session ID), and `jti` (Token ID).
+- **Refresh Token**: Long-lived (7 days), containing `sub`, `sid`, and `jti`.
+- **Stateful Redis Session**: Keyed at `auth:session:{userId}:{sessionId}` with a 7-day TTL.
+- **Token Rotation & Reuse Detection**: Calling `POST /auth/refresh` rotates both tokens. If an already-rotated refresh token is reused, the system treats it as token theft and **revokes all active sessions for that user immediately**.
+- **Instant Logout & Blacklisting**: `POST /auth/logout` destroys the Redis session and adds the access token `jti` to `auth:blacklist:{jti}` with TTL matching the remaining access token lifetime.
+- **Fail-Closed Strategy**: If Redis is unreachable, `JwtAuthGuard` returns `503 Service Unavailable` instead of allowing unverified requests.
 
-### 🔹 บทบาทและสิทธิ์การเข้าถึง (RBAC Matrix)
+### 🔹 RBAC Permissions Matrix
 
-ระบบกำหนด 5 บทบาทตาม `UserRole` enum (`ADMIN`, `DOCTOR`, `NURSE`, `FINANCE_STAFF`, `PATIENT`):
+Roles defined in `UserRole` enum: `ADMIN`, `DOCTOR`, `NURSE`, `FINANCE_STAFF`, `PATIENT`.
 
-| Endpoint | Method | Path | Required Roles | Description |
+| Service | Method | Route | Required Roles | Description |
 | :--- | :--- | :--- | :--- | :--- |
-| **Auth** | `POST` | `/auth/register` | `@Public()` | ลงทะเบียนผู้ใช้ใหม่ |
-| **Auth** | `POST` | `/auth/login` | `@Public()` | ยืนยันตัวตนและรับ Token Pair |
-| **Auth** | `POST` | `/auth/refresh` | `@Public()` | ต่ออายุ Access/Refresh Token |
-| **Auth** | `POST` | `/auth/logout` | `All Authenticated` | ยกเลิก Session และขึ้น Blacklist |
-| **Auth** | `GET` | `/auth/me` | `All Authenticated` | เรียกดูข้อมูลโปรไฟล์ตนเอง |
-| **OPD** | `POST` | `/patients` | `ADMIN`, `DOCTOR`, `NURSE` | ลงทะเบียนผู้ป่วยใหม่ |
-| **OPD** | `GET` | `/patients` | `ADMIN`, `DOCTOR`, `NURSE` | ดูรายชื่อผู้ป่วยทั้งหมด |
-| **OPD** | `GET` | `/patients/:id` | `ADMIN`, `DOCTOR`, `NURSE`, `PATIENT` | ดูข้อมูลผู้ป่วยรายบุคคล |
-| **OPD** | `PATCH` | `/patients/:id` | `ADMIN`, `DOCTOR`, `NURSE` | แก้ไขข้อมูลผู้ป่วย |
-| **OPD** | `DELETE` | `/patients/:id` | `ADMIN`, `DOCTOR`, `NURSE` | ลบข้อมูลผู้ป่วย |
-| **OPD** | `POST` | `/visits` | `ADMIN`, `DOCTOR`, `NURSE` | เปิด Visit ผู้ป่วย |
-| **OPD** | `GET` | `/visits` | `ADMIN`, `DOCTOR`, `NURSE` | ดูรายการ Visit ทั้งหมด |
-| **OPD** | `GET` | `/visits/:id` | `ADMIN`, `DOCTOR`, `NURSE`, `PATIENT` | ดูรายละเอียด Visit |
-| **OPD** | `GET` | `/patients/:patientId/visits` | `ADMIN`, `DOCTOR`, `NURSE`, `PATIENT` | ดูประวัติ Visit ของผู้ป่วย |
-| **EMR** | `POST` | `/records` | `DOCTOR` | สร้างเวชระเบียน |
-| **EMR** | `PATCH` | `/records/:id` | `DOCTOR` | อัปเดตรายละเอียดเวชระเบียน |
-| **EMR** | `PATCH` | `/records/:id/complete` | `DOCTOR` | สรุปผลการรักษาและค่ารักษา |
-| **EMR** | `GET` | `/records` | `DOCTOR`, `NURSE`, `ADMIN`, `PATIENT` | ดูเวชระเบียนทั้งหมด |
-| **EMR** | `GET` | `/records/:id` | `DOCTOR`, `NURSE`, `ADMIN`, `PATIENT` | ดูเวชระเบียนรายอัน |
-| **EMR** | `GET` | `/records/visit/:visitId` | `DOCTOR`, `NURSE`, `ADMIN`, `PATIENT` | ดูเวชระเบียนตาม Visit ID |
-| **Finance**| `PATCH` | `/invoices/:id/pay` | `FINANCE_STAFF`, `ADMIN` | ชำระเงินค่ารักษา |
-| **Finance**| `GET` | `/invoices` | `FINANCE_STAFF`, `ADMIN` | ดูรายการใบแจ้งหนี้ทั้งหมด |
-| **Finance**| `GET` | `/invoices/:visitId` | `FINANCE_STAFF`, `ADMIN`, `PATIENT` | ดูใบแจ้งหนี้ตาม Visit ID |
-| **Health** | `GET` | `/`, `/health` | `@Public()` | ตรวจสอบสถานะการทำงานของ Service |
+| **IAM** | `POST` | `/auth/register` | `@Public()` | Register new user account |
+| **IAM** | `POST` | `/auth/login` | `@Public()` | Authenticate and issue token pair |
+| **IAM** | `POST` | `/auth/refresh` | `@Public()` | Rotate access and refresh tokens |
+| **IAM** | `POST` | `/auth/logout` | `All Authenticated` | Invalidate session and blacklist access token |
+| **IAM** | `GET` | `/auth/me` | `All Authenticated` | Get authenticated user profile |
+| **OPD** | `POST` | `/patients` | `ADMIN`, `DOCTOR`, `NURSE` | Create patient |
+| **OPD** | `GET` | `/patients` | `ADMIN`, `DOCTOR`, `NURSE` | List all patients |
+| **OPD** | `GET` | `/patients/:id` | `ADMIN`, `DOCTOR`, `NURSE`, `PATIENT` | Get patient by ID |
+| **OPD** | `PATCH` | `/patients/:id` | `ADMIN`, `DOCTOR`, `NURSE` | Update patient |
+| **OPD** | `DELETE` | `/patients/:id` | `ADMIN`, `DOCTOR`, `NURSE` | Delete patient |
+| **OPD** | `POST` | `/visits` | `ADMIN`, `DOCTOR`, `NURSE` | Create visit |
+| **OPD** | `GET` | `/visits` | `ADMIN`, `DOCTOR`, `NURSE` | List all visits |
+| **OPD** | `GET` | `/visits/:id` | `ADMIN`, `DOCTOR`, `NURSE`, `PATIENT` | Get visit by ID |
+| **OPD** | `GET` | `/patients/:patientId/visits` | `ADMIN`, `DOCTOR`, `NURSE`, `PATIENT` | Get visit history for patient |
+| **EMR** | `POST` | `/records` | `DOCTOR` | Create medical record |
+| **EMR** | `PATCH` | `/records/:id` | `DOCTOR` | Update medical record draft |
+| **EMR** | `PATCH` | `/records/:id/complete` | `DOCTOR` | Finalize treatment and treatment cost |
+| **EMR** | `GET` | `/records` | `DOCTOR`, `NURSE`, `ADMIN`, `PATIENT` | List medical records |
+| **EMR** | `GET` | `/records/:id` | `DOCTOR`, `NURSE`, `ADMIN`, `PATIENT` | Get medical record by ID |
+| **EMR** | `GET` | `/records/visit/:visitId` | `DOCTOR`, `NURSE`, `ADMIN`, `PATIENT` | Get medical records for visit |
+| **Finance** | `PATCH` | `/invoices/:id/pay` | `FINANCE_STAFF`, `ADMIN` | Settle invoice payment |
+| **Finance** | `GET` | `/invoices` | `FINANCE_STAFF`, `ADMIN` | List invoices |
+| **Finance** | `GET` | `/invoices/:visitId` | `FINANCE_STAFF`, `ADMIN`, `PATIENT` | Get invoices for visit |
+| **Health** | `GET` | `/`, `/health` | `@Public()` | Service health probe |
 
 ---
 
-## 5. มาตรฐาน API Response & Error Handling (Blueprint Compliant)
+## 4. API Specification & JSON:API Envelope Standard
 
-API ทั้งหมดตอบกลับตามมาตรฐาน **JSON:API Envelope** อัตโนมัติ:
+All responses follow the Enterprise Backend Blueprint standard JSON:API envelope structure.
 
-### 🔹 Success Response Envelope
+### 🔹 Success Response (`200 OK` / `201 Created`)
 ```json
 {
   "status": {
@@ -227,13 +162,19 @@ API ทั้งหมดตอบกลับตามมาตรฐาน **J
     "id": "6ba7b810-9dad-41d1-80b4-00c04fd430c8",
     "attributes": {
       "hn": "HN-0001",
-      "first_name": "สมชาย",
-      "last_name": "ใจดี",
-      "id_card": "1234567890123"
+      "first_name": "Somchai",
+      "last_name": "Jaidee",
+      "id_card": "1234567890123",
+      "created_at": "2026-08-26T01:05:00.000Z",
+      "updated_at": "2026-08-26T01:05:00.000Z"
     }
   },
-  "meta": { "timestamp": "2026-08-26T00:00:00.000Z" },
-  "links": { "self": "/patients" }
+  "meta": {
+    "timestamp": "2026-08-26T01:05:00.000Z"
+  },
+  "links": {
+    "self": "/patients"
+  }
 }
 ```
 
@@ -251,141 +192,509 @@ API ทั้งหมดตอบกลับตามมาตรฐาน **J
       "detail": "Forbidden resource"
     }
   ],
-  "meta": { "timestamp": "2026-08-26T00:00:00.000Z" },
-  "links": { "self": "/records" }
+  "meta": {
+    "timestamp": "2026-08-26T01:05:00.000Z"
+  },
+  "links": {
+    "self": "/records"
+  }
 }
 ```
 
-| HTTP Status | Business Code | Exception Class | สถานการณ์ที่เกิดขึ้น |
+### 🔹 Standard Error Codes Mapping
+
+| HTTP Status | Business Code | Exception Class | Reason |
 | :--- | :--- | :--- | :--- |
-| `400 Bad Request` | `400001` | `ValidationException` | ข้อมูลใน Request Body ไม่ผ่าน Validation (`class-validator`) |
-| `400 Bad Request` | `400002` | `InvalidParameterException` | Path / Query Parameter ไม่ถูกต้อง |
-| `401 Unauthorized` | `401` | `UnauthorizedException` | ไม่มี Token, Token หมดอายุ, ถูก Blacklist หรือ Login ไม่ถูกต้อง |
-| `403 Forbidden` | `403` | `ForbiddenException` | บทบาทผู้ใช้ (Role) ไม่มีสิทธิ์เข้าถึง Endpoint |
-| `404 Not Found` | `404` | `NotFoundException` | ไม่พบข้อมูลที่ต้องการในระบบ |
-| `409 Conflict` | `409` | `ConflictException` | ข้อมูลซ้ำซ้อน เช่น Username/Email ซ้ำ หรือบันทึกชำระเงินซ้ำ |
-| `503 Service Unavailable` | `503` | `ServiceUnavailableException` | Database หรือ Redis ใช้งานไม่ได้ (Fail-closed) |
+| `400 Bad Request` | `400001` | `ValidationException` | Request body validation failed (`class-validator`) |
+| `400 Bad Request` | `400002` | `InvalidParameterException` | Invalid path or query parameter |
+| `401 Unauthorized` | `401` | `UnauthorizedException` | Missing token, invalid signature, expired session, or revoked token |
+| `403 Forbidden` | `403` | `ForbiddenException` | Role lacks permission for the endpoint |
+| `404 Not Found` | `404` | `NotFoundException` | Resource not found |
+| `409 Conflict` | `409` | `ConflictException` | Duplicate entity or invalid status transition |
+| `503 Service Unavailable` | `503` | `ServiceUnavailableException` | Database or Redis outage (Fail-closed) |
 
 ---
 
-## 6. ตัวแปรสภาพแวดล้อม (Environment Variables)
+## 5. End-to-End API Flow Walkthrough
 
-กำหนดค่าทั้งหมดในไฟล์ `.env` (คัดลอกจาก `.env.example`):
+### Step 1: User Registration & Login (IAM)
+```http
+POST http://localhost:3003/auth/register
+Content-Type: application/json
 
-| Variable | Example / Default | Description |
-| :--- | :--- | :--- |
-| `OPD_PORT` | `3000` | HTTP Port สำหรับ OPD Service |
-| `EMR_PORT` | `3001` | HTTP Port สำหรับ EMR Service |
-| `FINANCE_PORT` | `3002` | HTTP Port สำหรับ Finance Service |
-| `IAM_PORT` | `3003` | HTTP Port สำหรับ IAM Service |
-| `SERVICE_VERSION` | `0.0.1` | Application Version สำหรับ Structured JSON Logger |
-| `LOG_LEVEL` | `debug` | ระดับการแสดงผล Log (`debug`, `info`, `warn`, `error`) |
-| `POSTGRES_HOST` | `localhost` | PostgreSQL Host Address |
-| `POSTGRES_PORT` | `5432` | PostgreSQL Port |
-| `POSTGRES_USERNAME`| `postgres` | Database Username |
-| `POSTGRES_PASSWORD`| `postgres` | Database Password |
-| `OPD_DATABASE` | `opd_db` | Logical Database Name สำหรับ OPD |
-| `EMR_DATABASE` | `emr_db` | Logical Database Name สำหรับ EMR |
-| `FINANCE_DATABASE`| `finance_db` | Logical Database Name สำหรับ Finance |
-| `IAM_DATABASE` | `iam_db` | Logical Database Name สำหรับ IAM |
-| `RABBITMQ_URL` | `amqp://guest:guest@localhost:5672` | RabbitMQ Connection URL |
-| `RABBITMQ_EXCHANGE`| `his.events` | Topic Exchange Name กลางสำหรับ Domain Events |
-| `OPD_RABBITMQ_QUEUE` | `opd.events` | Durable Queue Name สำหรับ OPD Consumer |
-| `EMR_RABBITMQ_QUEUE` | `emr.events` | Durable Queue Name สำหรับ EMR Consumer |
-| `FINANCE_RABBITMQ_QUEUE` | `finance.events` | Durable Queue Name สำหรับ Finance Consumer |
-| `REDIS_HOST` | `localhost` | Redis Host Address |
-| `REDIS_PORT` | `6379` | Redis Port |
-| `REDIS_PASSWORD` | *(empty)* | Redis Password (ถ้ามี) |
-| `JWT_SECRET` | `his-secret-jwt-key-...` | Secret Key สำหรับลงลายมือชื่อ JWT Token |
-| `JWT_ACCESS_EXPIRES_IN` | `15m` | อายุการใช้งานของ Access Token |
-| `JWT_REFRESH_EXPIRES_IN` | `7d` | อายุการใช้งานของ Refresh Token / Redis Session |
+{
+  "username": "dr_watson",
+  "email": "watson@hospital.local",
+  "password": "Password123!",
+  "first_name": "John",
+  "last_name": "Watson",
+  "role": "DOCTOR"
+}
+```
+```http
+POST http://localhost:3003/auth/login
+Content-Type: application/json
+
+{
+  "username": "dr_watson",
+  "password": "Password123!"
+}
+```
+**Response (`200 OK`):**
+```json
+{
+  "status": { "code": 200000, "message": "Request Succeeded" },
+  "data": {
+    "type": "tokens",
+    "id": "673a5a4d-1768-450f-90a6-5784ef36d14d",
+    "attributes": {
+      "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "token_type": "Bearer",
+      "expires_in": 900
+    }
+  },
+  "meta": { "timestamp": "2026-08-26T01:00:00.000Z" },
+  "links": { "self": "/auth/login" }
+}
+```
+
+### Step 2: Register Patient (OPD)
+```http
+POST http://localhost:3000/patients
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "hn": "HN-0001",
+  "first_name": "Somchai",
+  "last_name": "Jaidee",
+  "id_card": "1234567890123"
+}
+```
+**Response (`201 Created`):**
+```json
+{
+  "status": { "code": 201000, "message": "Request Succeeded" },
+  "data": {
+    "type": "patients",
+    "id": "6ba7b810-9dad-41d1-80b4-00c04fd430c8",
+    "attributes": {
+      "hn": "HN-0001",
+      "first_name": "Somchai",
+      "last_name": "Jaidee",
+      "id_card": "1234567890123",
+      "created_at": "2026-08-26T01:05:00.000Z",
+      "updated_at": "2026-08-26T01:05:00.000Z"
+    }
+  },
+  "meta": { "timestamp": "2026-08-26T01:05:00.000Z" },
+  "links": { "self": "/patients" }
+}
+```
+
+### Step 3: Open Visit (OPD)
+```http
+POST http://localhost:3000/visits
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "patient_id": "6ba7b810-9dad-41d1-80b4-00c04fd430c8"
+}
+```
+**Response (`201 Created`):**
+```json
+{
+  "status": { "code": 201000, "message": "Request Succeeded" },
+  "data": {
+    "type": "visits",
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "attributes": {
+      "patient_id": "6ba7b810-9dad-41d1-80b4-00c04fd430c8",
+      "status": "OPEN",
+      "visit_date": "2026-08-26T01:06:00.000Z",
+      "updated_at": "2026-08-26T01:06:00.000Z"
+    }
+  },
+  "meta": { "timestamp": "2026-08-26T01:06:00.000Z" },
+  "links": { "self": "/visits" }
+}
+```
+*(OPD persists the visit and publishes `visit.created`)*
+
+### Step 4: Medical Record Created via Event (EMR)
+```http
+GET http://localhost:3001/records/visit/550e8400-e29b-41d4-a716-446655440000
+Authorization: Bearer <access_token>
+```
+**Response (`200 OK`):**
+```json
+{
+  "status": { "code": 200000, "message": "Request Succeeded" },
+  "data": [
+    {
+      "type": "medical-records",
+      "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+      "attributes": {
+        "visit_id": "550e8400-e29b-41d4-a716-446655440000",
+        "doctor_id": null,
+        "diagnosis": null,
+        "treatment_note": null,
+        "treatment_cost": null,
+        "status": "WAITING",
+        "created_at": "2026-08-26T01:06:01.000Z",
+        "updated_at": "2026-08-26T01:06:01.000Z"
+      }
+    }
+  ],
+  "meta": { "timestamp": "2026-08-26T01:06:05.000Z" },
+  "links": { "self": "/records/visit/550e8400-e29b-41d4-a716-446655440000" }
+}
+```
+
+### Step 5: Doctor Completes Treatment (EMR)
+```http
+PATCH http://localhost:3001/records/7c9e6679-7425-40de-944b-e07fc1f90ae7/complete
+Authorization: Bearer <doctor_access_token>
+Content-Type: application/json
+
+{
+  "doctor_id": "dr_watson",
+  "diagnosis": "Influenza Type A",
+  "treatment_note": "Prescribed Tamiflu and 3 days bed rest.",
+  "treatment_cost": 1500
+}
+```
+**Response (`200 OK`):**
+```json
+{
+  "status": { "code": 200000, "message": "Request Succeeded" },
+  "data": {
+    "type": "medical-records",
+    "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "attributes": {
+      "visit_id": "550e8400-e29b-41d4-a716-446655440000",
+      "doctor_id": "dr_watson",
+      "diagnosis": "Influenza Type A",
+      "treatment_note": "Prescribed Tamiflu and 3 days bed rest.",
+      "treatment_cost": 1500,
+      "status": "COMPLETED",
+      "created_at": "2026-08-26T01:06:01.000Z",
+      "updated_at": "2026-08-26T01:10:00.000Z"
+    }
+  },
+  "meta": { "timestamp": "2026-08-26T01:10:00.000Z" },
+  "links": { "self": "/records/7c9e6679-7425-40de-944b-e07fc1f90ae7/complete" }
+}
+```
+*(EMR transitions record to `COMPLETED` and publishes `treatment.completed` with cost `1500`)*
+
+### Step 6: Invoice Created via Event (Finance)
+```http
+GET http://localhost:3002/invoices/550e8400-e29b-41d4-a716-446655440000
+Authorization: Bearer <finance_access_token>
+```
+**Response (`200 OK`):**
+```json
+{
+  "status": { "code": 200000, "message": "Request Succeeded" },
+  "data": [
+    {
+      "type": "invoices",
+      "id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+      "attributes": {
+        "visit_id": "550e8400-e29b-41d4-a716-446655440000",
+        "record_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+        "total_amount": "1500.00",
+        "status": "PENDING",
+        "paid_at": null,
+        "created_at": "2026-08-26T01:10:01.000Z",
+        "updated_at": "2026-08-26T01:10:01.000Z"
+      }
+    }
+  ],
+  "meta": { "timestamp": "2026-08-26T01:10:05.000Z" },
+  "links": { "self": "/invoices/550e8400-e29b-41d4-a716-446655440000" }
+}
+```
+
+### Step 7: Invoice Payment Settlement (Finance)
+```http
+PATCH http://localhost:3002/invoices/9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d/pay
+Authorization: Bearer <finance_access_token>
+Content-Type: application/json
+
+{
+  "status": "PAID"
+}
+```
+**Response (`200 OK`):**
+```json
+{
+  "status": { "code": 200000, "message": "Request Succeeded" },
+  "data": {
+    "type": "invoices",
+    "id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+    "attributes": {
+      "visit_id": "550e8400-e29b-41d4-a716-446655440000",
+      "record_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+      "total_amount": "1500.00",
+      "status": "PAID",
+      "paid_at": "2026-08-26T01:15:00.000Z",
+      "created_at": "2026-08-26T01:10:01.000Z",
+      "updated_at": "2026-08-26T01:15:00.000Z"
+    }
+  },
+  "meta": { "timestamp": "2026-08-26T01:15:00.000Z" },
+  "links": { "self": "/invoices/9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d/pay" }
+}
+```
+*(Finance updates invoice to `PAID` and publishes `invoice.paid`)*
+
+### Step 8: Visit Closed Automatically (OPD)
+```http
+GET http://localhost:3000/visits/550e8400-e29b-41d4-a716-446655440000
+Authorization: Bearer <access_token>
+```
+**Response (`200 OK`):**
+```json
+{
+  "status": { "code": 200000, "message": "Request Succeeded" },
+  "data": {
+    "type": "visits",
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "attributes": {
+      "patient_id": "6ba7b810-9dad-41d1-80b4-00c04fd430c8",
+      "status": "CLOSED",
+      "visit_date": "2026-08-26T01:06:00.000Z",
+      "updated_at": "2026-08-26T01:15:01.000Z"
+    }
+  },
+  "meta": { "timestamp": "2026-08-26T01:15:05.000Z" },
+  "links": { "self": "/visits/550e8400-e29b-41d4-a716-446655440000" }
+}
+```
 
 ---
 
-## 7. คำสั่งทดสอบและการตรวจสอบคุณภาพ (Testing & Quality Gates)
+## 6. Docker Infrastructure Setup
 
-รันคำสั่งทั้งหมดจากโฟลเดอร์ `his-project/`:
+The infrastructure services are defined in `docker-compose.yml`:
 
 ```bash
-# 1. รัน Unit Tests ทั้งหมดใน Monorepo (47 Test Suites, 235 Tests)
+# Start all infrastructure containers in the background
+docker compose up -d
+
+# Check container health status
+docker compose ps
+
+# View infrastructure logs
+docker compose logs -f
+```
+
+### Services Started
+- **PostgreSQL 16**: Port `5432` (Initializes databases `opd_db`, `emr_db`, `finance_db`, and `iam_db` via `docker/postgres/init.sql`)
+- **RabbitMQ 3 Management**: Port `5672` (AMQP) and Port `15672` (Management UI - user `guest` / pass `guest`)
+- **Redis 7**: Port `6379` (Persistent cache and session store)
+
+---
+
+## 7. Environment Variables Reference
+
+Defined in `his-project/.env` (copied from `his-project/.env.example`):
+
+| Variable | Default Value | Description |
+| :--- | :--- | :--- |
+| `OPD_PORT` | `3000` | HTTP listening port for OPD Service |
+| `EMR_PORT` | `3001` | HTTP listening port for EMR Service |
+| `FINANCE_PORT` | `3002` | HTTP listening port for Finance Service |
+| `IAM_PORT` | `3003` | HTTP listening port for IAM Service |
+| `SERVICE_VERSION` | `0.0.1` | Application version for structured logging metadata |
+| `LOG_LEVEL` | `debug` | Minimum log output level (`debug`, `info`, `warn`, `error`) |
+| `POSTGRES_HOST` | `localhost` | PostgreSQL host |
+| `POSTGRES_PORT` | `5432` | PostgreSQL port |
+| `POSTGRES_USERNAME` | `postgres` | PostgreSQL username |
+| `POSTGRES_PASSWORD` | `postgres` | PostgreSQL password |
+| `OPD_DATABASE` | `opd_db` | Logical database name for OPD Service |
+| `EMR_DATABASE` | `emr_db` | Logical database name for EMR Service |
+| `FINANCE_DATABASE` | `finance_db` | Logical database name for Finance Service |
+| `IAM_DATABASE` | `iam_db` | Logical database name for IAM Service |
+| `RABBITMQ_URL` | `amqp://guest:guest@localhost:5672` | RabbitMQ connection URL |
+| `RABBITMQ_EXCHANGE` | `his.events` | Topic exchange name for domain events |
+| `OPD_RABBITMQ_QUEUE` | `opd.events` | Durable queue name for OPD event consumer |
+| `EMR_RABBITMQ_QUEUE` | `emr.events` | Durable queue name for EMR event consumer |
+| `FINANCE_RABBITMQ_QUEUE` | `finance.events` | Durable queue name for Finance event consumer |
+| `REDIS_HOST` | `localhost` | Redis host |
+| `REDIS_PORT` | `6379` | Redis port |
+| `REDIS_PASSWORD` | *(empty)* | Redis password (optional) |
+| `JWT_SECRET` | `his-secret-jwt-key-...` | Secret key for signing access tokens |
+| `JWT_ACCESS_EXPIRES_IN` | `15m` | Access token expiration duration |
+| `JWT_REFRESH_EXPIRES_IN` | `7d` | Refresh token / Redis session expiration duration |
+
+---
+
+## 8. Installation & Running Locally
+
+### 1. Prerequisites
+- **Node.js**: `>= 20.x` (Tested on `22.x`)
+- **npm**: `>= 10.x`
+- **Docker & Docker Compose**
+
+### 2. Setup
+```bash
+# 1. Start Docker containers
+docker compose up -d
+
+# 2. Navigate to project directory and install dependencies
+cd his-project
+npm install
+
+# 3. Create local environment file
+cp .env.example .env
+```
+
+### 3. Running Services
+
+#### Run all services concurrently (Recommended for development):
+```bash
+npm run start:all
+```
+
+#### Run individual services:
+```bash
+npm run start:iam       # IAM Service (Port 3003)
+npm run start:dev       # OPD Service (Port 3000)
+npm run start:emr       # EMR Service (Port 3001)
+npm run start:finance   # Finance Service (Port 3002)
+```
+
+#### Run production builds:
+```bash
+npm run build
+npm run start:prod:iam
+npm run start:prod:opd
+npm run start:prod:emr
+npm run start:prod:finance
+```
+
+---
+
+## 9. Testing & Quality Verification
+
+All commands execute from the `his-project/` directory:
+
+```bash
+# Run all unit and integration test suites
 npm test
 
-# 2. รัน Unit Tests แยกตาม Microservice
+# Run service-specific unit tests
 npm run test:iam
 npm run test:opd
 npm run test:emr
 npm run test:finance
 
-# 3. รัน End-to-End Tests ทั้ง 4 Microservices (รวม Security & RBAC)
+# Run end-to-end tests for all four microservices
 npm run test:e2e
 
-# 4. รัน E2E Test เฉพาะ IAM Service
+# Run IAM-specific E2E tests
 npm run test:iam:e2e
 
-# 5. ตรวจสอบ Code Coverage (Unit & Integration)
+# Run unit tests with code coverage analysis
 npm run test:cov
 
-# 6. ตรวจสอบ Code Quality และ Naming Conventions (ESLint)
+# Run ESLint code quality and naming conventions check
 npm run lint:check
 
-# 7. คอมไพล์ Monorepo ทุก Service
+# Fix autofixable lint errors
+npm run lint
+
+# Compile all microservices via Nest CLI and Webpack
 npm run build
 
-# 8. ทดสอบ Live HTTP + RabbitMQ Flow (ต้องรัน Infrastructure ก่อน)
+# Run live HTTP and RabbitMQ event choreography flow test
 npm run test:flow
 ```
 
-### 🔹 ผลการทดสอบที่ผ่านการตรวจสอบแล้ว (Verified Test Status)
-- ✅ **Unit Tests**: ผ่าน 100% (`47/47` test suites, `235/235` tests passing)
-- ✅ **E2E Tests**: ผ่าน 100% (`4/4` test suites, `23/23` tests passing across OPD, EMR, Finance, IAM)
-- ✅ **Cross-Service RBAC**: ผ่านการทดสอบการแยกสิทธิ์ระหว่าง `DOCTOR`, `FINANCE_STAFF`, `ADMIN`, `PATIENT`
-- ✅ **ESLint Linter**: `0` errors, `0` warnings
-- ✅ **TypeScript Build**: คอมไพล์ผ่านสมบูรณ์ทั้ง 4 Microservices
+### 🔹 Verified Test Results
+- **Unit & Integration Tests**: 47 test suites, 235 tests passed (100% pass rate)
+- **End-to-End (E2E) Tests**: 4 test suites, 22 tests passed (100% pass rate)
+  - `apps/opd-bc/test/e2e/app.e2e-spec.ts` (4 passed)
+  - `apps/emr-bc/test/e2e/app.e2e-spec.ts` (4 passed)
+  - `apps/finance-bc/test/e2e/app.e2e-spec.ts` (3 passed)
+  - `apps/iam-bc/test/e2e/auth.e2e-spec.ts` (11 passed - Register, Conflict, Login, Me, Refresh, Logout, Cross-Service 401/403 RBAC)
+- **Linter**: 0 errors, 0 warnings
+- **Build**: Successfully compiles `opd-bc`, `emr-bc`, `finance-bc`, `iam-bc`
 
 ---
 
-## 8. โครงสร้างโปรเจกต์ (Project Structure)
+## 10. Continuous Integration (CI)
+
+GitHub Actions workflow is configured in `.github/workflows/ci.yml`. On every push and pull request against `develop` and `main`, CI executes:
+1. **Container Initialization**: Starts PostgreSQL 16, RabbitMQ 3, and Redis 7 service containers.
+2. **Database Provisioning**: Creates `opd_db`, `emr_db`, `finance_db`, and `iam_db`.
+3. **Linter Gate**: Executes `npm run lint:check`.
+4. **Unit Test Gate**: Executes `npm run test:cov`.
+5. **Build Gate**: Executes `npm run build`.
+6. **E2E Test Gate**: Executes `npm run test:e2e`.
+7. **Live Flow Gate**: Boots all four production services in the background and executes `npm run test:flow` with deferred event consumers.
+
+---
+
+## 11. Project Structure
 
 ```text
 his-microservices-assignment/
-├── docker-compose.yml              # PostgreSQL 16, RabbitMQ 3, Redis 7
-├── docker/postgres/init.sql        # Database initialization script (opd_db, emr_db, finance_db, iam_db)
-├── .github/workflows/ci.yml        # GitHub Actions CI Workflow
+├── docker-compose.yml              # PostgreSQL 16, RabbitMQ 3, Redis 7 services
+├── docker/
+│   └── postgres/
+│       └── init.sql                # Database initialization (opd_db, emr_db, finance_db, iam_db)
+├── .github/
+│   └── workflows/
+│       └── ci.yml                  # Full CI pipeline definition
 └── his-project/
+    ├── package.json                # Monorepo scripts and dependencies
+    ├── tsconfig.json               # Path aliases (@app/common, @app/contracts)
     ├── apps/
-    │   ├── iam-bc/                 # Identity & Access Management Service (Port 3003)
-    │   │   ├── src/modules/auth/   # Auth Controller, Service, PasswordHashService, DTOs
-    │   │   ├── src/modules/user/   # User Entity (users table), Users Service
-    │   │   └── test/               # Unit & E2E Tests (auth.e2e-spec.ts)
-    │   ├── opd-bc/                 # Outpatient Department Service (Port 3000)
-    │   │   ├── src/modules/patient/# Patient Controller, Service, Entity
-    │   │   └── src/modules/visit/  # Visit Controller, Service, Entity, Event Consumers
-    │   ├── emr-bc/                 # Electronic Medical Records Service (Port 3001)
-    │   │   └── src/modules/medical-record/ # Medical Records Controller, Service, Entity
-    │   └── finance-bc/             # Finance & Invoices Service (Port 3002)
-    │       └── src/modules/invoice/# Invoice Controller, Service, Entity, Payment Handler
+    │   ├── iam-bc/                 # IAM Microservice (Port 3003)
+    │   │   ├── src/modules/auth/   # Auth controller, service, password hasher, DTOs
+    │   │   ├── src/modules/user/   # User entity (users table), users service
+    │   │   └── test/               # Unit & E2E tests (auth.e2e-spec.ts)
+    │   ├── opd-bc/                 # OPD Microservice (Port 3000)
+    │   │   ├── src/modules/patient/# Patient controller, service, entity
+    │   │   ├── src/modules/visit/  # Visit controller, service, entity, event consumer
+    │   │   └── test/               # Unit & E2E tests
+    │   ├── emr-bc/                 # EMR Microservice (Port 3001)
+    │   │   ├── src/modules/medical-record/ # Medical record controller, service, entity, consumer
+    │   │   └── test/               # Unit & E2E tests
+    │   └── finance-bc/             # Finance Microservice (Port 3002)
+    │       ├── src/modules/invoice/# Invoice controller, service, entity, payment handler, consumer
+    │       └── test/               # Unit & E2E tests
     └── libs/
-        ├── common/                 # Reusable Core Infrastructure & Security Library
+        ├── common/                 # Shared Infrastructure & Security Library
         │   ├── src/auth/           # JwtAuthGuard, RolesGuard, @Roles, @Public, @CurrentUser
-        │   ├── src/redis/          # RedisModule, RedisService (Session Store, Blacklist)
-        │   ├── src/filters/        # AllExceptionsFilter (Blueprint JSON:API Error Format)
-        │   ├── src/interceptors/   # TransformInterceptor (JSON:API Success Envelope)
-        │   ├── src/logging/        # StructuredLogger (Single-line JSON Logging & Tracing)
-        │   ├── src/outbox/         # Outbox Module & Service (Transactional Outbox Pattern)
-        │   ├── src/idempotency/    # Idempotency Service (ProcessedEvent Entity)
-        │   └── src/testing/        # Test Helpers (createMockJwtToken, createMockRedisService)
-        └── contracts/              # Shared Event Contracts (visit.created, etc.)
+        │   ├── src/redis/          # RedisModule, RedisService (Session storage & Blacklist)
+        │   ├── src/filters/        # AllExceptionsFilter (Standard JSON:API errors)
+        │   ├── src/interceptors/   # TransformInterceptor (Standard JSON:API envelopes)
+        │   ├── src/logging/        # StructuredLogger (Single-line JSON logs with tracing)
+        │   ├── src/outbox/         # OutboxModule, OutboxEventsService, OutboxEvent entity
+        │   ├── src/idempotency/    # IdempotencyModule, IdempotencyService, ProcessedEvent entity
+        │   └── src/testing/        # Testing utilities and Redis mock helpers
+        └── contracts/              # Shared Event Contracts (visit.created, treatment.completed, invoice.paid)
 ```
 
 ---
 
-## 9. สรุปความสมบูรณ์ของระบบ (Implementation Status)
+## 12. Implementation Status
 
-- ✅ **Authentication & Stateful Sessions**: ลงทะเบียนผู้ใช้, Login, Token Refresh/Rotation, Stateful Logout, Blacklist (`iam-bc`, Redis 7)
-- ✅ **Role-Based Access Control (RBAC)**: `RolesGuard`, `@Roles()` Decorator และการป้องกัน Endpoint ทั้ง 4 Services
-- ✅ **Event-Driven Choreography**: Durable RabbitMQ Exchange & Queues (`visit.created`, `treatment.completed`, `invoice.paid`)
-- ✅ **Data Reliability**: Transactional Outbox Pattern & Idempotent Event Consumers
-- ✅ **Database Isolation**: แยก 4 Logical Databases โดยไม่มี Cross-DB Joins
-- ✅ **Enterprise Blueprint Compliance**: มาตรฐาน JSON:API Envelope และ Business Status Codes
-- ✅ **Observability & Auditability**: Structured JSON Logging พร้อม Distributed Tracing Headers (`x-trace-id`, `x-correlation-id`, `x-span-id`)
-- ✅ **Interactive API Docs**: Swagger UI พร้อมใช้งานครบทุก Microservice บน `/docs`
+- [x] **Monorepo Architecture**: 4 isolated bounded contexts (`opd-bc`, `emr-bc`, `finance-bc`, `iam-bc`)
+- [x] **Database Isolation**: 4 logical databases (`opd_db`, `emr_db`, `finance_db`, `iam_db`) with zero cross-database joins
+- [x] **Event Choreography**: RabbitMQ Topic Exchange `his.events` with durable queues (`opd.events`, `emr.events`, `finance.events`)
+- [x] **Transactional Outbox**: Guaranteed message publishing via local `outbox_events` table and background polling
+- [x] **Consumer Idempotency**: Duplicate event suppression via `processed_events` table
+- [x] **Stateful Authentication**: Access Token (15m) + Refresh Token (7d) with Redis session storage and token-theft rotation
+- [x] **Immediate Revocation**: Token blacklisting via Redis on user logout
+- [x] **Role-Based Access Control (RBAC)**: `RolesGuard` protecting endpoints across all microservices (`ADMIN`, `DOCTOR`, `NURSE`, `FINANCE_STAFF`, `PATIENT`)
+- [x] **Standard Response Protocol**: 100% compliance with Enterprise Backend Blueprint JSON:API envelopes and business codes
+- [x] **Structured Observability**: JSON logging with distributed tracing correlation (`x-trace-id`, `x-correlation-id`, `x-span-id`)
+- [x] **Automated Testing Suite**: 47 unit test suites (235 passed), 4 E2E test suites (22 passed), 0 lint errors, green build

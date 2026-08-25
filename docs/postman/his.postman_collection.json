@@ -1,252 +1,1383 @@
 {
   "info": {
-    "name": "HIS Microservices — repeatable business flow",
-    "description": "Repeatable OPD → EMR → Finance flow with unique patient data, eventual-consistency retries, and state assertions.",
+    "name": "HIS Microservices — Complete Suite & RBAC Flow",
+    "description": "Comprehensive Postman collection for Hospital Information System (HIS) Microservices covering IAM, OPD, EMR, Finance, Security/RBAC Tests, and Repeatable End-to-End Choreography Flow.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
+    { "key": "iam_base_url", "value": "http://localhost:3003" },
     { "key": "opd_base_url", "value": "http://localhost:3000" },
     { "key": "emr_base_url", "value": "http://localhost:3001" },
     { "key": "finance_base_url", "value": "http://localhost:3002" },
+    { "key": "admin_access_token", "value": "" },
+    { "key": "doctor_access_token", "value": "" },
+    { "key": "nurse_access_token", "value": "" },
+    { "key": "finance_access_token", "value": "" },
+    { "key": "patient_access_token", "value": "" },
+    { "key": "admin_refresh_token", "value": "" },
+    { "key": "doctor_refresh_token", "value": "" },
+    { "key": "finance_refresh_token", "value": "" },
     { "key": "patient_id", "value": "" },
     { "key": "visit_id", "value": "" },
     { "key": "record_id", "value": "" },
     { "key": "invoice_id", "value": "" },
+    { "key": "test_suffix", "value": "1" },
     { "key": "retry_count", "value": "0" }
   ],
   "item": [
     {
-      "name": "1. Register unique patient",
-      "event": [
+      "name": "1. IAM (Identity & Access Management)",
+      "item": [
         {
-          "listen": "prerequest",
-          "script": {
-            "exec": [
-              "const suffix = Date.now().toString();",
-              "pm.collectionVariables.set('test_suffix', suffix);",
-              "pm.collectionVariables.set('retry_count', '0');"
-            ]
+          "name": "Register Admin User",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "if (!pm.collectionVariables.get('test_suffix')) {",
+                  "  pm.collectionVariables.set('test_suffix', Date.now().toString().slice(-6));",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Admin registered or already exists', function () {",
+                  "  pm.expect([201, 409]).to.include(pm.response.code);",
+                  "  if (pm.response.code === 201) {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.status.code).to.eql(201000);",
+                  "    pm.expect(body.data.type).to.eql('users');",
+                  "    pm.expect(body.data.attributes.role).to.eql('ADMIN');",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin_{{test_suffix}}\",\n  \"email\": \"admin_{{test_suffix}}@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"Super\",\n  \"last_name\": \"Admin\",\n  \"role\": \"ADMIN\"\n}"
+            },
+            "url": "{{iam_base_url}}/auth/register"
           }
         },
         {
-          "listen": "test",
-          "script": {
-            "exec": [
-              "pm.test('patient created', function () {",
-              "  pm.response.to.have.status(201);",
-              "  const body = pm.response.json();",
-              "  pm.expect(body.status.code).to.eql(201000);",
-              "  pm.expect(body.data.type).to.eql('patients');",
-              "  pm.expect(body.data.id).to.be.a('string');",
-              "  pm.collectionVariables.set('patient_id', body.data.id);",
-              "});"
-            ]
+          "name": "Register Doctor User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Doctor registered or already exists', function () {",
+                  "  pm.expect([201, 409]).to.include(pm.response.code);",
+                  "  if (pm.response.code === 201) {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.status.code).to.eql(201000);",
+                  "    pm.expect(body.data.attributes.role).to.eql('DOCTOR');",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"doctor_{{test_suffix}}\",\n  \"email\": \"doctor_{{test_suffix}}@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"John\",\n  \"last_name\": \"Watson\",\n  \"role\": \"DOCTOR\"\n}"
+            },
+            "url": "{{iam_base_url}}/auth/register"
           }
-        }
-      ],
-      "request": {
-        "method": "POST",
-        "header": [{ "key": "Content-Type", "value": "application/json" }],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"hn\": \"HN-POSTMAN-{{test_suffix}}\",\n  \"first_name\": \"Somchai\",\n  \"last_name\": \"Jaidee\",\n  \"id_card\": \"ID-POSTMAN-{{test_suffix}}\"\n}"
         },
-        "url": "{{opd_base_url}}/patients"
-      }
-    },
-    {
-      "name": "2. Open visit",
-      "event": [
         {
-          "listen": "test",
-          "script": {
-            "exec": [
-              "pm.test('visit opened', function () {",
-              "  pm.response.to.have.status(201);",
-              "  const body = pm.response.json();",
-              "  pm.expect(body.status.code).to.eql(201000);",
-              "  pm.expect(body.data.type).to.eql('visits');",
-              "  pm.expect(body.data.id).to.be.a('string');",
-              "  pm.expect(body.data.attributes.status).to.eql('OPEN');",
-              "  pm.collectionVariables.set('visit_id', body.data.id);",
-              "});"
-            ]
+          "name": "Register Nurse User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Nurse registered or already exists', function () {",
+                  "  pm.expect([201, 409]).to.include(pm.response.code);",
+                  "  if (pm.response.code === 201) {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.status.code).to.eql(201000);",
+                  "    pm.expect(body.data.attributes.role).to.eql('NURSE');",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"nurse_{{test_suffix}}\",\n  \"email\": \"nurse_{{test_suffix}}@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"Florence\",\n  \"last_name\": \"Nightingale\",\n  \"role\": \"NURSE\"\n}"
+            },
+            "url": "{{iam_base_url}}/auth/register"
           }
-        }
-      ],
-      "request": {
-        "method": "POST",
-        "header": [
-          { "key": "Content-Type", "value": "application/json" },
-          { "key": "X-Correlation-Id", "value": "{{$guid}}" }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"patient_id\": \"{{patient_id}}\"\n}"
         },
-        "url": "{{opd_base_url}}/visits"
-      }
-    },
-    {
-      "name": "3. Wait for medical record",
-      "event": [
         {
-          "listen": "test",
-          "script": {
-            "exec": [
-              "const maxRetries = 20;",
-              "const body = pm.response.json();",
-              "if (pm.response.code === 200 && Array.isArray(body.data) && body.data.length > 0) {",
-              "  pm.test('waiting record created', function () {",
-              "    pm.expect(body.status.code).to.eql(200000);",
-              "    pm.expect(body.data[0].type).to.eql('medical-records');",
-              "    pm.expect(body.data[0].attributes.status).to.eql('WAITING');",
-              "  });",
-              "  pm.collectionVariables.set('record_id', body.data[0].id);",
-              "  pm.collectionVariables.set('retry_count', '0');",
-              "} else {",
-              "  const retryCount = Number(pm.collectionVariables.get('retry_count') || '0') + 1;",
-              "  pm.collectionVariables.set('retry_count', String(retryCount));",
-              "  pm.test('record endpoint is retryable', function () { pm.expect([200, 404]).to.include(pm.response.code); });",
-              "  if (retryCount < maxRetries) pm.execution.setNextRequest('3. Wait for medical record');",
-              "  else pm.expect.fail('Medical record was not created in time');",
-              "}"
-            ]
+          "name": "Register Finance User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Finance staff registered or already exists', function () {",
+                  "  pm.expect([201, 409]).to.include(pm.response.code);",
+                  "  if (pm.response.code === 201) {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.status.code).to.eql(201000);",
+                  "    pm.expect(body.data.attributes.role).to.eql('FINANCE_STAFF');",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"finance_{{test_suffix}}\",\n  \"email\": \"finance_{{test_suffix}}@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"Penny\",\n  \"last_name\": \"Accountant\",\n  \"role\": \"FINANCE_STAFF\"\n}"
+            },
+            "url": "{{iam_base_url}}/auth/register"
           }
-        }
-      ],
-      "request": {
-        "method": "GET",
-        "url": "{{emr_base_url}}/records/visit/{{visit_id}}"
-      }
-    },
-    {
-      "name": "4. Complete treatment",
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "exec": [
-              "pm.test('treatment completed', function () {",
-              "  pm.response.to.have.status(200);",
-              "  const body = pm.response.json();",
-              "  pm.expect(body.status.code).to.eql(200000);",
-              "  pm.expect(body.data.type).to.eql('medical-records');",
-              "  pm.expect(body.data.attributes.status).to.eql('COMPLETED');",
-              "});"
-            ]
-          }
-        }
-      ],
-      "request": {
-        "method": "PATCH",
-        "header": [
-          { "key": "Content-Type", "value": "application/json" },
-          { "key": "X-Correlation-Id", "value": "{{$guid}}" }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"doctor_id\": \"doctor-001\",\n  \"diagnosis\": \"Influenza\",\n  \"treatment_note\": \"Rest and fluids\",\n  \"treatment_cost\": 1500,\n  \"status\": \"COMPLETED\"\n}"
         },
-        "url": "{{emr_base_url}}/records/{{record_id}}"
-      }
-    },
-    {
-      "name": "5. Wait for pending invoice",
-      "event": [
         {
-          "listen": "test",
-          "script": {
-            "exec": [
-              "const maxRetries = 20;",
-              "const body = pm.response.json();",
-              "if (pm.response.code === 200 && Array.isArray(body.data) && body.data.length > 0) {",
-              "  pm.test('pending invoice created', function () {",
-              "    pm.expect(body.status.code).to.eql(200000);",
-              "    pm.expect(body.data[0].type).to.eql('invoices');",
-              "    pm.expect(body.data[0].attributes.status).to.eql('PENDING');",
-              "  });",
-              "  pm.collectionVariables.set('invoice_id', body.data[0].id);",
-              "  pm.collectionVariables.set('retry_count', '0');",
-              "} else {",
-              "  const retryCount = Number(pm.collectionVariables.get('retry_count') || '0') + 1;",
-              "  pm.collectionVariables.set('retry_count', String(retryCount));",
-              "  pm.test('invoice endpoint is retryable', function () { pm.expect([200, 404]).to.include(pm.response.code); });",
-              "  if (retryCount < maxRetries) pm.execution.setNextRequest('5. Wait for pending invoice');",
-              "  else pm.expect.fail('Invoice was not created in time');",
-              "}"
-            ]
+          "name": "Register Patient User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Patient registered or already exists', function () {",
+                  "  pm.expect([201, 409]).to.include(pm.response.code);",
+                  "  if (pm.response.code === 201) {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.status.code).to.eql(201000);",
+                  "    pm.expect(body.data.attributes.role).to.eql('PATIENT');",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"patient_{{test_suffix}}\",\n  \"email\": \"patient_{{test_suffix}}@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"Somchai\",\n  \"last_name\": \"Jaidee\",\n  \"role\": \"PATIENT\"\n}"
+            },
+            "url": "{{iam_base_url}}/auth/register"
           }
-        }
-      ],
-      "request": {
-        "method": "GET",
-        "url": "{{finance_base_url}}/invoices/{{visit_id}}"
-      }
-    },
-    {
-      "name": "6. Pay invoice",
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "exec": [
-              "pm.test('invoice paid', function () {",
-              "  pm.response.to.have.status(200);",
-              "  const body = pm.response.json();",
-              "  pm.expect(body.status.code).to.eql(200000);",
-              "  pm.expect(body.data.type).to.eql('invoices');",
-              "  pm.expect(body.data.attributes.status).to.eql('PAID');",
-              "  pm.expect(body.data.attributes.paid_at).not.to.eql(null);",
-              "});"
-            ]
-          }
-        }
-      ],
-      "request": {
-        "method": "PATCH",
-        "header": [
-          { "key": "Content-Type", "value": "application/json" },
-          { "key": "X-Correlation-Id", "value": "{{$guid}}" }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"status\": \"PAID\"\n}"
         },
-        "url": "{{finance_base_url}}/invoices/{{invoice_id}}/pay"
-      }
-    },
-    {
-      "name": "7. Wait for closed visit",
-      "event": [
         {
-          "listen": "test",
-          "script": {
-            "exec": [
-              "const maxRetries = 20;",
-              "const body = pm.response.json();",
-              "if (pm.response.code === 200 && body.data && body.data.attributes && body.data.attributes.status === 'CLOSED') {",
-              "  pm.test('visit closed', function () {",
-              "    pm.expect(body.status.code).to.eql(200000);",
-              "    pm.expect(body.data.type).to.eql('visits');",
-              "    pm.expect(body.data.attributes.status).to.eql('CLOSED');",
-              "  });",
-              "  pm.collectionVariables.set('retry_count', '0');",
-              "} else {",
-              "  const retryCount = Number(pm.collectionVariables.get('retry_count') || '0') + 1;",
-              "  pm.collectionVariables.set('retry_count', String(retryCount));",
-              "  pm.test('visit endpoint is retryable', function () { pm.expect(pm.response.code).to.eql(200); });",
-              "  if (retryCount < maxRetries) pm.execution.setNextRequest('7. Wait for closed visit');",
-              "  else pm.expect.fail('Visit was not closed in time');",
-              "}"
-            ]
+          "name": "Login as Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Admin logged in successfully', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(200000);",
+                  "  pm.expect(body.data.type).to.eql('tokens');",
+                  "  pm.expect(body.data.attributes.access_token).to.be.a('string');",
+                  "  pm.expect(body.data.attributes.refresh_token).to.be.a('string');",
+                  "  pm.collectionVariables.set('admin_access_token', body.data.attributes.access_token);",
+                  "  pm.collectionVariables.set('admin_refresh_token', body.data.attributes.refresh_token);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin_{{test_suffix}}\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": "{{iam_base_url}}/auth/login"
+          }
+        },
+        {
+          "name": "Login as Doctor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Doctor logged in successfully', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(200000);",
+                  "  pm.expect(body.data.type).to.eql('tokens');",
+                  "  pm.collectionVariables.set('doctor_access_token', body.data.attributes.access_token);",
+                  "  pm.collectionVariables.set('doctor_refresh_token', body.data.attributes.refresh_token);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"doctor_{{test_suffix}}\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": "{{iam_base_url}}/auth/login"
+          }
+        },
+        {
+          "name": "Login as Nurse",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Nurse logged in successfully', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(200000);",
+                  "  pm.collectionVariables.set('nurse_access_token', body.data.attributes.access_token);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"nurse_{{test_suffix}}\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": "{{iam_base_url}}/auth/login"
+          }
+        },
+        {
+          "name": "Login as Finance Staff",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Finance staff logged in successfully', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(200000);",
+                  "  pm.collectionVariables.set('finance_access_token', body.data.attributes.access_token);",
+                  "  pm.collectionVariables.set('finance_refresh_token', body.data.attributes.refresh_token);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"finance_{{test_suffix}}\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": "{{iam_base_url}}/auth/login"
+          }
+        },
+        {
+          "name": "Login as Patient",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Patient logged in successfully', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(200000);",
+                  "  pm.collectionVariables.set('patient_access_token', body.data.attributes.access_token);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"patient_{{test_suffix}}\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": "{{iam_base_url}}/auth/login"
+          }
+        },
+        {
+          "name": "Get Profile (GET /auth/me)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Profile retrieved', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(200000);",
+                  "  pm.expect(body.data.type).to.eql('users');",
+                  "  pm.expect(body.data.attributes.role).to.eql('ADMIN');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_access_token}}" }],
+            "url": "{{iam_base_url}}/auth/me"
+          }
+        },
+        {
+          "name": "Refresh Token (POST /auth/refresh)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Token refreshed and rotated', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(200000);",
+                  "  pm.expect(body.data.attributes.access_token).to.be.a('string');",
+                  "  pm.expect(body.data.attributes.refresh_token).to.be.a('string');",
+                  "  pm.collectionVariables.set('admin_access_token', body.data.attributes.access_token);",
+                  "  pm.collectionVariables.set('admin_refresh_token', body.data.attributes.refresh_token);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{admin_refresh_token}}\"\n}"
+            },
+            "url": "{{iam_base_url}}/auth/refresh"
           }
         }
-      ],
-      "request": {
-        "method": "GET",
-        "url": "{{opd_base_url}}/visits/{{visit_id}}"
-      }
+      ]
+    },
+    {
+      "name": "2. OPD (Outpatient Department)",
+      "item": [
+        {
+          "name": "Create Patient (Nurse/Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Patient created', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(201000);",
+                  "  pm.expect(body.data.type).to.eql('patients');",
+                  "  pm.expect(body.data.id).to.be.a('string');",
+                  "  pm.collectionVariables.set('patient_id', body.data.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hn\": \"HN-OPD-{{test_suffix}}\",\n  \"first_name\": \"Somchai\",\n  \"last_name\": \"Jaidee\",\n  \"id_card\": \"ID-OPD-{{test_suffix}}\"\n}"
+            },
+            "url": "{{opd_base_url}}/patients"
+          }
+        },
+        {
+          "name": "List Patients",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Patients listed', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(200000);",
+                  "  pm.expect(Array.isArray(body.data)).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{nurse_access_token}}" }],
+            "url": "{{opd_base_url}}/patients"
+          }
+        },
+        {
+          "name": "Get Patient by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Patient details retrieved', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(200000);",
+                  "  pm.expect(body.data.id).to.eql(pm.collectionVariables.get('patient_id'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_access_token}}" }],
+            "url": "{{opd_base_url}}/patients/{{patient_id}}"
+          }
+        },
+        {
+          "name": "Update Patient",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Patient updated', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(200000);",
+                  "  pm.expect(body.data.attributes.first_name).to.eql('Somchai Updated');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Somchai Updated\"\n}"
+            },
+            "url": "{{opd_base_url}}/patients/{{patient_id}}"
+          }
+        },
+        {
+          "name": "Open Visit (triggers visit.created)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Visit opened with OPEN status', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(201000);",
+                  "  pm.expect(body.data.type).to.eql('visits');",
+                  "  pm.expect(body.data.attributes.status).to.eql('OPEN');",
+                  "  pm.collectionVariables.set('visit_id', body.data.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{nurse_access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient_id\": \"{{patient_id}}\"\n}"
+            },
+            "url": "{{opd_base_url}}/visits"
+          }
+        },
+        {
+          "name": "List Visits",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Visits listed', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(200000);",
+                  "  pm.expect(Array.isArray(body.data)).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_access_token}}" }],
+            "url": "{{opd_base_url}}/visits"
+          }
+        },
+        {
+          "name": "Get Visit by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Visit retrieved', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(200000);",
+                  "  pm.expect(body.data.id).to.eql(pm.collectionVariables.get('visit_id'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{patient_access_token}}" }],
+            "url": "{{opd_base_url}}/visits/{{visit_id}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. EMR (Electronic Medical Records)",
+      "item": [
+        {
+          "name": "Get Medical Records for Visit",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Medical record for visit retrieved', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(200000);",
+                  "  if (Array.isArray(body.data) && body.data.length > 0) {",
+                  "    pm.collectionVariables.set('record_id', body.data[0].id);",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{doctor_access_token}}" }],
+            "url": "{{emr_base_url}}/records/visit/{{visit_id}}"
+          }
+        },
+        {
+          "name": "List All Medical Records",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Medical records listed', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(200000);",
+                  "  pm.expect(Array.isArray(body.data)).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{doctor_access_token}}" }],
+            "url": "{{emr_base_url}}/records"
+          }
+        },
+        {
+          "name": "Update Medical Record Draft (Doctor)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Medical record updated', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(200000);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{doctor_access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctor_id\": \"dr_watson\",\n  \"diagnosis\": \"Preliminary: Fever\"\n}"
+            },
+            "url": "{{emr_base_url}}/records/{{record_id}}"
+          }
+        },
+        {
+          "name": "Complete Treatment (Doctor - triggers treatment.completed)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Treatment completed with COMPLETED status', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(200000);",
+                  "  pm.expect(body.data.attributes.status).to.eql('COMPLETED');",
+                  "  pm.expect(body.data.attributes.treatment_cost).to.eql(1500);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{doctor_access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctor_id\": \"dr_watson\",\n  \"diagnosis\": \"Influenza Type A\",\n  \"treatment_note\": \"Prescribed Tamiflu 75mg twice daily for 5 days. Patient advised complete bed rest.\",\n  \"treatment_cost\": 1500\n}"
+            },
+            "url": "{{emr_base_url}}/records/{{record_id}}/complete"
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Finance (Billing & Invoices)",
+      "item": [
+        {
+          "name": "Get Invoice for Visit",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Invoice for visit retrieved', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(200000);",
+                  "  if (Array.isArray(body.data) && body.data.length > 0) {",
+                  "    pm.collectionVariables.set('invoice_id', body.data[0].id);",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{finance_access_token}}" }],
+            "url": "{{finance_base_url}}/invoices/{{visit_id}}"
+          }
+        },
+        {
+          "name": "List All Invoices",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Invoices listed', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(200000);",
+                  "  pm.expect(Array.isArray(body.data)).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{finance_access_token}}" }],
+            "url": "{{finance_base_url}}/invoices"
+          }
+        },
+        {
+          "name": "Pay Invoice (Finance Staff - triggers invoice.paid)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Invoice settled with PAID status', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(200000);",
+                  "  pm.expect(body.data.attributes.status).to.eql('PAID');",
+                  "  pm.expect(body.data.attributes.paid_at).not.to.eql(null);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{finance_access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"PAID\"\n}"
+            },
+            "url": "{{finance_base_url}}/invoices/{{invoice_id}}/pay"
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Security & RBAC Tests",
+      "item": [
+        {
+          "name": "401: Missing Bearer Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Returns 401 Unauthorized for missing token', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(401);",
+                  "  pm.expect(body.errors[0].title).to.eql('UnauthorizedException');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{opd_base_url}}/patients"
+          }
+        },
+        {
+          "name": "401: Invalid Bearer Signature",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Returns 401 Unauthorized for tampered token', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(401);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer invalid.jwt.token" }],
+            "url": "{{emr_base_url}}/records"
+          }
+        },
+        {
+          "name": "403: Doctor Forbidden from Paying Invoice",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Returns 403 Forbidden when Doctor attempts Finance pay action', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(403);",
+                  "  pm.expect(body.errors[0].title).to.eql('ForbiddenException');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{doctor_access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"PAID\"\n}"
+            },
+            "url": "{{finance_base_url}}/invoices/{{invoice_id}}/pay"
+          }
+        },
+        {
+          "name": "403: Finance Staff Forbidden from Completing Medical Record",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Returns 403 Forbidden when Finance Staff attempts Doctor action', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(403);",
+                  "  pm.expect(body.errors[0].title).to.eql('ForbiddenException');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{finance_access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctor_id\": \"illegal_doctor\",\n  \"diagnosis\": \"Illegal Diagnosis\",\n  \"treatment_note\": \"Unauthorized\",\n  \"treatment_cost\": 9999\n}"
+            },
+            "url": "{{emr_base_url}}/records/{{record_id}}/complete"
+          }
+        },
+        {
+          "name": "403: Patient Forbidden from Creating Visit",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Returns 403 Forbidden when Patient attempts staff action', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(403);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{patient_access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient_id\": \"{{patient_id}}\"\n}"
+            },
+            "url": "{{opd_base_url}}/visits"
+          }
+        },
+        {
+          "name": "409: Duplicate Username Registration",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Returns 409 Conflict for existing username', function () {",
+                  "  pm.response.to.have.status(409);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(409);",
+                  "  pm.expect(body.errors[0].title).to.eql('ConflictException');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin_{{test_suffix}}\",\n  \"email\": \"another_admin_{{test_suffix}}@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"Super\",\n  \"last_name\": \"Admin\",\n  \"role\": \"ADMIN\"\n}"
+            },
+            "url": "{{iam_base_url}}/auth/register"
+          }
+        },
+        {
+          "name": "400: Strict Validation Error (Non-whitelisted fields)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Returns 400001 Validation Failed for non-whitelisted properties', function () {",
+                  "  pm.response.to.have.status(400);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(400001);",
+                  "  pm.expect(body.status.message).to.eql('Validation Failed');",
+                  "  pm.expect(body.errors.length).to.be.greaterThan(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hn\": \"HN-INVALID-{{test_suffix}}\",\n  \"first_name\": \"Invalid\",\n  \"last_name\": \"Property\",\n  \"id_card\": \"ID-INVALID\",\n  \"role\": \"SUPER_ADMIN\",\n  \"malicious_injected_field\": true\n}"
+            },
+            "url": "{{opd_base_url}}/patients"
+          }
+        },
+        {
+          "name": "Logout Admin (Session Revocation)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('User logged out and session revoked', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(200000);",
+                  "  pm.expect(body.data.attributes.logged_out).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_access_token}}" }],
+            "url": "{{iam_base_url}}/auth/logout"
+          }
+        },
+        {
+          "name": "401: Revoked Session Validation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Returns 401 Unauthorized using blacklisted/revoked token', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(401);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_access_token}}" }],
+            "url": "{{iam_base_url}}/auth/me"
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. End-to-End Repeatable Choreography Flow",
+      "item": [
+        {
+          "name": "Step 01. Authenticate Doctor",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const suffix = Date.now().toString();",
+                  "pm.collectionVariables.set('test_suffix', suffix);",
+                  "pm.collectionVariables.set('retry_count', '0');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Doctor authenticated', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(200000);",
+                  "  pm.collectionVariables.set('doctor_access_token', body.data.attributes.access_token);",
+                  "  pm.collectionVariables.set('doctor_refresh_token', body.data.attributes.refresh_token);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"doctor_{{test_suffix}}\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": "{{iam_base_url}}/auth/login"
+          }
+        },
+        {
+          "name": "Step 02. Authenticate Finance Staff",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Finance staff authenticated', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(200000);",
+                  "  pm.collectionVariables.set('finance_access_token', body.data.attributes.access_token);",
+                  "  pm.collectionVariables.set('finance_refresh_token', body.data.attributes.refresh_token);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"finance_{{test_suffix}}\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": "{{iam_base_url}}/auth/login"
+          }
+        },
+        {
+          "name": "Step 03. Register Unique Patient",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Patient created', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(201000);",
+                  "  pm.expect(body.data.type).to.eql('patients');",
+                  "  pm.expect(body.data.id).to.be.a('string');",
+                  "  pm.collectionVariables.set('patient_id', body.data.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{doctor_access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hn\": \"HN-FLOW-{{test_suffix}}\",\n  \"first_name\": \"Somchai\",\n  \"last_name\": \"Flow\",\n  \"id_card\": \"ID-FLOW-{{test_suffix}}\"\n}"
+            },
+            "url": "{{opd_base_url}}/patients"
+          }
+        },
+        {
+          "name": "Step 04. Open Visit (Outbox emits visit.created)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Visit opened', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(201000);",
+                  "  pm.expect(body.data.type).to.eql('visits');",
+                  "  pm.expect(body.data.attributes.status).to.eql('OPEN');",
+                  "  pm.collectionVariables.set('visit_id', body.data.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{doctor_access_token}}" },
+              { "key": "X-Correlation-Id", "value": "{{$guid}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient_id\": \"{{patient_id}}\"\n}"
+            },
+            "url": "{{opd_base_url}}/visits"
+          }
+        },
+        {
+          "name": "Step 05. Wait for EMR to Consume visit.created",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const maxRetries = 20;",
+                  "const body = pm.response.json();",
+                  "if (pm.response.code === 200 && Array.isArray(body.data) && body.data.length > 0) {",
+                  "  pm.test('Medical record created with WAITING status', function () {",
+                  "    pm.expect(body.status.code).to.eql(200000);",
+                  "    pm.expect(body.data[0].type).to.eql('medical-records');",
+                  "    pm.expect(body.data[0].attributes.status).to.eql('WAITING');",
+                  "  });",
+                  "  pm.collectionVariables.set('record_id', body.data[0].id);",
+                  "  pm.collectionVariables.set('retry_count', '0');",
+                  "} else {",
+                  "  const retryCount = Number(pm.collectionVariables.get('retry_count') || '0') + 1;",
+                  "  pm.collectionVariables.set('retry_count', String(retryCount));",
+                  "  pm.test('Record endpoint is retryable', function () { pm.expect([200, 404]).to.include(pm.response.code); });",
+                  "  if (retryCount < maxRetries) {",
+                  "    setTimeout(function() {}, 500);",
+                  "    pm.execution.setNextRequest('Step 05. Wait for EMR to Consume visit.created');",
+                  "  } else {",
+                  "    pm.expect.fail('Medical record was not created in time via RabbitMQ');",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{doctor_access_token}}" }],
+            "url": "{{emr_base_url}}/records/visit/{{visit_id}}"
+          }
+        },
+        {
+          "name": "Step 06. Doctor Completes Treatment (Outbox emits treatment.completed)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Treatment completed', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(200000);",
+                  "  pm.expect(body.data.type).to.eql('medical-records');",
+                  "  pm.expect(body.data.attributes.status).to.eql('COMPLETED');",
+                  "  pm.expect(body.data.attributes.treatment_cost).to.eql(1500);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{doctor_access_token}}" },
+              { "key": "X-Correlation-Id", "value": "{{$guid}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctor_id\": \"doctor-flow-001\",\n  \"diagnosis\": \"Acute Rhinopharyngitis\",\n  \"treatment_note\": \"Symptomatic relief, hydration, and rest for 3 days.\",\n  \"treatment_cost\": 1500\n}"
+            },
+            "url": "{{emr_base_url}}/records/{{record_id}}/complete"
+          }
+        },
+        {
+          "name": "Step 07. Wait for Finance to Consume treatment.completed",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const maxRetries = 20;",
+                  "const body = pm.response.json();",
+                  "if (pm.response.code === 200 && Array.isArray(body.data) && body.data.length > 0) {",
+                  "  pm.test('Pending invoice created', function () {",
+                  "    pm.expect(body.status.code).to.eql(200000);",
+                  "    pm.expect(body.data[0].type).to.eql('invoices');",
+                  "    pm.expect(body.data[0].attributes.status).to.eql('PENDING');",
+                  "    pm.expect(Number(body.data[0].attributes.total_amount)).to.eql(1500);",
+                  "  });",
+                  "  pm.collectionVariables.set('invoice_id', body.data[0].id);",
+                  "  pm.collectionVariables.set('retry_count', '0');",
+                  "} else {",
+                  "  const retryCount = Number(pm.collectionVariables.get('retry_count') || '0') + 1;",
+                  "  pm.collectionVariables.set('retry_count', String(retryCount));",
+                  "  pm.test('Invoice endpoint is retryable', function () { pm.expect([200, 404]).to.include(pm.response.code); });",
+                  "  if (retryCount < maxRetries) {",
+                  "    setTimeout(function() {}, 500);",
+                  "    pm.execution.setNextRequest('Step 07. Wait for Finance to Consume treatment.completed');",
+                  "  } else {",
+                  "    pm.expect.fail('Invoice was not created in time via RabbitMQ');",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{finance_access_token}}" }],
+            "url": "{{finance_base_url}}/invoices/{{visit_id}}"
+          }
+        },
+        {
+          "name": "Step 08. Finance Staff Pays Invoice (Outbox emits invoice.paid)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Invoice paid successfully', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(200000);",
+                  "  pm.expect(body.data.type).to.eql('invoices');",
+                  "  pm.expect(body.data.attributes.status).to.eql('PAID');",
+                  "  pm.expect(body.data.attributes.paid_at).not.to.eql(null);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{finance_access_token}}" },
+              { "key": "X-Correlation-Id", "value": "{{$guid}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"PAID\"\n}"
+            },
+            "url": "{{finance_base_url}}/invoices/{{invoice_id}}/pay"
+          }
+        },
+        {
+          "name": "Step 09. Wait for OPD to Consume invoice.paid & Close Visit",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const maxRetries = 20;",
+                  "const body = pm.response.json();",
+                  "if (pm.response.code === 200 && body.data && body.data.attributes && body.data.attributes.status === 'CLOSED') {",
+                  "  pm.test('Visit closed successfully', function () {",
+                  "    pm.expect(body.status.code).to.eql(200000);",
+                  "    pm.expect(body.data.type).to.eql('visits');",
+                  "    pm.expect(body.data.attributes.status).to.eql('CLOSED');",
+                  "  });",
+                  "  pm.collectionVariables.set('retry_count', '0');",
+                  "} else {",
+                  "  const retryCount = Number(pm.collectionVariables.get('retry_count') || '0') + 1;",
+                  "  pm.collectionVariables.set('retry_count', String(retryCount));",
+                  "  pm.test('Visit endpoint is retryable', function () { pm.expect(pm.response.code).to.eql(200); });",
+                  "  if (retryCount < maxRetries) {",
+                  "    setTimeout(function() {}, 500);",
+                  "    pm.execution.setNextRequest('Step 09. Wait for OPD to Consume invoice.paid & Close Visit');",
+                  "  } else {",
+                  "    pm.expect.fail('Visit was not closed in time via RabbitMQ');",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{doctor_access_token}}" }],
+            "url": "{{opd_base_url}}/visits/{{visit_id}}"
+          }
+        },
+        {
+          "name": "Step 10. Rotate Doctor Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Token pair rotated', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(200000);",
+                  "  pm.expect(body.data.attributes.access_token).to.be.a('string');",
+                  "  pm.collectionVariables.set('doctor_access_token', body.data.attributes.access_token);",
+                  "  pm.collectionVariables.set('doctor_refresh_token', body.data.attributes.refresh_token);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{doctor_refresh_token}}\"\n}"
+            },
+            "url": "{{iam_base_url}}/auth/refresh"
+          }
+        },
+        {
+          "name": "Step 11. Logout Doctor & Terminate Session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Doctor session terminated and token blacklisted', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(200000);",
+                  "  pm.expect(body.data.attributes.logged_out).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{doctor_access_token}}" }],
+            "url": "{{iam_base_url}}/auth/logout"
+          }
+        }
+      ]
     }
   ]
 }
