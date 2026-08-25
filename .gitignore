@@ -1,56 +1,159 @@
+# ============================================================
 # Dependencies
+# ============================================================
 node_modules/
+.pnpm-store/
 
-# Build output
+# ============================================================
+# Build Output
+# ============================================================
 dist/
+build/
+out/
 coverage/
 
-# Environment files
+# TypeScript build cache
+*.tsbuildinfo
+
+# NestJS
+.nest/
+
+# ============================================================
+# Environment / Secrets
+# ============================================================
 .env
 .env.*
 !.env.example
 
-# Skill & Guidelines
+# ============================================================
+# AI / Agent Local Tooling
+# ============================================================
+
+# Antigravity / locally installed Agent Skills
+.agent/
+.agents/
+
+# Local skill installation metadata
 skills-lock.json
-AGENTS.md
+
+# Gemini-specific local instructions
+# Remove this line if GEMINI.md contains shared project rules
 GEMINI.md
 
-# Test Reports
+# ============================================================
+# AI Project Documentation
+# ============================================================
+#
+# IMPORTANT:
+# AGENTS.md and .kiro/ are intentionally NOT ignored.
+#
+# They should be committed because they contain:
+#
+# AGENTS.md
+#   - Project Memory
+#   - Agent instructions
+#   - Project-wide rules
+#
+# .kiro/
+#   - Steering
+#   - Discovery
+#   - Requirements
+#   - Gap analysis
+#   - Design
+#   - Tasks
+#
+# This allows every implementation branch to use the same
+# project specification and source of truth.
+#
+# ============================================================
+
+# DO NOT add:
+# AGENTS.md
+# .kiro/
+
+# ============================================================
+# Test Reports / Test Artifacts
+# ============================================================
 TEST_RESULTS.md
 
+test-results/
+.nyc_output/
+
+# Jest coverage is already ignored above via coverage/
+
+# ============================================================
 # Logs
+# ============================================================
 logs/
 *.log
+
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Runtime
+# ============================================================
+# Runtime Files
+# ============================================================
 *.pid
 *.pid.lock
 
-# IDE
+# ============================================================
+# Temporary Files / Cache
+# ============================================================
+tmp/
+temp/
+.cache/
+
+*.tmp
+*.temp
+
+# ============================================================
+# IDE / Editors
+# ============================================================
 .vscode/
 .idea/
+
 *.swp
+*.swo
+*~
 
-# OS
+# ============================================================
+# Operating System
+# ============================================================
+
+# macOS
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
 Thumbs.db
+ehthumbs.db
+Desktop.ini
 
-# NestJS / TypeScript
-*.tsbuildinfo
-
-# Docker local data
+# ============================================================
+# Docker Local Data
+# ============================================================
 postgres_data/
 rabbitmq_data/
 redis_data/
 
-# Test artifacts
-test-results/
-.nyc_output/
+# Local-only Docker overrides
+docker-compose.override.yml
 
-# Temporary files
-tmp/
-temp/
+# ============================================================
+# Package Manager / Misc Cache
+# ============================================================
+.npm/
+.yarn/cache/
+.yarn/unplugged/
+
+.eslintcache
+
+# ============================================================
+# Local Files
+# ============================================================
+*.local
