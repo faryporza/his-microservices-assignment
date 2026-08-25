@@ -75,7 +75,7 @@
   - _Boundary: Common Auth Guards_
   - _Depends: 1.2, 2.1_
 
-- [ ] 2.3 (P) Implement role-based access control guard for endpoint authorization
+- [x] 2.3 (P) Implement role-based access control guard for endpoint authorization
   - **Git Branch**: `feat/common-roles-guard`
   - **Base Branch**: `feat/common-auth-decorators`
   - **Dependencies**: 2.1 (`feat/common-auth-decorators`)
