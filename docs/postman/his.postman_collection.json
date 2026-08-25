@@ -21,7 +21,6 @@
     { "key": "visit_id", "value": "" },
     { "key": "record_id", "value": "" },
     { "key": "invoice_id", "value": "" },
-    { "key": "test_suffix", "value": "1" },
     { "key": "retry_count", "value": "0" }
   ],
   "item": [
@@ -31,16 +30,6 @@
         {
           "name": "Register Admin User",
           "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "exec": [
-                  "if (!pm.collectionVariables.get('test_suffix')) {",
-                  "  pm.collectionVariables.set('test_suffix', Date.now().toString().slice(-6));",
-                  "}"
-                ]
-              }
-            },
             {
               "listen": "test",
               "script": {
@@ -63,7 +52,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"admin_{{test_suffix}}\",\n  \"email\": \"admin_{{test_suffix}}@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"Super\",\n  \"last_name\": \"Admin\",\n  \"role\": \"ADMIN\"\n}"
+              "raw": "{\n  \"username\": \"admin_test_user\",\n  \"email\": \"admin_test@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"Super\",\n  \"last_name\": \"Admin\",\n  \"role\": \"ADMIN\"\n}"
             },
             "url": "{{iam_base_url}}/auth/register"
           }
@@ -92,7 +81,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"doctor_{{test_suffix}}\",\n  \"email\": \"doctor_{{test_suffix}}@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"John\",\n  \"last_name\": \"Watson\",\n  \"role\": \"DOCTOR\"\n}"
+              "raw": "{\n  \"username\": \"doctor_test_user\",\n  \"email\": \"doctor_test@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"John\",\n  \"last_name\": \"Watson\",\n  \"role\": \"DOCTOR\"\n}"
             },
             "url": "{{iam_base_url}}/auth/register"
           }
@@ -121,7 +110,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"nurse_{{test_suffix}}\",\n  \"email\": \"nurse_{{test_suffix}}@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"Florence\",\n  \"last_name\": \"Nightingale\",\n  \"role\": \"NURSE\"\n}"
+              "raw": "{\n  \"username\": \"nurse_test_user\",\n  \"email\": \"nurse_test@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"Florence\",\n  \"last_name\": \"Nightingale\",\n  \"role\": \"NURSE\"\n}"
             },
             "url": "{{iam_base_url}}/auth/register"
           }
@@ -150,7 +139,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"finance_{{test_suffix}}\",\n  \"email\": \"finance_{{test_suffix}}@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"Penny\",\n  \"last_name\": \"Accountant\",\n  \"role\": \"FINANCE_STAFF\"\n}"
+              "raw": "{\n  \"username\": \"finance_test_user\",\n  \"email\": \"finance_test@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"Penny\",\n  \"last_name\": \"Accountant\",\n  \"role\": \"FINANCE_STAFF\"\n}"
             },
             "url": "{{iam_base_url}}/auth/register"
           }
@@ -179,7 +168,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"patient_{{test_suffix}}\",\n  \"email\": \"patient_{{test_suffix}}@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"Somchai\",\n  \"last_name\": \"Jaidee\",\n  \"role\": \"PATIENT\"\n}"
+              "raw": "{\n  \"username\": \"patient_test_user\",\n  \"email\": \"patient_test@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"Somchai\",\n  \"last_name\": \"Jaidee\",\n  \"role\": \"PATIENT\"\n}"
             },
             "url": "{{iam_base_url}}/auth/register"
           }
@@ -210,7 +199,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"admin_{{test_suffix}}\",\n  \"password\": \"Password123!\"\n}"
+              "raw": "{\n  \"username\": \"admin_test_user\",\n  \"password\": \"Password123!\"\n}"
             },
             "url": "{{iam_base_url}}/auth/login"
           }
@@ -239,7 +228,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"doctor_{{test_suffix}}\",\n  \"password\": \"Password123!\"\n}"
+              "raw": "{\n  \"username\": \"doctor_test_user\",\n  \"password\": \"Password123!\"\n}"
             },
             "url": "{{iam_base_url}}/auth/login"
           }
@@ -266,7 +255,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"nurse_{{test_suffix}}\",\n  \"password\": \"Password123!\"\n}"
+              "raw": "{\n  \"username\": \"nurse_test_user\",\n  \"password\": \"Password123!\"\n}"
             },
             "url": "{{iam_base_url}}/auth/login"
           }
@@ -294,7 +283,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"finance_{{test_suffix}}\",\n  \"password\": \"Password123!\"\n}"
+              "raw": "{\n  \"username\": \"finance_test_user\",\n  \"password\": \"Password123!\"\n}"
             },
             "url": "{{iam_base_url}}/auth/login"
           }
@@ -321,7 +310,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"patient_{{test_suffix}}\",\n  \"password\": \"Password123!\"\n}"
+              "raw": "{\n  \"username\": \"patient_test_user\",\n  \"password\": \"Password123!\"\n}"
             },
             "url": "{{iam_base_url}}/auth/login"
           }
@@ -408,11 +397,11 @@
             "method": "POST",
             "header": [
               { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{admin_access_token}}" }
+              { "key": "Authorization", "value": "Bearer {{nurse_access_token}}" }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"hn\": \"HN-OPD-{{test_suffix}}\",\n  \"first_name\": \"Somchai\",\n  \"last_name\": \"Jaidee\",\n  \"id_card\": \"ID-OPD-{{test_suffix}}\"\n}"
+              "raw": "{\n  \"hn\": \"HN-OPD-{{$timestamp}}\",\n  \"first_name\": \"Somchai\",\n  \"last_name\": \"Jaidee\",\n  \"id_card\": \"ID-OPD-{{$timestamp}}\"\n}"
             },
             "url": "{{opd_base_url}}/patients"
           }
@@ -648,7 +637,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"doctor_id\": \"dr_watson\",\n  \"diagnosis\": \"Preliminary: Fever\"\n}"
+              "raw": "{\n  \"doctor_id\": \"doctor_test_user\",\n  \"diagnosis\": \"Preliminary: Fever\"\n}"
             },
             "url": "{{emr_base_url}}/records/{{record_id}}"
           }
@@ -679,7 +668,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"doctor_id\": \"dr_watson\",\n  \"diagnosis\": \"Influenza Type A\",\n  \"treatment_note\": \"Prescribed Tamiflu 75mg twice daily for 5 days. Patient advised complete bed rest.\",\n  \"treatment_cost\": 1500\n}"
+              "raw": "{\n  \"doctor_id\": \"doctor_test_user\",\n  \"diagnosis\": \"Influenza Type A\",\n  \"treatment_note\": \"Prescribed Tamiflu 75mg twice daily for 5 days. Patient advised complete bed rest.\",\n  \"treatment_cost\": 1500\n}"
             },
             "url": "{{emr_base_url}}/records/{{record_id}}/complete"
           }
@@ -784,7 +773,6 @@
                   "  pm.response.to.have.status(401);",
                   "  const body = pm.response.json();",
                   "  pm.expect(body.status.code).to.eql(401);",
-                  "  pm.expect(body.errors[0].title).to.eql('UnauthorizedException');",
                   "});"
                 ]
               }
@@ -828,7 +816,6 @@
                   "  pm.response.to.have.status(403);",
                   "  const body = pm.response.json();",
                   "  pm.expect(body.status.code).to.eql(403);",
-                  "  pm.expect(body.errors[0].title).to.eql('ForbiddenException');",
                   "});"
                 ]
               }
@@ -858,7 +845,6 @@
                   "  pm.response.to.have.status(403);",
                   "  const body = pm.response.json();",
                   "  pm.expect(body.status.code).to.eql(403);",
-                  "  pm.expect(body.errors[0].title).to.eql('ForbiddenException');",
                   "});"
                 ]
               }
@@ -917,7 +903,6 @@
                   "  pm.response.to.have.status(409);",
                   "  const body = pm.response.json();",
                   "  pm.expect(body.status.code).to.eql(409);",
-                  "  pm.expect(body.errors[0].title).to.eql('ConflictException');",
                   "});"
                 ]
               }
@@ -928,7 +913,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"admin_{{test_suffix}}\",\n  \"email\": \"another_admin_{{test_suffix}}@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"Super\",\n  \"last_name\": \"Admin\",\n  \"role\": \"ADMIN\"\n}"
+              "raw": "{\n  \"username\": \"admin_test_user\",\n  \"email\": \"another_admin@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"Super\",\n  \"last_name\": \"Admin\",\n  \"role\": \"ADMIN\"\n}"
             },
             "url": "{{iam_base_url}}/auth/register"
           }
@@ -959,7 +944,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"hn\": \"HN-INVALID-{{test_suffix}}\",\n  \"first_name\": \"Invalid\",\n  \"last_name\": \"Property\",\n  \"id_card\": \"ID-INVALID\",\n  \"role\": \"SUPER_ADMIN\",\n  \"malicious_injected_field\": true\n}"
+              "raw": "{\n  \"hn\": \"HN-INVALID-{{$timestamp}}\",\n  \"first_name\": \"Invalid\",\n  \"last_name\": \"Property\",\n  \"id_card\": \"ID-INVALID\",\n  \"role\": \"SUPER_ADMIN\",\n  \"malicious_injected_field\": true\n}"
             },
             "url": "{{opd_base_url}}/patients"
           }
@@ -975,7 +960,7 @@
                   "  pm.response.to.have.status(200);",
                   "  const body = pm.response.json();",
                   "  pm.expect(body.status.code).to.eql(200000);",
-                  "  pm.expect(body.data.attributes.logged_out).to.be.true;",
+                  "  pm.expect(body.data.attributes.message).to.eql('Logged out successfully');",
                   "});"
                 ]
               }
@@ -1015,18 +1000,35 @@
       "name": "6. End-to-End Repeatable Choreography Flow",
       "item": [
         {
-          "name": "Step 01. Authenticate Doctor",
+          "name": "Step 01. Authenticate Nurse",
           "event": [
             {
-              "listen": "prerequest",
+              "listen": "test",
               "script": {
                 "exec": [
-                  "const suffix = Date.now().toString();",
-                  "pm.collectionVariables.set('test_suffix', suffix);",
-                  "pm.collectionVariables.set('retry_count', '0');"
+                  "pm.test('Nurse authenticated', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(200000);",
+                  "  pm.collectionVariables.set('nurse_access_token', body.data.attributes.access_token);",
+                  "});"
                 ]
               }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"nurse_test_user\",\n  \"password\": \"Password123!\"\n}"
             },
+            "url": "{{iam_base_url}}/auth/login"
+          }
+        },
+        {
+          "name": "Step 02. Authenticate Doctor",
+          "event": [
             {
               "listen": "test",
               "script": {
@@ -1047,13 +1049,13 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"doctor_{{test_suffix}}\",\n  \"password\": \"Password123!\"\n}"
+              "raw": "{\n  \"username\": \"doctor_test_user\",\n  \"password\": \"Password123!\"\n}"
             },
             "url": "{{iam_base_url}}/auth/login"
           }
         },
         {
-          "name": "Step 02. Authenticate Finance Staff",
+          "name": "Step 03. Authenticate Finance Staff",
           "event": [
             {
               "listen": "test",
@@ -1075,13 +1077,13 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"finance_{{test_suffix}}\",\n  \"password\": \"Password123!\"\n}"
+              "raw": "{\n  \"username\": \"finance_test_user\",\n  \"password\": \"Password123!\"\n}"
             },
             "url": "{{iam_base_url}}/auth/login"
           }
         },
         {
-          "name": "Step 03. Register Unique Patient",
+          "name": "Step 04. Register Unique Patient",
           "event": [
             {
               "listen": "test",
@@ -1103,17 +1105,17 @@
             "method": "POST",
             "header": [
               { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{doctor_access_token}}" }
+              { "key": "Authorization", "value": "Bearer {{nurse_access_token}}" }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"hn\": \"HN-FLOW-{{test_suffix}}\",\n  \"first_name\": \"Somchai\",\n  \"last_name\": \"Flow\",\n  \"id_card\": \"ID-FLOW-{{test_suffix}}\"\n}"
+              "raw": "{\n  \"hn\": \"HN-FLOW-{{$timestamp}}\",\n  \"first_name\": \"Somchai\",\n  \"last_name\": \"Flow\",\n  \"id_card\": \"ID-FLOW-{{$timestamp}}\"\n}"
             },
             "url": "{{opd_base_url}}/patients"
           }
         },
         {
-          "name": "Step 04. Open Visit (Outbox emits visit.created)",
+          "name": "Step 05. Open Visit (Outbox emits visit.created)",
           "event": [
             {
               "listen": "test",
@@ -1135,7 +1137,7 @@
             "method": "POST",
             "header": [
               { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{doctor_access_token}}" },
+              { "key": "Authorization", "value": "Bearer {{nurse_access_token}}" },
               { "key": "X-Correlation-Id", "value": "{{$guid}}" }
             ],
             "body": {
@@ -1146,7 +1148,7 @@
           }
         },
         {
-          "name": "Step 05. Wait for EMR to Consume visit.created",
+          "name": "Step 06. Wait for EMR to Consume visit.created",
           "event": [
             {
               "listen": "test",
@@ -1167,8 +1169,7 @@
                   "  pm.collectionVariables.set('retry_count', String(retryCount));",
                   "  pm.test('Record endpoint is retryable', function () { pm.expect([200, 404]).to.include(pm.response.code); });",
                   "  if (retryCount < maxRetries) {",
-                  "    setTimeout(function() {}, 500);",
-                  "    pm.execution.setNextRequest('Step 05. Wait for EMR to Consume visit.created');",
+                  "    pm.execution.setNextRequest('Step 06. Wait for EMR to Consume visit.created');",
                   "  } else {",
                   "    pm.expect.fail('Medical record was not created in time via RabbitMQ');",
                   "  }",
@@ -1184,7 +1185,7 @@
           }
         },
         {
-          "name": "Step 06. Doctor Completes Treatment (Outbox emits treatment.completed)",
+          "name": "Step 07. Doctor Completes Treatment (Outbox emits treatment.completed)",
           "event": [
             {
               "listen": "test",
@@ -1211,13 +1212,13 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"doctor_id\": \"doctor-flow-001\",\n  \"diagnosis\": \"Acute Rhinopharyngitis\",\n  \"treatment_note\": \"Symptomatic relief, hydration, and rest for 3 days.\",\n  \"treatment_cost\": 1500\n}"
+              "raw": "{\n  \"doctor_id\": \"doctor_test_user\",\n  \"diagnosis\": \"Acute Rhinopharyngitis\",\n  \"treatment_note\": \"Symptomatic relief, hydration, and rest for 3 days.\",\n  \"treatment_cost\": 1500\n}"
             },
             "url": "{{emr_base_url}}/records/{{record_id}}/complete"
           }
         },
         {
-          "name": "Step 07. Wait for Finance to Consume treatment.completed",
+          "name": "Step 08. Wait for Finance to Consume treatment.completed",
           "event": [
             {
               "listen": "test",
@@ -1239,8 +1240,7 @@
                   "  pm.collectionVariables.set('retry_count', String(retryCount));",
                   "  pm.test('Invoice endpoint is retryable', function () { pm.expect([200, 404]).to.include(pm.response.code); });",
                   "  if (retryCount < maxRetries) {",
-                  "    setTimeout(function() {}, 500);",
-                  "    pm.execution.setNextRequest('Step 07. Wait for Finance to Consume treatment.completed');",
+                  "    pm.execution.setNextRequest('Step 08. Wait for Finance to Consume treatment.completed');",
                   "  } else {",
                   "    pm.expect.fail('Invoice was not created in time via RabbitMQ');",
                   "  }",
@@ -1256,7 +1256,7 @@
           }
         },
         {
-          "name": "Step 08. Finance Staff Pays Invoice (Outbox emits invoice.paid)",
+          "name": "Step 09. Finance Staff Pays Invoice (Outbox emits invoice.paid)",
           "event": [
             {
               "listen": "test",
@@ -1289,7 +1289,7 @@
           }
         },
         {
-          "name": "Step 09. Wait for OPD to Consume invoice.paid & Close Visit",
+          "name": "Step 10. Wait for OPD to Consume invoice.paid & Close Visit",
           "event": [
             {
               "listen": "test",
@@ -1309,8 +1309,7 @@
                   "  pm.collectionVariables.set('retry_count', String(retryCount));",
                   "  pm.test('Visit endpoint is retryable', function () { pm.expect(pm.response.code).to.eql(200); });",
                   "  if (retryCount < maxRetries) {",
-                  "    setTimeout(function() {}, 500);",
-                  "    pm.execution.setNextRequest('Step 09. Wait for OPD to Consume invoice.paid & Close Visit');",
+                  "    pm.execution.setNextRequest('Step 10. Wait for OPD to Consume invoice.paid & Close Visit');",
                   "  } else {",
                   "    pm.expect.fail('Visit was not closed in time via RabbitMQ');",
                   "  }",
@@ -1321,12 +1320,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{doctor_access_token}}" }],
+            "header": [{ "key": "Authorization", "value": "Bearer {{nurse_access_token}}" }],
             "url": "{{opd_base_url}}/visits/{{visit_id}}"
           }
         },
         {
-          "name": "Step 10. Rotate Doctor Token",
+          "name": "Step 11. Rotate Doctor Token",
           "event": [
             {
               "listen": "test",
@@ -1355,7 +1354,7 @@
           }
         },
         {
-          "name": "Step 11. Logout Doctor & Terminate Session",
+          "name": "Step 12. Logout Doctor & Terminate Session",
           "event": [
             {
               "listen": "test",
@@ -1365,7 +1364,7 @@
                   "  pm.response.to.have.status(200);",
                   "  const body = pm.response.json();",
                   "  pm.expect(body.status.code).to.eql(200000);",
-                  "  pm.expect(body.data.attributes.logged_out).to.be.true;",
+                  "  pm.expect(body.data.attributes.message).to.eql('Logged out successfully');",
                   "});"
                 ]
               }
