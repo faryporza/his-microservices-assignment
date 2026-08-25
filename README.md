@@ -5,7 +5,7 @@
 ### Event-Driven Microservices with NestJS
 
 ระบบสารสนเทศโรงพยาบาลที่แยกความรับผิดชอบเป็น **OPD**, **EMR** และ **Finance**<br>
-แต่ละ service มีฐานข้อมูลของตัวเองและสื่อสารข้าม service ผ่าน RabbitMQ events
+แต่ละ service มีฐานข้อมูลของตัวเองและสื่อสารข้าม service ผ่าน RabbitMQ events ตามมาตรฐาน [Enterprise Backend Blueprint](https://iots1.github.io/enterprise-backend-blueprint/)
 
 </div>
 
@@ -19,23 +19,89 @@ Patient → Visit (OPEN) → Medical Record (WAITING)
         → Payment (PAID) → Visit (CLOSED)
 ```
 
-| Bounded Context | Port | ดูแลข้อมูล | Database |
-| --- | ---: | --- | --- |
-| OPD | `3000` | Patient, Visit | `opd_db` |
-| EMR | `3001` | Medical Record, Treatment | `emr_db` |
-| Finance | `3002` | Invoice, Payment | `finance_db` |
+| Bounded Context | Port | ดูแลข้อมูล | Database | Swagger UI |
+| --- | ---: | --- | --- | --- |
+| **OPD** | `3000` | Patient, Visit | `opd_db` | [http://localhost:3000/docs](http://localhost:3000/docs) |
+| **EMR** | `3001` | Medical Record, Treatment | `emr_db` | [http://localhost:3001/docs](http://localhost:3001/docs) |
+| **Finance** | `3002` | Invoice, Payment | `finance_db` | [http://localhost:3002/docs](http://localhost:3002/docs) |
 
 > Service แต่ละตัวเข้าถึงเฉพาะ database ของตัวเอง ไม่มี cross-database join หรือ transaction ข้าม service
 
+---
+
+## มาตรฐาน API Response & Error Handling (Blueprint Compliant)
+
+API ทั้งหมดถูก Wrap ด้วย **JSON:API Envelope** อัตโนมัติผ่าน `TransformInterceptor` และ `AllExceptionsFilter` ตามเกณฑ์ Blueprint:
+
+### 1. Success Response Envelope
+```json
+{
+  "status": {
+    "code": 200000,
+    "message": "Request Succeeded"
+  },
+  "data": {
+    "type": "resource-name",
+    "id": "uuid",
+    "attributes": {
+      "field_name": "value"
+    }
+  },
+  "meta": {
+    "timestamp": "2026-08-24T10:00:00.000Z"
+  },
+  "links": {
+    "self": "/resource-path"
+  }
+}
+```
+
+* **Business Codes**: คำนวณจาก `HTTP Status × 1000` เช่น `200` $\rightarrow$ `200000`, `201` $\rightarrow$ `201000`
+* **Resource Structure**: แยก `id` ไประดับบน และรวม properties อื่นไว้ใน `attributes`
+
+### 2. Error Response Envelope
+```json
+{
+  "status": {
+    "code": 404,
+    "message": "Resource Not Found"
+  },
+  "errors": [
+    {
+      "code": "404",
+      "title": "NotFoundException",
+      "detail": "Resource with ID '...' not found"
+    }
+  ],
+  "meta": {
+    "timestamp": "2026-08-24T10:00:00.000Z"
+  },
+  "links": {
+    "self": "/resource-path"
+  }
+}
+```
+
+| Exception Type | Business Code | Trigger |
+| --- | --- | --- |
+| `ValidationException` | `400001` | Body validation ล้มเหลว (`class-validator`) |
+| `InvalidParameterException` | `400002` | Query/Param validation ล้มเหลว |
+| `NotFoundException` | `404` | ไม่พบข้อมูลในระบบ |
+| `ConflictException` | `409` | สถานะซ้ำซ้อน (เช่น จ่ายเงินซ้ำ) |
+| `ServiceUnavailableException` | `503` | Database หรือ Dependency ใช้งานไม่ได้ |
+
+---
+
 ## Main Flow
 
-### 1. สร้าง Patient
+### 1. สร้าง Patient (OPD)
 
 ```http
 POST http://localhost:3000/patients
 Content-Type: application/json
 ```
 
+**Request Body:**
 ```json
 {
   "hn": "HN-0001",
@@ -45,49 +111,139 @@ Content-Type: application/json
 }
 ```
 
-เก็บค่า `id` จาก response ไว้เป็น `PATIENT_UUID` สำหรับขั้นตอนถัดไป
+**Response (`201 Created`):**
+```json
+{
+  "status": {
+    "code": 201000,
+    "message": "Request Succeeded"
+  },
+  "data": {
+    "type": "patients",
+    "id": "6ba7b810-9dad-41d1-80b4-00c04fd430c8",
+    "attributes": {
+      "hn": "HN-0001",
+      "first_name": "สมชาย",
+      "last_name": "ใจดี",
+      "id_card": "1234567890123",
+      "created_at": "2026-08-24T10:00:00.000Z",
+      "updated_at": "2026-08-24T10:00:00.000Z"
+    }
+  },
+  "meta": {
+    "timestamp": "2026-08-24T10:00:00.000Z"
+  },
+  "links": {
+    "self": "/patients"
+  }
+}
+```
+
+เก็บค่า `data.id` ไว้เป็น `PATIENT_UUID` สำหรับขั้นตอนถัดไป
 
 ![Bruno - สร้าง Patient](docs/images/bruno-01-create-patient.png?raw=true)
 
-### 2. สร้าง Visit
+---
+
+### 2. สร้าง Visit (OPD)
 
 ```http
 POST http://localhost:3000/visits
 Content-Type: application/json
 ```
 
+**Request Body:**
 ```json
 {
   "patient_id": "<PATIENT_UUID>"
 }
 ```
 
-Visit เริ่มต้นด้วยสถานะ `OPEN` จากนั้น OPD ส่ง event `visit.created` ไปยัง EMR
+**Response (`201 Created`):**
+```json
+{
+  "status": {
+    "code": 201000,
+    "message": "Request Succeeded"
+  },
+  "data": {
+    "type": "visits",
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "attributes": {
+      "patient_id": "6ba7b810-9dad-41d1-80b4-00c04fd430c8",
+      "status": "OPEN",
+      "visit_date": "2026-08-24T10:05:00.000Z",
+      "updated_at": "2026-08-24T10:05:00.000Z"
+    }
+  },
+  "meta": {
+    "timestamp": "2026-08-24T10:05:00.000Z"
+  },
+  "links": {
+    "self": "/visits"
+  }
+}
+```
+
+Visit เริ่มต้นด้วยสถานะ `OPEN` จากนั้น OPD ส่ง event `visit.created` ไปยัง EMR ผ่าน RabbitMQ
 
 ![Bruno - เปิด Visit](<docs/images/2. เปิด Visit.png?raw=true>)
 
-### 3. EMR สร้าง Medical Record อัตโนมัติ
+---
 
-เมื่อ EMR ได้รับ `visit.created` จะสร้าง Medical Record สถานะ `WAITING` โดยอัตโนมัติ
+### 3. EMR รับ Event และสร้าง Medical Record อัตโนมัติ
+
+เมื่อ EMR ได้รับ event `visit.created` จะสร้าง Medical Record สถานะ `WAITING` โดยอัตโนมัติ
 
 ```http
 GET http://localhost:3001/records/visit/<VISIT_UUID>
 ```
 
-ไม่ต้องส่ง body กับ `GET` นี้ และเก็บค่า `id` ของ Record ไว้เป็น `RECORD_UUID`
+**Response (`200 OK`):**
+```json
+{
+  "status": {
+    "code": 200000,
+    "message": "Request Succeeded"
+  },
+  "data": {
+    "type": "medical-records",
+    "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "attributes": {
+      "visit_id": "550e8400-e29b-41d4-a716-446655440000",
+      "patient_id": "6ba7b810-9dad-41d1-80b4-00c04fd430c8",
+      "doctor_id": null,
+      "diagnosis": null,
+      "treatment_note": null,
+      "treatment_cost": null,
+      "status": "WAITING",
+      "created_at": "2026-08-24T10:05:01.000Z",
+      "updated_at": "2026-08-24T10:05:01.000Z"
+    }
+  },
+  "meta": {
+    "timestamp": "2026-08-24T10:05:05.000Z"
+  },
+  "links": {
+    "self": "/records/visit/550e8400-e29b-41d4-a716-446655440000"
+  }
+}
+```
+
+เก็บค่า `data.id` ไว้เป็น `RECORD_UUID` สำหรับขั้นตอนบันทึกการรักษา
 
 ![Bruno - ดู Medical Record](<docs/images/3. ดู Medical Record.png?raw=true>)
 
-### 4. หมอบันทึกผลการรักษา
+---
 
-ใน happy path ให้ใช้ Medical Record ที่ EMR สร้างอัตโนมัติในขั้นตอนก่อนหน้า
-จึงไม่ต้องเรียก `POST /records` ซ้ำ เพราะ `visit_id` มี unique constraint
+### 4. แพทย์บันทึกผลการรักษา (EMR)
 
 ```http
 PATCH http://localhost:3001/records/<RECORD_UUID>/complete
 Content-Type: application/json
 ```
 
+**Request Body:**
 ```json
 {
   "doctor_id": "doctor-001",
@@ -97,32 +253,128 @@ Content-Type: application/json
 }
 ```
 
-เมื่อ Record เปลี่ยนเป็น `COMPLETED` ระบบจะส่ง event `treatment.completed` ไปยัง Finance
+**Response (`200 OK`):**
+```json
+{
+  "status": {
+    "code": 200000,
+    "message": "Request Succeeded"
+  },
+  "data": {
+    "type": "medical-records",
+    "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "attributes": {
+      "visit_id": "550e8400-e29b-41d4-a716-446655440000",
+      "patient_id": "6ba7b810-9dad-41d1-80b4-00c04fd430c8",
+      "doctor_id": "doctor-001",
+      "diagnosis": "ไข้หวัดทั่วไป",
+      "treatment_note": "ให้ยาลดไข้และพักผ่อน",
+      "treatment_cost": 1500,
+      "status": "COMPLETED",
+      "created_at": "2026-08-24T10:05:01.000Z",
+      "updated_at": "2026-08-24T10:10:00.000Z"
+    }
+  },
+  "meta": {
+    "timestamp": "2026-08-24T10:10:00.000Z"
+  },
+  "links": {
+    "self": "/records/7c9e6679-7425-40de-944b-e07fc1f90ae7/complete"
+  }
+}
+```
+
+เมื่อ Record เปลี่ยนเป็น `COMPLETED` EMR จะส่ง event `treatment.completed` (`treatmentCost: 1500`) ไปยัง Finance
 
 ![Bruno - บันทึกการรักษา](<docs/images/4. บันทึกการรักษา.png?raw=true>)
 
-### 5. Finance สร้าง Invoice อัตโนมัติ
+---
 
-Finance สร้าง Invoice สถานะ `PENDING` จาก `treatment.completed` โดยไม่มี public API สำหรับสร้าง Invoice โดยตรง
+### 5. Finance รับ Event และสร้าง Invoice อัตโนมัติ
+
+Finance สร้าง Invoice สถานะ `PENDING` จาก event `treatment.completed`
 
 ```http
 GET http://localhost:3002/invoices/<VISIT_UUID>
 ```
 
-ไม่ต้องส่ง body กับ `GET` นี้ และเก็บค่า `id` ของ Invoice ไว้เป็น `INVOICE_UUID`
+**Response (`200 OK`):**
+```json
+{
+  "status": {
+    "code": 200000,
+    "message": "Request Succeeded"
+  },
+  "data": [
+    {
+      "type": "invoices",
+      "id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+      "attributes": {
+        "visit_id": "550e8400-e29b-41d4-a716-446655440000",
+        "record_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+        "total_amount": "1500.00",
+        "status": "PENDING",
+        "paid_at": null,
+        "created_at": "2026-08-24T10:10:01.000Z",
+        "updated_at": "2026-08-24T10:10:01.000Z"
+      }
+    }
+  ],
+  "meta": {
+    "timestamp": "2026-08-24T10:10:05.000Z"
+  },
+  "links": {
+    "self": "/invoices/550e8400-e29b-41d4-a716-446655440000"
+  }
+}
+```
+
+เก็บค่า `data[0].id` ไว้เป็น `INVOICE_UUID` สำหรับการชำระเงิน
 
 ![Bruno - ตรวจ Invoice](<docs/images/5. ตรวจ Invoice.png?raw=true>)
 
-### 6. ชำระเงิน
+---
+
+### 6. ชำระเงินค่ารักษา (Finance)
 
 ```http
 PATCH http://localhost:3002/invoices/<INVOICE_UUID>/pay
 Content-Type: application/json
 ```
 
+**Request Body:**
 ```json
 {
   "status": "PAID"
+}
+```
+
+**Response (`200 OK`):**
+```json
+{
+  "status": {
+    "code": 200000,
+    "message": "Request Succeeded"
+  },
+  "data": {
+    "type": "invoices",
+    "id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+    "attributes": {
+      "visit_id": "550e8400-e29b-41d4-a716-446655440000",
+      "record_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+      "total_amount": "1500.00",
+      "status": "PAID",
+      "paid_at": "2026-08-24T10:15:00.000Z",
+      "created_at": "2026-08-24T10:10:01.000Z",
+      "updated_at": "2026-08-24T10:15:00.000Z"
+    }
+  },
+  "meta": {
+    "timestamp": "2026-08-24T10:15:00.000Z"
+  },
+  "links": {
+    "self": "/invoices/9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d/pay"
+  }
 }
 ```
 
@@ -130,7 +382,9 @@ Content-Type: application/json
 
 ![Bruno - ชำระเงิน](<docs/images/6. ชำระเงิน.png?raw=true>)
 
-### 7. OPD ปิด Visit
+---
+
+### 7. OPD รับ Event และปิด Visit
 
 OPD รับ `invoice.paid` แล้วเปลี่ยนสถานะ Visit เป็น `CLOSED` ตรวจสอบได้ด้วย:
 
@@ -138,7 +392,35 @@ OPD รับ `invoice.paid` แล้วเปลี่ยนสถานะ Vi
 GET http://localhost:3000/visits/<VISIT_UUID>
 ```
 
+**Response (`200 OK`):**
+```json
+{
+  "status": {
+    "code": 200000,
+    "message": "Request Succeeded"
+  },
+  "data": {
+    "type": "visits",
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "attributes": {
+      "patient_id": "6ba7b810-9dad-41d1-80b4-00c04fd430c8",
+      "status": "CLOSED",
+      "visit_date": "2026-08-24T10:05:00.000Z",
+      "updated_at": "2026-08-24T10:15:01.000Z"
+    }
+  },
+  "meta": {
+    "timestamp": "2026-08-24T10:15:05.000Z"
+  },
+  "links": {
+    "self": "/visits/550e8400-e29b-41d4-a716-446655440000"
+  }
+}
+```
+
 ![Bruno - ตรวจสอบ Visit](<docs/images/7. ตรวจสอบ Visit.png?raw=true>)
+
+---
 
 ## Event Flow
 
@@ -158,7 +440,7 @@ sequenceDiagram
 
     Note over EMR: แพทย์ทำการรักษา
     EMR->>EMR: บันทึก Medical Record
-    EMR-)RMQ: Emit Event: treatment.completed
+    EMR-)RMQ: Emit Event: treatment.completed (treatmentCost: 1500)
 
     RMQ-)FIN: Consume Event: treatment.completed
     FIN->>FIN: สร้าง Invoice (สถานะ: PENDING)
@@ -177,28 +459,32 @@ Outgoing events are persisted in a service-local `outbox_events` table in the
 same transaction as the aggregate change. A background publisher retries rows
 that are still pending, and consumers remain idempotent if a publish is retried.
 
+---
+
 ## API ที่รองรับ
 
-| Service | Method | Endpoint | รายละเอียด |
+| Service | Method | Endpoint | Swagger Description |
 | --- | --- | --- | --- |
-| OPD | `POST` | `/patients` | สร้าง Patient |
-| OPD | `GET` | `/patients` | ดู Patient ทั้งหมด |
-| OPD | `GET` | `/patients/:id` | ดู Patient ตาม ID |
-| OPD | `PATCH` | `/patients/:id` | แก้ไข Patient |
-| OPD | `DELETE` | `/patients/:id` | ลบ Patient |
-| OPD | `POST` | `/visits` | สร้าง Visit |
-| OPD | `GET` | `/visits` | ดู Visit ทั้งหมด |
-| OPD | `GET` | `/visits/:id` | ดู Visit ตาม ID |
-| OPD | `GET` | `/patients/:patientId/visits` | ดู Visit ของ Patient |
-| EMR | `GET` | `/records` | ดู Record ทั้งหมด |
-| EMR | `POST` | `/records` | สร้าง Medical Record |
-| EMR | `GET` | `/records/:id` | ดู Record ตาม ID |
-| EMR | `GET` | `/records/visit/:visitId` | ดู Record ตาม Visit |
-| EMR | `PATCH` | `/records/:id` | แก้ไข/บันทึกผลการรักษา |
-| EMR | `PATCH` | `/records/:id/complete` | ปิดการรักษาด้วย route เดิม |
-| Finance | `GET` | `/invoices` | ดู Invoice ทั้งหมด |
-| Finance | `GET` | `/invoices/:visitId` | ดู Invoice ตาม Visit |
-| Finance | `PATCH` | `/invoices/:id/pay` | ชำระ Invoice |
+| **OPD** | `POST` | `/patients` | Create patient |
+| **OPD** | `GET` | `/patients` | Get all patients |
+| **OPD** | `GET` | `/patients/:id` | Get patient by ID |
+| **OPD** | `PATCH` | `/patients/:id` | Update patient |
+| **OPD** | `DELETE` | `/patients/:id` | Delete patient |
+| **OPD** | `POST` | `/visits` | Create visit |
+| **OPD** | `GET` | `/visits` | Get all visits |
+| **OPD** | `GET` | `/visits/:id` | Get visit by ID |
+| **OPD** | `GET` | `/patients/:patientId/visits` | Get visits by patient ID |
+| **EMR** | `GET` | `/records` | Get all medical records |
+| **EMR** | `POST` | `/records` | Create medical record |
+| **EMR** | `GET` | `/records/:id` | Get medical record by ID |
+| **EMR** | `GET` | `/records/visit/:visitId` | Get medical record by visit ID |
+| **EMR** | `PATCH` | `/records/:id` | Update medical record |
+| **EMR** | `PATCH` | `/records/:id/complete` | Complete treatment |
+| **Finance** | `GET` | `/invoices` | Get all invoices |
+| **Finance** | `GET` | `/invoices/:visitId` | Get invoice by visit ID |
+| **Finance** | `PATCH` | `/invoices/:id/pay` | Pay invoice |
+
+---
 
 ## การติดตั้งและรันระบบ
 
@@ -243,12 +529,14 @@ npm run start:emr
 npm run start:finance
 ```
 
+---
+
 ## Testing
 
 รันคำสั่งจาก `his-project/`:
 
 ```bash
-# Unit tests
+# Unit tests (142 tests passing)
 npm test
 
 # Coverage-enforced unit and integration tests
@@ -267,11 +555,13 @@ npm run build
 npm run test:flow
 ```
 
+---
+
 ## Error Handling และ Logging
 
-ระบบมี request validation และ error response หลัก ได้แก่:
+ระบบมี request validation และ error response ตามมาตรฐาน Blueprint:
 
-- `400 Bad Request` — request body หรือ parameter ไม่ถูกต้อง
+- `400 Bad Request` — request body หรือ parameter ไม่ถูกต้อง (Business Code: `400001` สำหรับ body, `400002` สำหรับ query/param)
 - `404 Not Found` — ไม่พบ resource
 - `409 Conflict` — business state ขัดแย้ง เช่น ชำระ Invoice ซ้ำ
 - `503 Service Unavailable` — database หรือ service dependency ใช้งานไม่ได้
@@ -280,25 +570,28 @@ npm run test:flow
 
 สามารถส่ง header `x-correlation-id` และ `x-trace-id` มากับ request เพื่อช่วยติดตามเหตุการณ์ข้าม service ได้ หากไม่ส่ง ระบบจะสร้างค่าให้และส่ง `x-correlation-id`, `x-trace-id` และ `x-span-id` กลับมาใน response headers โดย trace metadata จะถูกส่งต่อไปกับ RabbitMQ events ด้วย
 
-กำหนดเวอร์ชันของ service ผ่าน `SERVICE_VERSION` และระดับ log ขั้นต่ำผ่าน `LOG_LEVEL` (`debug`, `info`, `warn`, `error` หรือ `fatal`) โดย production จะปิด debug เป็นค่าเริ่มต้น
+---
 
 ## Project Structure
 
 ```text
 his-project/
 ├── apps/
-│   ├── opd-bc/          # Patient และ Visit (มี docs/, test/ และ jest.config.js)
-│   ├── emr-bc/          # Medical Record และ Treatment (มี docs/, test/ และ jest.config.js)
-│   └── finance-bc/      # Invoice และ Payment (มี docs/, test/ และ jest.config.js)
+│   ├── opd-bc/          # Patient และ Visit (Port 3000, Swagger /docs)
+│   ├── emr-bc/          # Medical Record และ Treatment (Port 3001, Swagger /docs)
+│   └── finance-bc/      # Invoice และ Payment (Port 3002, Swagger /docs)
 └── libs/
-    ├── common/          # Logging, validation, RabbitMQ, idempotency
-    └── contracts/       # Shared event names และ payload contracts
+    ├── common/          # Interceptors, Filters, Logging, Validation, RabbitMQ, Idempotency
+    └── contracts/       # Shared event names, types และ payload contracts
 ```
+
+---
 
 ## Current Scope
 
 - ✅ Main business flow ตั้งแต่สร้าง Patient จนปิด Visit
 - ✅ Event-driven communication ผ่าน durable RabbitMQ exchange/queues
-- ✅ Idempotent event consumers
-- ✅ Validation, error handling และ structured logging
-- ⏳ Authentication / Authorization และ response `401/403` อยู่ในแผน Week 4 และยังไม่ใช่ Flow ปัจจุบัน
+- ✅ Idempotent event consumers & Outbox Pattern
+- ✅ Standardized JSON:API Envelope & Business Error Codes (Blueprint Compliant)
+- ✅ Swagger UI Documentation ทุก microservice
+- ⏳ Authentication / Authorization และ response `401/403` อยู่ในแผน Week 4
