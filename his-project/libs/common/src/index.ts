@@ -25,3 +25,5 @@ export * from './auth/interfaces/authenticated-user.interface';
 export * from './auth/decorators/roles.decorator';
 export * from './auth/decorators/public.decorator';
 export * from './auth/decorators/current-user.decorator';
+export * from './auth/guards/jwt-auth.guard';
+export * from './auth/auth-common.module';

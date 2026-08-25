@@ -55,7 +55,7 @@
   - _Requirements: 1.4, 4.1, 5.4, 7.4_
   - _Boundary: Common Auth Decorators_
 
-- [ ] 2.2 Implement JWT authentication guard with Redis session and blacklist validation
+- [x] 2.2 Implement JWT authentication guard with Redis session and blacklist validation
   - **Git Branch**: `feat/common-jwt-auth-guard`
   - **Base Branch**: `feat/shared-redis-module`
   - **Dependencies**: 1.2 (`feat/shared-redis-module`), 2.1 (`feat/common-auth-decorators`)
