@@ -10,7 +10,7 @@
 ---
 
 - [ ] 1. Foundation and infrastructure setup for authentication and session caching
-- [ ] 1.1 Configure Redis cache container and database initialization script
+- [x] 1.1 Configure Redis cache container and database initialization script
   - **Git Branch**: `feat/redis-and-iam-db-init`
   - **Base Branch**: `planning/iam-auth`
   - **Dependencies**: None

@@ -1,3 +1,4 @@
 CREATE DATABASE opd_db;
 CREATE DATABASE emr_db;
 CREATE DATABASE finance_db;
+CREATE DATABASE iam_db;
