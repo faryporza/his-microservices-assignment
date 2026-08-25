@@ -3,7 +3,7 @@ name: CI
 on:
   push:
   pull_request:
-    branches: [develop]
+    branches: [develop, main]
 
 permissions:
   contents: read
@@ -22,14 +22,22 @@ jobs:
       OPD_DATABASE: opd_db
       EMR_DATABASE: emr_db
       FINANCE_DATABASE: finance_db
+      IAM_DATABASE: iam_db
       OPD_PORT: 3000
       EMR_PORT: 3001
       FINANCE_PORT: 3002
+      IAM_PORT: 3003
       OPD_RABBITMQ_QUEUE: opd.events
       EMR_RABBITMQ_QUEUE: emr.events
       FINANCE_RABBITMQ_QUEUE: finance.events
       RABBITMQ_URL: amqp://guest:guest@localhost:5672
       RABBITMQ_EXCHANGE: his.events
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ''
+      JWT_SECRET: his-secret-jwt-key-for-development-change-in-production
+      JWT_ACCESS_EXPIRES_IN: 15m
+      JWT_REFRESH_EXPIRES_IN: 7d
     services:
       postgres:
         image: postgres:16-alpine
@@ -56,6 +64,15 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - name: Check out source
@@ -79,6 +96,7 @@ jobs:
           psql -h 127.0.0.1 -U postgres -d postgres -c 'CREATE DATABASE opd_db;'
           psql -h 127.0.0.1 -U postgres -d postgres -c 'CREATE DATABASE emr_db;'
           psql -h 127.0.0.1 -U postgres -d postgres -c 'CREATE DATABASE finance_db;'
+          psql -h 127.0.0.1 -U postgres -d postgres -c 'CREATE DATABASE iam_db;'
 
       - name: Run ESLint
         working-directory: his-project
@@ -102,6 +120,8 @@ jobs:
           FLOW_STATE_FILE: /tmp/his-flow-state.json
         run: |
           set -euo pipefail
+          npm run start:prod:iam > /tmp/iam-bc.log 2>&1 &
+          iam_pid=$!
           npm run start:prod:opd > /tmp/opd-bc.log 2>&1 &
           opd_pid=$!
           npm run start:prod:emr > /tmp/emr-bc.log 2>&1 &
@@ -109,10 +129,10 @@ jobs:
           npm run start:prod:finance > /tmp/finance-bc.log 2>&1 &
           finance_pid=$!
           cleanup() {
-            kill "$opd_pid" "$emr_pid" "$finance_pid" 2>/dev/null || true
+            kill "$iam_pid" "$opd_pid" "$emr_pid" "$finance_pid" 2>/dev/null || true
           }
           trap cleanup EXIT
-          for port in 3000 3001 3002; do
+          for port in 3000 3001 3002 3003; do
             curl --fail --retry 20 --retry-delay 1 --retry-connrefused "http://127.0.0.1:${port}/"
           done
           kill "$emr_pid" "$finance_pid"

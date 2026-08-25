@@ -24,12 +24,7 @@ import { AuthModule } from './modules/auth/auth.module';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) =>
-        createPostgresOptions(
-          configService,
-          configService.get('IAM_DATABASE')
-            ? 'IAM_DATABASE'
-            : 'IAM_DATABASE_NAME',
-        ),
+        createPostgresOptions(configService, 'IAM_DATABASE'),
     }),
     CommonModule,
     AuthCommonModule,
