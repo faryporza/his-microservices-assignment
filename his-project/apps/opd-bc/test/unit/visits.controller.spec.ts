@@ -1,7 +1,10 @@
+import { Reflector } from '@nestjs/core';
 import { VisitsController } from '@apps/opd-bc/modules/visit/controllers/visits.controller';
+import { ROLES_KEY, UserRole } from '@app/common';
 import { createMockVisit, createMockVisitsService } from '../mocks/mock-visits';
 
 describe('VisitsController (Unit)', () => {
+  const reflector = new Reflector();
   const service = createMockVisitsService();
   const controller = new VisitsController(service);
   const visit = createMockVisit();
@@ -38,5 +41,45 @@ describe('VisitsController (Unit)', () => {
     expect(service.findAll).toHaveBeenCalledWith();
     expect(service.findOne).toHaveBeenCalledWith(visit.id);
     expect(service.findByPatientId).toHaveBeenCalledWith(visit.patient_id);
+  });
+
+  it('verifies RBAC role metadata on all visit endpoints', () => {
+    const createRoles = reflector.get<UserRole[]>(
+      ROLES_KEY,
+      VisitsController.prototype.create,
+    );
+    expect(createRoles).toEqual([UserRole.ADMIN, UserRole.NURSE]);
+
+    const findAllRoles = reflector.get<UserRole[]>(
+      ROLES_KEY,
+      VisitsController.prototype.findAll,
+    );
+    expect(findAllRoles).toEqual([
+      UserRole.ADMIN,
+      UserRole.DOCTOR,
+      UserRole.NURSE,
+    ]);
+
+    const findOneRoles = reflector.get<UserRole[]>(
+      ROLES_KEY,
+      VisitsController.prototype.findOne,
+    );
+    expect(findOneRoles).toEqual([
+      UserRole.ADMIN,
+      UserRole.DOCTOR,
+      UserRole.NURSE,
+      UserRole.PATIENT,
+    ]);
+
+    const findByPatientIdRoles = reflector.get<UserRole[]>(
+      ROLES_KEY,
+      VisitsController.prototype.findByPatientId,
+    );
+    expect(findByPatientIdRoles).toEqual([
+      UserRole.ADMIN,
+      UserRole.DOCTOR,
+      UserRole.NURSE,
+      UserRole.PATIENT,
+    ]);
   });
 });

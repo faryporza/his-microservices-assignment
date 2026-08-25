@@ -8,6 +8,7 @@ import {
   Post,
 } from '@nestjs/common';
 import {
+  ApiBearerAuth,
   ApiCreatedResponse,
   ApiHeader,
   ApiNotFoundResponse,
@@ -16,17 +17,19 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
-import { ResourceType } from '@app/common';
+import { ResourceType, Roles, UserRole } from '@app/common';
 import { VisitsService } from '../services/visits.service';
 import { CreateVisitDTO } from '../dto/create-visit.dto';
 
 @ApiTags('Visits')
+@ApiBearerAuth()
 @ResourceType('visits')
 @Controller()
 export class VisitsController {
   constructor(private readonly visitsService: VisitsService) {}
 
   @Post('visits')
+  @Roles(UserRole.ADMIN, UserRole.NURSE)
   @ApiOperation({ summary: 'Create and open a new patient visit' })
   @ApiCreatedResponse({ description: 'Visit successfully created' })
   @ApiHeader({
@@ -48,6 +51,7 @@ export class VisitsController {
   }
 
   @Get('visits')
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE)
   @ApiOperation({ summary: 'Retrieve all visits' })
   @ApiOkResponse({ description: 'List of all visits' })
   findAll() {
@@ -55,6 +59,7 @@ export class VisitsController {
   }
 
   @Get('visits/:id')
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.PATIENT)
   @ApiOperation({ summary: 'Retrieve a visit by ID' })
   @ApiParam({
     name: 'id',
@@ -69,6 +74,7 @@ export class VisitsController {
   }
 
   @Get('patients/:patientId/visits')
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.PATIENT)
   @ApiOperation({ summary: 'Retrieve visits by patient ID' })
   @ApiParam({
     name: 'patientId',

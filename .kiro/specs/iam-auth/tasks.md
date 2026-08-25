@@ -168,7 +168,7 @@
   - _Depends: 1.2, 3.3_
 
 - [ ] 4. Cross-service security integration across OPD, EMR, and Finance
-- [ ] 4.1 Apply authentication and authorization guards to OPD microservice
+- [x] 4.1 Apply authentication and authorization guards to OPD microservice
   - **Git Branch**: `feat/opd-bc-auth-protection`
   - **Base Branch**: `planning/iam-auth`
   - **Dependencies**: 2.2 (`feat/common-jwt-auth-guard`), 2.3 (`feat/common-roles-guard`)
