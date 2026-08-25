@@ -146,7 +146,7 @@
   - _Boundary: IAM Authentication_
   - _Depends: 1.2, 3.1_
 
-- [ ] 3.4 Implement token refresh, stateful logout, and token-theft protection
+- [x] 3.4 Implement token refresh, stateful logout, and token-theft protection
   - **Git Branch**: `feat/iam-token-refresh-and-logout`
   - **Base Branch**: `feat/iam-user-login-and-token-issuance`
   - **Dependencies**: 1.2 (`feat/shared-redis-module`), 3.3 (`feat/iam-user-login-and-token-issuance`)

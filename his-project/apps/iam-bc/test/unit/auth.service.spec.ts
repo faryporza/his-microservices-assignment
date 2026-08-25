@@ -34,6 +34,15 @@ describe('AuthService', () => {
     is_active: false,
   };
 
+  const mockSession = {
+    userId: 'user-uuid-1',
+    username: 'dr_watson',
+    role: UserRole.DOCTOR,
+    refreshTokenJti: 'current-refresh-jti',
+    createdAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 604800000).toISOString(),
+  };
+
   beforeEach(async () => {
     usersService = {
       create: jest.fn().mockResolvedValue(activeUser),
@@ -51,13 +60,16 @@ describe('AuthService', () => {
         .fn()
         .mockResolvedValueOnce('mock_access_token')
         .mockResolvedValueOnce('mock_refresh_token'),
+      verifyAsync: jest.fn(),
     } as unknown as jest.Mocked<JwtService>;
 
     redisService = {
       createSession: jest.fn().mockResolvedValue(undefined),
-      getSession: jest.fn(),
-      revokeSession: jest.fn(),
-      isAccessTokenBlacklisted: jest.fn(),
+      getSession: jest.fn().mockResolvedValue(mockSession),
+      revokeSession: jest.fn().mockResolvedValue(undefined),
+      revokeAllUserSessions: jest.fn().mockResolvedValue(undefined),
+      blacklistAccessToken: jest.fn().mockResolvedValue(undefined),
+      isAccessTokenBlacklisted: jest.fn().mockResolvedValue(false),
     } as unknown as jest.Mocked<RedisService>;
 
     const module: TestingModule = await Test.createTestingModule({
@@ -185,6 +197,108 @@ describe('AuthService', () => {
           password: 'Password123!',
         }),
       ).rejects.toThrow(new UnauthorizedException('Account is disabled'));
+    });
+  });
+
+  describe('refreshToken', () => {
+    it('should rotate refresh token and issue new token pair when token and session are valid', async () => {
+      jwtService.verifyAsync.mockResolvedValueOnce({
+        sub: 'user-uuid-1',
+        sid: 'session-uuid-1',
+        jti: 'current-refresh-jti',
+        type: 'refresh',
+      });
+      usersService.findById.mockResolvedValueOnce(activeUser);
+
+      const result = await service.refreshToken({
+        refresh_token: 'valid_refresh_token',
+      });
+
+      expect(jwtService.verifyAsync).toHaveBeenCalledWith(
+        'valid_refresh_token',
+        expect.any(Object),
+      );
+      expect(redisService.getSession).toHaveBeenCalledWith(
+        'user-uuid-1',
+        'session-uuid-1',
+      );
+      expect(redisService.createSession).toHaveBeenCalled();
+      expect(result).toEqual({
+        access_token: 'mock_access_token',
+        refresh_token: 'mock_refresh_token',
+        token_type: 'Bearer',
+        expires_in: 900,
+      });
+    });
+
+    it('should throw UnauthorizedException when refresh token verification fails', async () => {
+      jwtService.verifyAsync.mockRejectedValueOnce(new Error('jwt expired'));
+
+      await expect(
+        service.refreshToken({ refresh_token: 'expired_token' }),
+      ).rejects.toThrow(
+        new UnauthorizedException('Invalid or expired refresh token'),
+      );
+    });
+
+    it('should throw UnauthorizedException when session not found in Redis', async () => {
+      jwtService.verifyAsync.mockResolvedValueOnce({
+        sub: 'user-uuid-1',
+        sid: 'session-uuid-1',
+        jti: 'current-refresh-jti',
+        type: 'refresh',
+      });
+      redisService.getSession.mockResolvedValueOnce(null);
+
+      await expect(
+        service.refreshToken({ refresh_token: 'valid_token' }),
+      ).rejects.toThrow(
+        new UnauthorizedException('Session has expired or been revoked'),
+      );
+    });
+
+    it('should detect replay attack and revoke all sessions when JTI does not match', async () => {
+      jwtService.verifyAsync.mockResolvedValueOnce({
+        sub: 'user-uuid-1',
+        sid: 'session-uuid-1',
+        jti: 'old-stolen-refresh-jti',
+        type: 'refresh',
+      });
+      redisService.getSession.mockResolvedValueOnce(mockSession);
+
+      await expect(
+        service.refreshToken({ refresh_token: 'replayed_token' }),
+      ).rejects.toThrow(
+        new UnauthorizedException(
+          'Token reuse detected. All sessions have been revoked.',
+        ),
+      );
+
+      expect(redisService.revokeAllUserSessions).toHaveBeenCalledWith(
+        'user-uuid-1',
+      );
+    });
+  });
+
+  describe('logout', () => {
+    it('should blacklist access token and revoke Redis session', async () => {
+      const result = await service.logout({
+        id: 'user-uuid-1',
+        username: 'dr_watson',
+        role: UserRole.DOCTOR,
+        sessionId: 'session-uuid-1',
+        jti: 'access-jti-1',
+      });
+
+      expect(redisService.blacklistAccessToken).toHaveBeenCalledWith(
+        'access-jti-1',
+        900,
+      );
+      expect(redisService.revokeSession).toHaveBeenCalledWith(
+        'user-uuid-1',
+        'session-uuid-1',
+      );
+      expect(result).toEqual({ message: 'Logged out successfully' });
     });
   });
 

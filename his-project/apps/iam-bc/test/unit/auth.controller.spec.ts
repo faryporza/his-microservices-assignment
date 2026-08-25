@@ -31,6 +31,10 @@ describe('AuthController', () => {
     authService = {
       register: jest.fn().mockResolvedValue(sanitizedUser),
       login: jest.fn().mockResolvedValue(mockTokenPair),
+      refreshToken: jest.fn().mockResolvedValue(mockTokenPair),
+      logout: jest
+        .fn()
+        .mockResolvedValue({ message: 'Logged out successfully' }),
       getProfile: jest.fn().mockResolvedValue(sanitizedUser),
     } as unknown as jest.Mocked<AuthService>;
 
@@ -112,6 +116,34 @@ describe('AuthController', () => {
       await expect(controller.login(dto)).rejects.toThrow(
         UnauthorizedException,
       );
+    });
+  });
+
+  describe('refresh', () => {
+    it('should call authService.refreshToken and return new token pair', async () => {
+      const dto = { refresh_token: 'valid_refresh_token' };
+
+      const result = await controller.refresh(dto);
+
+      expect(authService.refreshToken).toHaveBeenCalledWith(dto);
+      expect(result).toEqual(mockTokenPair);
+    });
+  });
+
+  describe('logout', () => {
+    it('should call authService.logout and return success message', async () => {
+      const mockUserContext = {
+        id: 'user-uuid-1',
+        username: 'dr_watson',
+        role: UserRole.DOCTOR,
+        sessionId: 'session-uuid-1',
+        jti: 'access-jti-1',
+      };
+
+      const result = await controller.logout(mockUserContext);
+
+      expect(authService.logout).toHaveBeenCalledWith(mockUserContext);
+      expect(result).toEqual({ message: 'Logged out successfully' });
     });
   });
 

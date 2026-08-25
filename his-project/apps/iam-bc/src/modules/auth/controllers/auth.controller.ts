@@ -17,6 +17,7 @@ import type { AuthenticatedUser } from '@app/common';
 import { AuthService, UserResponse } from '../services/auth.service';
 import { RegisterUserDTO } from '../dto/register-user.dto';
 import { LoginUserDTO } from '../dto/login-user.dto';
+import { RefreshTokenDTO } from '../dto/refresh-token.dto';
 import { TokenPair } from '../interfaces/token-pair.interface';
 
 @ApiTags('Auth')
@@ -60,6 +61,41 @@ export class AuthController {
   })
   async login(@Body() dto: LoginUserDTO): Promise<TokenPair> {
     return this.authService.login(dto);
+  }
+
+  @Public()
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  @ResourceType('tokens')
+  @ApiOperation({ summary: 'Rotate refresh token and issue new token pair' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Token pair refreshed successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'Invalid, expired, or reused refresh token',
+  })
+  async refresh(@Body() dto: RefreshTokenDTO): Promise<TokenPair> {
+    return this.authService.refreshToken(dto);
+  }
+
+  @Post('logout')
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Revoke active session and blacklist access token' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Logged out successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'Missing or invalid token',
+  })
+  async logout(
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<{ message: string }> {
+    return this.authService.logout(user);
   }
 
   @Get('me')
