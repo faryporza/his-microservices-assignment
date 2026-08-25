@@ -24,9 +24,9 @@
   - _Requirements: 8.3_
   - _Boundary: Infrastructure Configuration_
 
-- [ ] 1.2 (P) Implement Redis client module and connection lifecycle provider in shared library
+- [x] 1.2 (P) Implement Redis client module and connection lifecycle provider in shared library
   - **Git Branch**: `feat/shared-redis-module`
-  - **Base Branch**: `planning/iam-auth`
+  - **Base Branch**: `feat/redis-and-iam-db-init`
   - **Dependencies**: 1.1 (`feat/redis-and-iam-db-init`)
   - **Expected Files/Modules**: `libs/common/src/redis/redis.module.ts`, `libs/common/src/redis/redis.service.ts`, `libs/common/src/redis/redis.config.ts`, `libs/common/src/redis/redis.service.spec.ts`
   - **Implementation Details**:

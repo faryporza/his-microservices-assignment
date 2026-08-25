@@ -16,3 +16,7 @@ export * from './response/interceptors/transform.interceptor';
 export * from './exceptions/validation.exception';
 export * from './exceptions/invalid-parameter.exception';
 export * from './filters/all-exceptions.filter';
+export * from './redis/redis.constants';
+export * from './redis/redis.types';
+export * from './redis/redis.service';
+export * from './redis/redis.module';
