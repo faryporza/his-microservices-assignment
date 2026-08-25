@@ -3,7 +3,13 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { FinanceBcModule } from '@apps/finance-bc/finance-bc.module';
 import { App } from 'supertest/types';
-import { createTestApp } from '@app/common';
+import {
+  createMockAuthHeaders,
+  createMockRedisService,
+  createTestApp,
+  RedisService,
+  UserRole,
+} from '@app/common';
 import { randomUUID } from 'node:crypto';
 import { DataSource } from 'typeorm';
 import {
@@ -14,11 +20,17 @@ import {
 describe('HealthChecksController (Finance e2e)', () => {
   jest.setTimeout(30_000);
   let app!: INestApplication;
+  const financeHeaders = createMockAuthHeaders({
+    role: UserRole.FINANCE_STAFF,
+  });
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [FinanceBcModule],
-    }).compile();
+    })
+      .overrideProvider(RedisService)
+      .useValue(createMockRedisService())
+      .compile();
 
     app = createTestApp(moduleFixture, 'finance-bc');
     await app.init();
@@ -42,6 +54,7 @@ describe('HealthChecksController (Finance e2e)', () => {
 
     const invalidDate = await request(app.getHttpServer() as App)
       .patch(`/invoices/${invoiceId}/pay`)
+      .set(financeHeaders)
       .send({ paid_at: new Date().toISOString() })
       .expect(400);
 
@@ -51,6 +64,7 @@ describe('HealthChecksController (Finance e2e)', () => {
 
     const invalidStatus = await request(app.getHttpServer() as App)
       .patch(`/invoices/${invoiceId}/pay`)
+      .set(financeHeaders)
       .send({ status: 'PENDING' })
       .expect(400);
 
@@ -58,6 +72,7 @@ describe('HealthChecksController (Finance e2e)', () => {
 
     const notFound = await request(app.getHttpServer() as App)
       .patch(`/invoices/${invoiceId}/pay`)
+      .set(financeHeaders)
       .send({})
       .expect(404);
 
@@ -81,6 +96,7 @@ describe('HealthChecksController (Finance e2e)', () => {
 
     await request(app.getHttpServer() as App)
       .get(`/invoices/${visitId}`)
+      .set(financeHeaders)
       .expect(200)
       .expect(({ body }) => {
         expect(body.status.code).toBe(200000);
@@ -92,6 +108,7 @@ describe('HealthChecksController (Finance e2e)', () => {
 
     await request(app.getHttpServer() as App)
       .patch(`/invoices/${invoice.id}/pay`)
+      .set(financeHeaders)
       .send({ status: 'PAID' })
       .expect(200)
       .expect(({ body }) => {

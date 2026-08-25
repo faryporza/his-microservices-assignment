@@ -220,7 +220,7 @@
   - _Depends: 2.2, 2.3_
 
 - [ ] 5. Testing utilities, regression verification, and end-to-end security test suites
-- [ ] 5.1 Update test utilities and verify backward compatibility of all existing tests
+- [x] 5.1 Update test utilities and verify backward compatibility of all existing tests
   - **Git Branch**: `test/auth-test-helpers-and-regression`
   - **Base Branch**: `planning/iam-auth`
   - **Dependencies**: 2.2 (`feat/common-jwt-auth-guard`), 4.1, 4.2, 4.3

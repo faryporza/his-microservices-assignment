@@ -3,17 +3,27 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { OpdBcModule } from '@apps/opd-bc/opd-bc.module';
 import { App } from 'supertest/types';
-import { createTestApp } from '@app/common';
+import {
+  createMockAuthHeaders,
+  createMockRedisService,
+  createTestApp,
+  RedisService,
+  UserRole,
+} from '@app/common';
 import { randomUUID } from 'node:crypto';
 
 describe('HealthChecksController (OPD e2e)', () => {
   jest.setTimeout(30_000);
   let app!: INestApplication;
+  const adminHeaders = createMockAuthHeaders({ role: UserRole.ADMIN });
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [OpdBcModule],
-    }).compile();
+    })
+      .overrideProvider(RedisService)
+      .useValue(createMockRedisService())
+      .compile();
 
     app = createTestApp(moduleFixture, 'opd-bc');
     await app.init();
@@ -35,6 +45,7 @@ describe('HealthChecksController (OPD e2e)', () => {
   it('rejects missing and non-whitelisted patient fields with Blueprint validation format', async () => {
     const missingRes = await request(app.getHttpServer() as App)
       .post('/patients')
+      .set(adminHeaders)
       .send({ first_name: 'Ada', last_name: 'Lovelace', id_card: 'ID-1' })
       .expect(400);
 
@@ -50,6 +61,7 @@ describe('HealthChecksController (OPD e2e)', () => {
 
     const camelCaseRes = await request(app.getHttpServer() as App)
       .post('/patients')
+      .set(adminHeaders)
       .send({
         hn: 'HN-CAMEL-CASE',
         firstName: 'Ada',
@@ -62,6 +74,7 @@ describe('HealthChecksController (OPD e2e)', () => {
 
     const nonWhitelistedRes = await request(app.getHttpServer() as App)
       .post('/patients')
+      .set(adminHeaders)
       .send({
         hn: 'HN-STRICT',
         first_name: 'Ada',
@@ -77,6 +90,7 @@ describe('HealthChecksController (OPD e2e)', () => {
   it('validates visit and update-patient DTOs', async () => {
     const invalidVisit = await request(app.getHttpServer() as App)
       .post('/visits')
+      .set(adminHeaders)
       .send({ patient_id: 'not-a-uuid' })
       .expect(400);
 
@@ -84,6 +98,7 @@ describe('HealthChecksController (OPD e2e)', () => {
 
     const invalidUpdate = await request(app.getHttpServer() as App)
       .patch(`/patients/${randomUUID()}`)
+      .set(adminHeaders)
       .send({ unknownField: true })
       .expect(400);
 
@@ -91,6 +106,7 @@ describe('HealthChecksController (OPD e2e)', () => {
 
     const notFoundUpdate = await request(app.getHttpServer() as App)
       .patch(`/patients/${randomUUID()}`)
+      .set(adminHeaders)
       .send({ first_name: 'Grace' })
       .expect(404);
 
@@ -99,6 +115,7 @@ describe('HealthChecksController (OPD e2e)', () => {
 
     const notFoundDelete = await request(app.getHttpServer() as App)
       .delete(`/patients/${randomUUID()}`)
+      .set(adminHeaders)
       .expect(404);
 
     expect(notFoundDelete.body.status.code).toBe(404);
@@ -108,6 +125,7 @@ describe('HealthChecksController (OPD e2e)', () => {
     const suffix = randomUUID().slice(0, 8);
     const patient = await request(app.getHttpServer() as App)
       .post('/patients')
+      .set(adminHeaders)
       .send({
         hn: `HN-E2E-${suffix}`,
         first_name: 'Ada',
@@ -126,6 +144,7 @@ describe('HealthChecksController (OPD e2e)', () => {
 
     const visit = await request(app.getHttpServer() as App)
       .post('/visits')
+      .set(adminHeaders)
       .send({ patient_id: patientId })
       .expect(201);
 
@@ -136,6 +155,7 @@ describe('HealthChecksController (OPD e2e)', () => {
 
     await request(app.getHttpServer() as App)
       .patch(`/patients/${patientId}`)
+      .set(adminHeaders)
       .send({ first_name: 'Augusta' })
       .expect(200)
       .expect(({ body }) => {
@@ -147,6 +167,7 @@ describe('HealthChecksController (OPD e2e)', () => {
 
     await request(app.getHttpServer() as App)
       .get(`/patients/${patientId}`)
+      .set(adminHeaders)
       .expect(200)
       .expect(({ body }) => {
         expect(body.status.code).toBe(200000);
@@ -157,6 +178,7 @@ describe('HealthChecksController (OPD e2e)', () => {
 
     await request(app.getHttpServer() as App)
       .delete(`/patients/${patientId}`)
+      .set(adminHeaders)
       .expect(204);
   });
 });
