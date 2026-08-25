@@ -237,7 +237,7 @@
   - _Boundary: Test Infrastructure & Backward Compatibility_
   - _Depends: 2.2, 4.1, 4.2, 4.3_
 
-- [ ] 5.2 Implement end-to-end security integration test suites
+- [x] 5.2 Implement end-to-end security integration test suites
   - **Git Branch**: `test/e2e-iam-and-cross-service-rbac`
   - **Base Branch**: `test/auth-test-helpers-and-regression`
   - **Dependencies**: 3.2, 3.3, 3.4, 4.1, 4.2, 4.3, 5.1

@@ -27,10 +27,11 @@
     "test:emr": "jest --config apps/emr-bc/jest.config.js",
     "test:finance": "jest --config apps/finance-bc/jest.config.js",
     "test:iam": "jest --config apps/iam-bc/jest.config.js",
+    "test:iam:e2e": "jest --config ./apps/iam-bc/test/jest-e2e.json",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./apps/opd-bc/test/jest-e2e.json && jest --config ./apps/emr-bc/test/jest-e2e.json && jest --config ./apps/finance-bc/test/jest-e2e.json",
+    "test:e2e": "jest --config ./apps/opd-bc/test/jest-e2e.json && jest --config ./apps/emr-bc/test/jest-e2e.json && jest --config ./apps/finance-bc/test/jest-e2e.json && jest --config ./apps/iam-bc/test/jest-e2e.json",
     "test:flow": "node test/e2e/live-flow.e2e.mjs"
   },
   "dependencies": {

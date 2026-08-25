@@ -1,0 +1,17 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": ".",
+  "testEnvironment": "node",
+  "testRegex": ".e2e-spec.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "moduleNameMapper": {
+    "^@apps/iam-bc(|/.*)$": "<rootDir>/../src/$1",
+    "^@apps/opd-bc(|/.*)$": "<rootDir>/../../opd-bc/src/$1",
+    "^@apps/emr-bc(|/.*)$": "<rootDir>/../../emr-bc/src/$1",
+    "^@apps/finance-bc(|/.*)$": "<rootDir>/../../finance-bc/src/$1",
+    "^@app/common(|/.*)$": "<rootDir>/../../../libs/common/src/$1",
+    "^@app/contracts(|/.*)$": "<rootDir>/../../../libs/contracts/src/$1"
+  }
+}
