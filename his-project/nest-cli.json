@@ -46,6 +46,15 @@
         "tsConfigPath": "apps/finance-bc/tsconfig.app.json"
       }
     },
+    "iam-bc": {
+      "type": "application",
+      "root": "apps/iam-bc",
+      "entryFile": "main",
+      "sourceRoot": "apps/iam-bc/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/iam-bc/tsconfig.app.json"
+      }
+    },
     "opd-bc": {
       "type": "application",
       "root": "apps/opd-bc",

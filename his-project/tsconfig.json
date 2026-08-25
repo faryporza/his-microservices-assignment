@@ -32,7 +32,9 @@
       "@apps/finance-bc": ["apps/finance-bc/src"],
       "@apps/finance-bc/*": ["apps/finance-bc/src/*"],
       "@apps/emr-bc": ["apps/emr-bc/src"],
-      "@apps/emr-bc/*": ["apps/emr-bc/src/*"]
+      "@apps/emr-bc/*": ["apps/emr-bc/src/*"],
+      "@apps/iam-bc": ["apps/iam-bc/src"],
+      "@apps/iam-bc/*": ["apps/iam-bc/src/*"]
     }
   }
 }

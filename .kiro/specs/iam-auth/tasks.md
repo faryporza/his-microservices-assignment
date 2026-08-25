@@ -93,7 +93,7 @@
   - _Depends: 2.1_
 
 - [ ] 3. Core IAM microservice application and user identity management
-- [ ] 3.1 Scaffold IAM microservice project structure, configuration, and user persistence
+- [x] 3.1 Scaffold IAM microservice project structure, configuration, and user persistence
   - **Git Branch**: `feat/iam-bc-scaffold-and-user-entity`
   - **Base Branch**: `feat/redis-and-iam-db-init`
   - **Dependencies**: 1.1 (`feat/redis-and-iam-db-init`)
