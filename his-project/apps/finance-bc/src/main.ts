@@ -33,6 +33,7 @@ async function bootstrap() {
     )
     .setVersion('1.0')
     .addTag('Invoices')
+    .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('docs', app, document);

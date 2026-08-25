@@ -1,11 +1,17 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { createPostgresOptions } from '@app/common';
+import { APP_GUARD } from '@nestjs/core';
+import {
+  createPostgresOptions,
+  CommonModule,
+  AuthCommonModule,
+  JwtAuthGuard,
+  RolesGuard,
+} from '@app/common';
 import { FinanceHealthChecksController } from './health-checks.controller';
 import { FinanceHealthChecksService } from './health-checks.service';
 import { InvoiceModule } from '@apps/finance-bc/modules/invoice/invoice.module';
-import { CommonModule } from '@app/common';
 
 @Module({
   imports: [
@@ -20,9 +26,20 @@ import { CommonModule } from '@app/common';
         createPostgresOptions(configService, 'FINANCE_DATABASE'),
     }),
     CommonModule,
+    AuthCommonModule,
     InvoiceModule,
   ],
   controllers: [FinanceHealthChecksController],
-  providers: [FinanceHealthChecksService],
+  providers: [
+    FinanceHealthChecksService,
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
+    },
+  ],
 })
 export class FinanceBcModule {}
