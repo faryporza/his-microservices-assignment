@@ -16,3 +16,8 @@ export * from './response/interceptors/transform.interceptor';
 export * from './exceptions/validation.exception';
 export * from './exceptions/invalid-parameter.exception';
 export * from './filters/all-exceptions.filter';
+export * from './auth/constants/user-roles.enum';
+export * from './auth/interfaces/authenticated-user.interface';
+export * from './auth/decorators/roles.decorator';
+export * from './auth/decorators/public.decorator';
+export * from './auth/decorators/current-user.decorator';
