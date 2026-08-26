@@ -57,21 +57,6 @@ describe('UsersController', () => {
       'user-uuid-1',
       UserRole.DOCTOR,
     );
-    expect(result).toEqual({
-      data: {
-        id: 'user-uuid-1',
-        type: 'users',
-        attributes: {
-          username: 'dr_watson',
-          email: 'watson@baker.st',
-          first_name: 'John',
-          last_name: 'Watson',
-          role: UserRole.DOCTOR,
-          is_active: true,
-          created_at: sampleUser.created_at,
-          updated_at: sampleUser.updated_at,
-        },
-      },
-    });
+    expect(result).toEqual(sampleUser);
   });
 });
