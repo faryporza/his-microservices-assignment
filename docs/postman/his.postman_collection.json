@@ -332,6 +332,7 @@
                   "  pm.expect(body.status.code).to.eql(200000);",
                   "  pm.expect(body.data.type).to.eql('users');",
                   "  pm.expect(body.data.attributes.role).to.eql('ADMIN');",
+                  "  pm.collectionVariables.set('admin_user_id', body.data.id);",
                   "});"
                 ]
               }
@@ -341,6 +342,36 @@
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{admin_access_token}}" }],
             "url": "{{iam_base_url}}/auth/me"
+          }
+        },
+        {
+          "name": "Update User Role (Admin Only)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('User role updated successfully', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(200000);",
+                  "  pm.expect(body.data.attributes.role).to.eql('ADMIN');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"ADMIN\"\n}"
+            },
+            "url": "{{iam_base_url}}/users/{{admin_user_id}}/role"
           }
         },
         {
