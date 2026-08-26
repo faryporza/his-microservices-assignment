@@ -7,4 +7,5 @@ export interface AuthenticatedUser {
   sessionId?: string;
   jti?: string;
   email?: string;
+  patient_id?: string;
 }

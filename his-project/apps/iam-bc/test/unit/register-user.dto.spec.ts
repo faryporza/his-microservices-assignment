@@ -1,7 +1,6 @@
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
 import { RegisterUserDTO } from '@apps/iam-bc/modules/auth/dto/register-user.dto';
-import { UserRole } from '@app/common';
 
 describe('RegisterUserDTO', () => {
   function createDTO(partial: Partial<RegisterUserDTO>): RegisterUserDTO {
@@ -11,7 +10,6 @@ describe('RegisterUserDTO', () => {
       password: 'Password123!',
       first_name: 'John',
       last_name: 'Doe',
-      role: UserRole.DOCTOR,
       ...partial,
     });
   }
@@ -20,19 +18,6 @@ describe('RegisterUserDTO', () => {
     const dto = createDTO({});
     const errors = await validate(dto);
     expect(errors.length).toBe(0);
-  });
-
-  it('should allow optional role and default properly', async () => {
-    const dto = createDTO({ role: undefined });
-    const errors = await validate(dto);
-    expect(errors.length).toBe(0);
-  });
-
-  it('should reject invalid role enum', async () => {
-    const dto = createDTO({ role: 'SUPER_HERO' as unknown as UserRole });
-    const errors = await validate(dto);
-    expect(errors.length).toBeGreaterThan(0);
-    expect(errors.some((e) => e.property === 'role')).toBe(true);
   });
 
   it('should reject short username (< 3 characters)', async () => {

@@ -8,11 +8,15 @@ import {
   AuthCommonModule,
   JwtAuthGuard,
   RolesGuard,
+  OutboxEvent,
+  ProcessedEvent,
+  InitIam1000000000000,
 } from '@app/common';
 import { IamHealthChecksController } from './health-checks.controller';
 import { IamHealthChecksService } from './health-checks.service';
 import { UserModule } from './modules/user/user.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { User } from './modules/user/entities/user.entity';
 
 @Module({
   imports: [
@@ -24,7 +28,11 @@ import { AuthModule } from './modules/auth/auth.module';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) =>
-        createPostgresOptions(configService, 'IAM_DATABASE'),
+        createPostgresOptions(configService, 'IAM_DATABASE', {
+          entities: [User, OutboxEvent, ProcessedEvent],
+          migrations: [InitIam1000000000000],
+          synchronize: false,
+        }),
     }),
     CommonModule,
     AuthCommonModule,

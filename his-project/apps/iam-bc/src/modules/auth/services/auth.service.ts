@@ -14,6 +14,8 @@ import {
   SessionMetadata,
   StructuredLogger,
   UserRole,
+  getRequiredSecret,
+  parseDurationToSeconds,
 } from '@app/common';
 
 export interface UserResponse {
@@ -40,8 +42,8 @@ export class AuthService {
   private readonly logger = new StructuredLogger('auth-service');
   private readonly jwtSecret: string;
   private readonly jwtRefreshSecret: string;
-  private readonly accessExpiresInSeconds = 900; // 15m
-  private readonly refreshExpiresInSeconds = 7 * 24 * 60 * 60; // 7 days (604800s)
+  private readonly accessExpiresInSeconds: number;
+  private readonly refreshExpiresInSeconds: number;
 
   constructor(
     private readonly usersService: UsersService,
@@ -50,13 +52,18 @@ export class AuthService {
     private readonly redisService: RedisService,
     private readonly configService: ConfigService,
   ) {
-    this.jwtSecret = this.configService.get<string>(
-      'JWT_SECRET',
-      'his-secret-jwt-key-for-development-change-in-production',
-    );
-    this.jwtRefreshSecret = this.configService.get<string>(
+    this.jwtSecret = getRequiredSecret(this.configService, 'JWT_SECRET');
+    this.jwtRefreshSecret = getRequiredSecret(
+      this.configService,
       'JWT_REFRESH_SECRET',
-      'his-refresh-secret-jwt-key-for-development',
+    );
+    this.accessExpiresInSeconds = parseDurationToSeconds(
+      this.configService.get<string>('JWT_ACCESS_EXPIRES_IN', '15m'),
+      900,
+    );
+    this.refreshExpiresInSeconds = parseDurationToSeconds(
+      this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '7d'),
+      604800,
     );
   }
 
@@ -71,7 +78,7 @@ export class AuthService {
       password_hash: passwordHash,
       first_name: dto.first_name,
       last_name: dto.last_name,
-      role: dto.role ?? UserRole.PATIENT,
+      role: UserRole.PATIENT,
     });
 
     this.logger.log({

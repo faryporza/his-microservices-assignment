@@ -82,7 +82,14 @@ describe('AuthService', () => {
         {
           provide: ConfigService,
           useValue: {
-            get: jest.fn((key: string, def?: string) => def ?? 'test-secret'),
+            get: jest.fn((key: string, def?: string) => {
+              if (key === 'JWT_ACCESS_EXPIRES_IN') return '15m';
+              if (key === 'JWT_REFRESH_EXPIRES_IN') return '7d';
+              return def ?? 'a-very-strong-test-secret-key-that-has-32-chars';
+            }),
+            getOrThrow: jest.fn(
+              () => 'a-very-strong-test-secret-key-that-has-32-chars',
+            ),
           },
         },
       ],
@@ -99,7 +106,6 @@ describe('AuthService', () => {
         password: 'Password123!',
         first_name: 'John',
         last_name: 'Watson',
-        role: UserRole.DOCTOR,
       });
 
       expect(passwordHashService.hashPassword).toHaveBeenCalledWith(
@@ -111,7 +117,7 @@ describe('AuthService', () => {
         password_hash: 'hashed_secret',
         first_name: 'John',
         last_name: 'Watson',
-        role: UserRole.DOCTOR,
+        role: UserRole.PATIENT,
       });
 
       expect((result as Record<string, unknown>).password_hash).toBeUndefined();

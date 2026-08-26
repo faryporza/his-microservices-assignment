@@ -62,4 +62,10 @@ export class UsersService {
       where: [{ username: identifier }, { email: identifier }],
     });
   }
+
+  async updateRole(id: string, role: UserRole): Promise<User> {
+    const user = await this.findById(id);
+    user.role = role;
+    return this.userRepository.save(user);
+  }
 }

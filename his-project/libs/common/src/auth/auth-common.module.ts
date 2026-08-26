@@ -4,6 +4,7 @@ import { JwtModule, JwtModuleOptions } from '@nestjs/jwt';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { RedisModule } from '../redis/redis.module';
+import { getRequiredSecret } from '../config/environment.config';
 
 @Global()
 @Module({
@@ -14,10 +15,7 @@ import { RedisModule } from '../redis/redis.module';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService): JwtModuleOptions => ({
-        secret: configService.get<string>(
-          'JWT_SECRET',
-          'his-secret-jwt-key-for-development-change-in-production',
-        ),
+        secret: getRequiredSecret(configService, 'JWT_SECRET'),
         signOptions: {
           expiresIn:
             (configService.get<string>('JWT_ACCESS_EXPIRES_IN', '15m') as
