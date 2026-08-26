@@ -29,20 +29,21 @@
       "name": "1. IAM (Identity & Access Management)",
       "item": [
         {
-          "name": "Register Admin User",
+          "name": "Reject Reserved Admin Registration",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Admin registered or already exists', function () {",
-                  "  pm.expect([201, 409]).to.include(pm.response.code);",
-                  "  if (pm.response.code === 201) {",
-                  "    const body = pm.response.json();",
-                  "    pm.expect(body.status.code).to.eql(201000);",
-                  "    pm.expect(body.data.type).to.eql('users');",
-                  "    pm.expect(body.data.attributes.role).to.eql('PATIENT');",
-                  "  }",
+                  "pm.test('Public registration rejects reserved admin identifier', function () {",
+                  "  pm.response.to.have.status(409);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(409);",
+                  "  pm.expect(body.status.message).to.eql('Conflict');",
+                  "  pm.expect(body.errors).to.be.an('array').that.is.not.empty;",
+                  "  pm.expect(body.errors[0]).to.deep.include({ code: '409', title: 'Conflict', detail: 'Username or email is reserved' });",
+                  "  pm.expect(body.meta.timestamp).to.be.a('string');",
+                  "  pm.expect(body.links.self).to.eql('/api/v1/auth/register');",
                   "});"
                 ]
               }
@@ -59,20 +60,21 @@
           }
         },
         {
-          "name": "Register Doctor User",
+          "name": "Reject Reserved Doctor Registration",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Doctor registered or already exists', function () {",
-                  "  pm.expect([201, 409]).to.include(pm.response.code);",
-                  "  if (pm.response.code === 201) {",
-                  "    const body = pm.response.json();",
-                  "    pm.expect(body.status.code).to.eql(201000);",
-                  "    pm.expect(body.data.type).to.eql('users');",
-                  "    pm.expect(body.data.attributes.role).to.eql('PATIENT');",
-                  "  }",
+                  "pm.test('Public registration rejects reserved doctor identifier', function () {",
+                  "  pm.response.to.have.status(409);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(409);",
+                  "  pm.expect(body.status.message).to.eql('Conflict');",
+                  "  pm.expect(body.errors).to.be.an('array').that.is.not.empty;",
+                  "  pm.expect(body.errors[0]).to.deep.include({ code: '409', title: 'Conflict', detail: 'Username or email is reserved' });",
+                  "  pm.expect(body.meta.timestamp).to.be.a('string');",
+                  "  pm.expect(body.links.self).to.eql('/api/v1/auth/register');",
                   "});"
                 ]
               }
@@ -89,20 +91,21 @@
           }
         },
         {
-          "name": "Register Nurse User",
+          "name": "Reject Reserved Nurse Registration",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Nurse registered or already exists', function () {",
-                  "  pm.expect([201, 409]).to.include(pm.response.code);",
-                  "  if (pm.response.code === 201) {",
-                  "    const body = pm.response.json();",
-                  "    pm.expect(body.status.code).to.eql(201000);",
-                  "    pm.expect(body.data.type).to.eql('users');",
-                  "    pm.expect(body.data.attributes.role).to.eql('PATIENT');",
-                  "  }",
+                  "pm.test('Public registration rejects reserved nurse identifier', function () {",
+                  "  pm.response.to.have.status(409);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(409);",
+                  "  pm.expect(body.status.message).to.eql('Conflict');",
+                  "  pm.expect(body.errors).to.be.an('array').that.is.not.empty;",
+                  "  pm.expect(body.errors[0]).to.deep.include({ code: '409', title: 'Conflict', detail: 'Username or email is reserved' });",
+                  "  pm.expect(body.meta.timestamp).to.be.a('string');",
+                  "  pm.expect(body.links.self).to.eql('/api/v1/auth/register');",
                   "});"
                 ]
               }
@@ -119,20 +122,21 @@
           }
         },
         {
-          "name": "Register Finance User",
+          "name": "Reject Reserved Finance Registration",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Finance staff registered or already exists', function () {",
-                  "  pm.expect([201, 409]).to.include(pm.response.code);",
-                  "  if (pm.response.code === 201) {",
-                  "    const body = pm.response.json();",
-                  "    pm.expect(body.status.code).to.eql(201000);",
-                  "    pm.expect(body.data.type).to.eql('users');",
-                  "    pm.expect(body.data.attributes.role).to.eql('PATIENT');",
-                  "  }",
+                  "pm.test('Public registration rejects reserved finance identifier', function () {",
+                  "  pm.response.to.have.status(409);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(409);",
+                  "  pm.expect(body.status.message).to.eql('Conflict');",
+                  "  pm.expect(body.errors).to.be.an('array').that.is.not.empty;",
+                  "  pm.expect(body.errors[0]).to.deep.include({ code: '409', title: 'Conflict', detail: 'Username or email is reserved' });",
+                  "  pm.expect(body.meta.timestamp).to.be.a('string');",
+                  "  pm.expect(body.links.self).to.eql('/api/v1/auth/register');",
                   "});"
                 ]
               }
@@ -173,7 +177,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"patient_test_user\",\n  \"email\": \"patient_test@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"Somchai\",\n  \"last_name\": \"Jaidee\"\n}"
+              "raw": "{\n  \"username\": \"patient_flow_user\",\n  \"email\": \"patient_flow@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"Somchai\",\n  \"last_name\": \"Jaidee\"\n}"
             },
             "url": "{{iam_base_url}}/auth/register"
           }
@@ -315,7 +319,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"patient_test_user\",\n  \"password\": \"Password123!\"\n}"
+              "raw": "{\n  \"username\": \"patient_flow_user\",\n  \"password\": \"Password123!\"\n}"
             },
             "url": "{{iam_base_url}}/auth/login"
           }
@@ -515,7 +519,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"patient_test_user\",\n  \"password\": \"Password123!\"\n}"
+              "raw": "{\n  \"username\": \"patient_flow_user\",\n  \"password\": \"Password123!\"\n}"
             },
             "url": "{{iam_base_url}}/auth/login"
           }
@@ -1017,6 +1021,10 @@
                   "  pm.response.to.have.status(409);",
                   "  const body = pm.response.json();",
                   "  pm.expect(body.status.code).to.eql(409);",
+                  "  pm.expect(body.status.message).to.eql('Conflict');",
+                  "  pm.expect(body.errors[0]).to.deep.include({ code: '409', title: 'Conflict', detail: 'Username already registered' });",
+                  "  pm.expect(body.meta.timestamp).to.be.a('string');",
+                  "  pm.expect(body.links.self).to.eql('/api/v1/auth/register');",
                   "});"
                 ]
               }
@@ -1027,7 +1035,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"admin_test_user\",\n  \"email\": \"another_admin@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"Super\",\n  \"last_name\": \"Admin\"\n}"
+              "raw": "{\n  \"username\": \"patient_flow_user\",\n  \"email\": \"another_patient@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"Somchai\",\n  \"last_name\": \"Jaidee\"\n}"
             },
             "url": "{{iam_base_url}}/auth/register"
           }
@@ -1120,8 +1128,13 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Nurse registered or exists', function () {",
-                  "  pm.expect([201, 409]).to.include(pm.response.code);",
+                  "pm.test('Privileged nurse registration is rejected as reserved', function () {",
+                  "  pm.response.to.have.status(409);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(409);",
+                  "  pm.expect(body.status.message).to.eql('Conflict');",
+                  "  pm.expect(body.errors[0]).to.deep.include({ code: '409', title: 'Conflict', detail: 'Username or email is reserved' });",
+                  "  pm.expect(body.links.self).to.eql('/api/v1/auth/register');",
                   "});"
                 ]
               }
@@ -1144,8 +1157,13 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Doctor registered or exists', function () {",
-                  "  pm.expect([201, 409]).to.include(pm.response.code);",
+                  "pm.test('Privileged doctor registration is rejected as reserved', function () {",
+                  "  pm.response.to.have.status(409);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(409);",
+                  "  pm.expect(body.status.message).to.eql('Conflict');",
+                  "  pm.expect(body.errors[0]).to.deep.include({ code: '409', title: 'Conflict', detail: 'Username or email is reserved' });",
+                  "  pm.expect(body.links.self).to.eql('/api/v1/auth/register');",
                   "});"
                 ]
               }
@@ -1168,8 +1186,13 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Finance staff registered or exists', function () {",
-                  "  pm.expect([201, 409]).to.include(pm.response.code);",
+                  "pm.test('Privileged finance registration is rejected as reserved', function () {",
+                  "  pm.response.to.have.status(409);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status.code).to.eql(409);",
+                  "  pm.expect(body.status.message).to.eql('Conflict');",
+                  "  pm.expect(body.errors[0]).to.deep.include({ code: '409', title: 'Conflict', detail: 'Username or email is reserved' });",
+                  "  pm.expect(body.links.self).to.eql('/api/v1/auth/register');",
                   "});"
                 ]
               }
