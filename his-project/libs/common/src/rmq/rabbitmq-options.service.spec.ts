@@ -20,6 +20,14 @@ describe('RabbitMqOptionsService', () => {
               };
               return values[key];
             },
+            get: (key: string, defaultValue?: string) => {
+              const values: Record<string, string> = {
+                RABBITMQ_URL: 'amqp://user:pass@host:5672',
+                RABBITMQ_EXCHANGE: 'his.events.test',
+                RABBITMQ_DLX_EXCHANGE: 'his.events.dlx',
+              };
+              return values[key] ?? defaultValue;
+            },
           },
         },
       ],
@@ -55,7 +63,13 @@ describe('RabbitMqOptionsService', () => {
         prefetchCount: 1,
       });
       expect(options.options?.urls).toEqual(['amqp://user:pass@host:5672']);
-      expect(options.options?.queueOptions).toEqual({ durable: true });
+      expect(options.options?.queueOptions).toMatchObject({
+        durable: true,
+        arguments: {
+          'x-dead-letter-exchange': 'his.events.dlx',
+          'x-dead-letter-routing-key': 'opd.events.dlq',
+        },
+      });
     });
   });
 

@@ -214,6 +214,7 @@ describe('treatment.completed event', () => {
       visitId: 'vis-123',
       recordId: 'rec-789',
       treatmentCost: 1500.0,
+      patientId: 'pat-456',
     };
 
     const event: TreatmentCompletedEvent = {
@@ -229,6 +230,7 @@ describe('treatment.completed event', () => {
     expect(event.payload.visitId).toBe('vis-123');
     expect(event.payload.recordId).toBe('rec-789');
     expect(event.payload.treatmentCost).toBe(1500.0);
+    expect(event.payload.patientId).toBe('pat-456');
   });
 
   it('should carry treatmentCost as a number matching the assignment schema', () => {
@@ -236,8 +238,10 @@ describe('treatment.completed event', () => {
       visitId: 'vis-1',
       recordId: 'rec-1',
       treatmentCost: 9999.99,
+      patientId: 'pat-1',
     };
     expect(typeof payload.treatmentCost).toBe('number');
+    expect(payload.patientId).toBe('pat-1');
   });
 
   it('should support decimal treatmentCost values', () => {
@@ -245,6 +249,7 @@ describe('treatment.completed event', () => {
       visitId: 'vis-1',
       recordId: 'rec-1',
       treatmentCost: 12345.67,
+      patientId: 'pat-1',
     };
     expect(payload.treatmentCost).toBe(12345.67);
   });
@@ -402,9 +407,11 @@ describe('Event flow contracts', () => {
         visitId: visitEvent.payload.visitId,
         recordId: 'rec-1',
         treatmentCost: 2500.0,
+        patientId: visitEvent.payload.patientId,
       },
     };
     expect(treatmentEvent.payload.visitId).toBe(visitEvent.payload.visitId);
+    expect(treatmentEvent.payload.patientId).toBe('pat-1');
     expect(treatmentEvent.metadata.correlationId).toBe('flow-1');
 
     // Step 3: Finance pays invoice
@@ -439,6 +446,7 @@ describe('Event flow contracts', () => {
       visitId,
       recordId: 'rec-1',
       treatmentCost: 100.0,
+      patientId: 'pat-1',
     };
 
     const invoicePayload: InvoicePaidPayload = {

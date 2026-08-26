@@ -53,7 +53,7 @@ const levelPriority: Record<StandardLogLevel, number> = {
 };
 
 const sensitiveKeyPattern =
-  /(?:password|passphrase|secret|token|authorization|cookie|api[_-]?key|id[_-]?card|card[_-]?number|credit[_-]?card|session)/i;
+  /(?:password|passphrase|secret|token|access[_-]?token|refresh[_-]?token|authorization|cookie|api[_-]?key|id[_-]?card|card[_-]?number|credit[_-]?card|session|jti|credentials)/i;
 
 /**
  * Emits one JSON object per line using the standard observability envelope.

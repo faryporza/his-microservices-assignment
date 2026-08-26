@@ -35,7 +35,19 @@ export class RabbitMqOptionsService {
    * `wildcards: true` lets `@EventPattern('visit.created')` match the routing
    * keys published to the topic exchange.
    */
-  createServiceOptions(queue: string): RmqOptions {
+  createServiceOptions(queue: string, dlqRoutingKey?: string): RmqOptions {
+    const dlx = this.config.get<string>(
+      'RABBITMQ_DLX_EXCHANGE',
+      'his.events.dlx',
+    );
+    const queueOptions: Record<string, unknown> = {
+      durable: true,
+      arguments: {
+        'x-dead-letter-exchange': dlx,
+        'x-dead-letter-routing-key': dlqRoutingKey ?? `${queue}.dlq`,
+      },
+    };
+
     return {
       transport: Transport.RMQ,
       options: {
@@ -44,7 +56,7 @@ export class RabbitMqOptionsService {
         exchange: this.getExchange(),
         exchangeType: 'topic',
         queue,
-        queueOptions: { durable: true },
+        queueOptions,
         wildcards: true,
         persistent: true,
         noAck: false,

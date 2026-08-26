@@ -14,12 +14,19 @@ export class ProcessedEvent {
   })
   id!: string;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'uuid', comment: 'Consumed event UUID' })
   event_id!: string;
 
-  @Column({ type: 'varchar' })
+  @Column({
+    type: 'varchar',
+    length: 100,
+    comment: 'Consumed event routing key/name',
+  })
   event_name!: string;
 
-  @CreateDateColumn({ type: 'timestamp with time zone' })
+  @CreateDateColumn({
+    type: 'timestamptz',
+    comment: 'Timestamp when event was processed and committed',
+  })
   processed_at!: Date;
 }

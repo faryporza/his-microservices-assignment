@@ -12,6 +12,7 @@
  */
 
 export const rabbitMqExchange = 'his.events';
+export const rabbitMqDlxExchange = 'his.events.dlx';
 
 export const rabbitMqQueues = {
   /** OPD publishes `visit.created` and consumes `invoice.paid`. */
@@ -20,6 +21,12 @@ export const rabbitMqQueues = {
   emr: 'emr.events',
   /** Finance consumes `treatment.completed` and publishes `invoice.paid`. */
   finance: 'finance.events',
+} as const;
+
+export const rabbitMqDlqQueues = {
+  opd: 'opd.events.dlq',
+  emr: 'emr.events.dlq',
+  finance: 'finance.events.dlq',
 } as const;
 
 export const rabbitMqRoutingKeys = {

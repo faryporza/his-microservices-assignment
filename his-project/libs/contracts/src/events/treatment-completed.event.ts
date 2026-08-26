@@ -10,6 +10,7 @@ export interface TreatmentCompletedPayload {
   visitId: string;
   recordId: string;
   treatmentCost: number;
+  patientId: string;
 }
 
 export type TreatmentCompletedEvent = BaseEvent<TreatmentCompletedPayload>;

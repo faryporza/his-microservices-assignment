@@ -16,21 +16,34 @@ export class OutboxEvent {
   })
   id!: string;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'uuid', comment: 'Unique domain event UUID' })
   event_id!: string;
 
-  @Column({ type: 'varchar' })
+  @Column({ type: 'varchar', length: 100, comment: 'Event name / routing key' })
   event_name!: string;
 
-  @Column({ type: 'jsonb' })
+  @Column({
+    type: 'jsonb',
+    comment: 'Full event envelope and payload payload in JSON format',
+  })
   event_data!: Record<string, unknown>;
 
-  @Column({ type: 'timestamp with time zone' })
+  @Column({
+    type: 'timestamptz',
+    comment: 'Timestamp when domain event occurred',
+  })
   occurred_at!: Date;
 
-  @Column({ type: 'timestamp with time zone', nullable: true })
+  @Column({
+    type: 'timestamptz',
+    nullable: true,
+    comment: 'Timestamp when message was successfully published to broker',
+  })
   published_at!: Date | null;
 
-  @CreateDateColumn({ type: 'timestamp with time zone' })
+  @CreateDateColumn({
+    type: 'timestamptz',
+    comment: 'Timestamp when outbox row was inserted',
+  })
   created_at!: Date;
 }
