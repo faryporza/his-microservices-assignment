@@ -6,7 +6,9 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
-@Entity('processed_events')
+// This infrastructure table is local to whichever bounded-context connection
+// registers it; the symbolic metadata documents that ownership explicitly.
+@Entity({ name: 'processed_events', database: 'service_local' })
 @Unique('uq_processed_events_event_id', ['event_id'])
 export class ProcessedEvent {
   @PrimaryGeneratedColumn('uuid', {

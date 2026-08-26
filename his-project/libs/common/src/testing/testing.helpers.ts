@@ -1,5 +1,6 @@
 import { INestApplication, Provider, Type } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Test, TestingModule, TestingModuleBuilder } from '@nestjs/testing';
 import * as jwt from 'jsonwebtoken';
 import { createStrictValidationPipe } from '../validation/strict-validation.pipe';
@@ -29,6 +30,17 @@ export function createTestApp(
   const reflector = app.get(Reflector);
   const logger = new StructuredLogger(serviceName);
 
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle(`${serviceName} test API`)
+    .setVersion('1.0.0')
+    .addBearerAuth()
+    .build();
+  SwaggerModule.setup(
+    'docs',
+    app,
+    SwaggerModule.createDocument(app, swaggerConfig),
+  );
+
   app.useGlobalPipes(createStrictValidationPipe());
   app.useGlobalInterceptors(new TransformInterceptor(reflector));
   app.useGlobalFilters(new AllExceptionsFilter(logger));
@@ -52,6 +64,7 @@ export function createMockJwtToken(
     sid: user.sessionId ?? 'mock-session-uuid-1',
     jti: user.jti ?? 'mock-access-jti-1',
     email: user.email ?? 'mock@his.local',
+    ...(user.patient_id ? { patient_id: user.patient_id } : {}),
   };
 
   return jwt.sign(payload, secret, {
@@ -130,5 +143,6 @@ export function createMockRedisService(): Partial<RedisService> {
     isAccessTokenBlacklisted: jest.fn().mockImplementation((jti: string) => {
       return Promise.resolve(blacklistedTokens.has(jti));
     }),
+    revokeSessionsByUsernames: jest.fn().mockResolvedValue(0),
   };
 }

@@ -31,15 +31,6 @@ export class InitIam1000000000000 implements MigrationInterface {
       CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
       CREATE INDEX IF NOT EXISTS idx_users_is_active ON users(is_active);
 
-      INSERT INTO users (username, email, password_hash, first_name, last_name, role)
-      VALUES 
-        ('admin_test_user', 'admin_test@hospital.local', '$2b$10$HLuZXtrFAp7VKmImksT9KOhckyC947lTHTjgC6P4K4gsp36XogrHG', 'Super', 'Admin', 'ADMIN'),
-        ('doctor_test_user', 'doctor_test@hospital.local', '$2b$10$HLuZXtrFAp7VKmImksT9KOhckyC947lTHTjgC6P4K4gsp36XogrHG', 'John', 'Watson', 'DOCTOR'),
-        ('nurse_test_user', 'nurse_test@hospital.local', '$2b$10$HLuZXtrFAp7VKmImksT9KOhckyC947lTHTjgC6P4K4gsp36XogrHG', 'Florence', 'Nightingale', 'NURSE'),
-        ('finance_test_user', 'finance_test@hospital.local', '$2b$10$HLuZXtrFAp7VKmImksT9KOhckyC947lTHTjgC6P4K4gsp36XogrHG', 'Penny', 'Accountant', 'FINANCE_STAFF'),
-        ('patient_test_user', 'patient_test@hospital.local', '$2b$10$HLuZXtrFAp7VKmImksT9KOhckyC947lTHTjgC6P4K4gsp36XogrHG', 'Somchai', 'Jaidee', 'PATIENT')
-      ON CONFLICT (username) DO UPDATE SET role = EXCLUDED.role, password_hash = EXCLUDED.password_hash;
-
       CREATE TABLE IF NOT EXISTS audit_logs (
         id UUID NOT NULL DEFAULT gen_random_uuid(),
         actor_id VARCHAR(100) NOT NULL,

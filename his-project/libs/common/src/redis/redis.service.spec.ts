@@ -16,6 +16,7 @@ describe('RedisService', () => {
     expire: jest.Mock;
     ttl: jest.Mock;
     incr: jest.Mock;
+    scan: jest.Mock;
     quit: jest.Mock;
     status: string;
     on: jest.Mock;
@@ -42,6 +43,7 @@ describe('RedisService', () => {
       expire: jest.fn().mockResolvedValue(1),
       ttl: jest.fn().mockResolvedValue(604800),
       incr: jest.fn().mockResolvedValue(1),
+      scan: jest.fn().mockResolvedValue(['0', []]),
       quit: jest.fn().mockResolvedValue('OK'),
       status: 'ready',
       on: jest.fn(),
@@ -174,6 +176,24 @@ describe('RedisService', () => {
       );
       expect(mockRedisClient.del).toHaveBeenCalledWith(
         'auth:user_sessions:user-uuid-1',
+      );
+    });
+
+    it('should revoke sessions belonging to retired usernames', async () => {
+      mockRedisClient.scan
+        .mockResolvedValueOnce(['0', ['auth:session:user-uuid-1:session-1']])
+        .mockResolvedValueOnce(['0', []]);
+      mockRedisClient.get.mockResolvedValueOnce(JSON.stringify(sampleSession));
+
+      await expect(
+        service.revokeSessionsByUsernames(new Set(['doctor_who'])),
+      ).resolves.toBe(1);
+      expect(mockRedisClient.del).toHaveBeenCalledWith(
+        'auth:session:user-uuid-1:session-1',
+      );
+      expect(mockRedisClient.srem).toHaveBeenCalledWith(
+        'auth:user_sessions:user-uuid-1',
+        'session-1',
       );
     });
   });

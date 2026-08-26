@@ -1,6 +1,7 @@
 import {
   Injectable,
   ConflictException,
+  ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -8,6 +9,7 @@ import { Repository } from 'typeorm';
 import { Patient } from '../entities/patient.entity';
 import { CreatePatientDTO } from '../dto/create-patient.dto';
 import { UpdatePatientDTO } from '../dto/update-patient.dto';
+import { AuthenticatedUser, UserRole } from '@app/common';
 
 @Injectable()
 export class PatientsService {
@@ -50,12 +52,28 @@ export class PatientsService {
   }
 
   // ดึงข้อมูล patient ตาม id
-  async findOne(id: string): Promise<Patient> {
+  async findOne(id: string, actor?: AuthenticatedUser): Promise<Patient> {
+    this.assertPatientCanAccess(id, actor);
     const patient = await this.patientRepository.findOne({ where: { id } });
     if (!patient) {
       throw new NotFoundException(`Patient with ID '${id}' not found`);
     }
     return patient;
+  }
+
+  private assertPatientCanAccess(
+    patientId: string,
+    actor?: AuthenticatedUser,
+  ): void {
+    if (actor?.role !== UserRole.PATIENT) {
+      return;
+    }
+
+    if (!actor.patient_id || actor.patient_id !== patientId) {
+      throw new ForbiddenException(
+        'Access denied: resource belongs to another patient',
+      );
+    }
   }
 
   async update(

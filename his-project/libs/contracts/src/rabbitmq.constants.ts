@@ -21,18 +21,22 @@ export const rabbitMqQueues = {
   emr: 'emr.events',
   /** Finance consumes `treatment.completed` and publishes `invoice.paid`. */
   finance: 'finance.events',
+  /** IAM owns durable cross-service access audit records. */
+  iam: 'iam.events',
 } as const;
 
 export const rabbitMqDlqQueues = {
   opd: 'opd.events.dlq',
   emr: 'emr.events.dlq',
   finance: 'finance.events.dlq',
+  iam: 'iam.events.dlq',
 } as const;
 
 export const rabbitMqRoutingKeys = {
   visitCreated: 'visit.created',
   treatmentCompleted: 'treatment.completed',
   invoicePaid: 'invoice.paid',
+  accessAudit: 'access.audit',
 } as const;
 
 /**
@@ -43,4 +47,5 @@ export const rabbitMqBindings = {
   [rabbitMqRoutingKeys.visitCreated]: rabbitMqQueues.emr,
   [rabbitMqRoutingKeys.treatmentCompleted]: rabbitMqQueues.finance,
   [rabbitMqRoutingKeys.invoicePaid]: rabbitMqQueues.opd,
+  [rabbitMqRoutingKeys.accessAudit]: rabbitMqQueues.iam,
 } as const;

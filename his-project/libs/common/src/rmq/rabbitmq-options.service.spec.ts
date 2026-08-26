@@ -1,10 +1,15 @@
 import { ConfigService } from '@nestjs/config';
 import { Transport } from '@nestjs/microservices';
 import { Test, TestingModule } from '@nestjs/testing';
+import { connect } from 'amqplib';
+import type { Channel, ChannelModel } from 'amqplib';
 import { RabbitMqOptionsService } from './rabbitmq-options.service';
+
+jest.mock('amqplib', () => ({ connect: jest.fn() }));
 
 describe('RabbitMqOptionsService', () => {
   let service: RabbitMqOptionsService;
+  const connectMock = connect as jest.MockedFunction<typeof connect>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -84,6 +89,51 @@ describe('RabbitMqOptionsService', () => {
         wildcards: true,
         persistent: true,
       });
+    });
+  });
+
+  describe('ensureTopology', () => {
+    it('declares the main queue, DLQ, exchanges, and bindings', async () => {
+      const channel = {
+        assertExchange: jest.fn().mockResolvedValue(undefined),
+        assertQueue: jest.fn().mockResolvedValue(undefined),
+        bindQueue: jest.fn().mockResolvedValue(undefined),
+        close: jest.fn().mockResolvedValue(undefined),
+      } as unknown as jest.Mocked<Channel>;
+      const connection = {
+        createChannel: jest.fn().mockResolvedValue(channel),
+        close: jest.fn().mockResolvedValue(undefined),
+      } as unknown as jest.Mocked<ChannelModel>;
+      connectMock.mockResolvedValueOnce(connection);
+
+      await service.ensureTopology('opd.events');
+
+      expect(channel.assertExchange).toHaveBeenCalledWith(
+        'his.events.test',
+        'topic',
+        { durable: true },
+      );
+      expect(channel.assertExchange).toHaveBeenCalledWith(
+        'his.events.dlx',
+        'direct',
+        { durable: true },
+      );
+      expect(channel.assertQueue).toHaveBeenCalledWith(
+        'opd.events.dlq',
+        expect.objectContaining({ durable: true, autoDelete: false }),
+      );
+      expect(channel.bindQueue).toHaveBeenCalledWith(
+        'opd.events.dlq',
+        'his.events.dlx',
+        'opd.events.dlq',
+      );
+      expect(channel.bindQueue).toHaveBeenCalledWith(
+        'opd.events',
+        'his.events.test',
+        'invoice.paid',
+      );
+      expect(channel.close).toHaveBeenCalled();
+      expect(connection.close).toHaveBeenCalled();
     });
   });
 });

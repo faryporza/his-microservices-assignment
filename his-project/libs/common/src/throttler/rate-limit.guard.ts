@@ -4,6 +4,7 @@ import {
   HttpException,
   HttpStatus,
   Injectable,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { RedisService } from '../redis/redis.service';
@@ -63,7 +64,11 @@ export class RateLimitGuard implements CanActivate {
           context: {
             action: 'RATE_LIMIT_EXCEEDED',
             client_ip: clientIp,
-            identifier,
+            identifier_type: request.body?.username
+              ? 'username'
+              : request.body?.email
+                ? 'email'
+                : 'ip',
             limit: options.limit,
             count: currentCount,
           },
@@ -84,11 +89,14 @@ export class RateLimitGuard implements CanActivate {
       if (error instanceof HttpException) {
         throw error;
       }
-      this.logger.warn({
-        message: 'Redis rate limiting error, falling through',
+      this.logger.error({
+        message: 'Redis rate limiting service unavailable',
+        context: { action: 'RATE_LIMIT_SERVICE_UNAVAILABLE' },
         error,
       });
-      return true;
+      throw new ServiceUnavailableException(
+        'Rate limiting service unavailable',
+      );
     }
   }
 }

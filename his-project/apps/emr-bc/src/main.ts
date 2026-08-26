@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import {
   AllExceptionsFilter,
+  AccessAuditInterceptor,
+  AuditService,
   createStrictValidationPipe,
   getRequiredInteger,
   getRequiredString,
@@ -19,10 +21,20 @@ async function bootstrap() {
   const app = await NestFactory.create(EmrBcModule, { logger });
   const config = app.get(ConfigService);
   const reflector = app.get(Reflector);
+  const apiPrefix = (config.get<string>('API_PREFIX', 'api/v1') ?? '').replace(
+    /^\/+|\/+$/g,
+    '',
+  );
+  if (apiPrefix) {
+    app.setGlobalPrefix(apiPrefix, {
+      exclude: ['/', 'docs', 'docs-json', 'health'],
+    });
+  }
   app.useGlobalPipes(createStrictValidationPipe());
   app.useGlobalInterceptors(
     new RequestLoggingInterceptor(logger),
     new TransformInterceptor(reflector),
+    new AccessAuditInterceptor(reflector, app.get(AuditService)),
   );
   app.useGlobalFilters(new AllExceptionsFilter(logger));
 
@@ -39,11 +51,9 @@ async function bootstrap() {
   SwaggerModule.setup('docs', app, document);
 
   const rmqService = app.get(RabbitMqOptionsService);
-  app.connectMicroservice(
-    rmqService.createServiceOptions(
-      getRequiredString(config, 'EMR_RABBITMQ_QUEUE'),
-    ),
-  );
+  const queue = getRequiredString(config, 'EMR_RABBITMQ_QUEUE');
+  await rmqService.ensureTopology(queue);
+  app.connectMicroservice(rmqService.createServiceOptions(queue));
   await app.startAllMicroservices();
 
   await app.listen(getRequiredInteger(config, 'EMR_PORT'));

@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { randomUUID } from 'node:crypto';
@@ -17,6 +21,10 @@ import {
   getRequiredSecret,
   parseDurationToSeconds,
 } from '@app/common';
+import {
+  LEGACY_SEED_EMAILS,
+  LEGACY_SEED_USERNAMES,
+} from './legacy-seed-identifiers';
 
 export interface UserResponse {
   id: string;
@@ -24,6 +32,7 @@ export interface UserResponse {
   email: string;
   first_name: string;
   last_name: string;
+  patient_id: string | null;
   role: UserRole;
   is_active: boolean;
   created_at: Date;
@@ -68,6 +77,13 @@ export class AuthService {
   }
 
   async register(dto: RegisterUserDTO): Promise<UserResponse> {
+    if (
+      LEGACY_SEED_USERNAMES.has(dto.username.toLowerCase()) ||
+      LEGACY_SEED_EMAILS.has(dto.email.toLowerCase())
+    ) {
+      throw new ConflictException('Username or email is reserved');
+    }
+
     const passwordHash = await this.passwordHashService.hashPassword(
       dto.password,
     );
@@ -86,7 +102,6 @@ export class AuthService {
       context: {
         action: 'USER_REGISTERED',
         user_id: user.id,
-        username: user.username,
         role: user.role,
       },
     });
@@ -98,6 +113,7 @@ export class AuthService {
       first_name: user.first_name,
       last_name: user.last_name,
       role: user.role,
+      patient_id: user.patient_id ?? null,
       is_active: user.is_active,
       created_at: user.created_at,
       updated_at: user.updated_at,
@@ -112,7 +128,7 @@ export class AuthService {
         message: 'Login attempt failed: user not found',
         context: {
           action: 'LOGIN_FAILED',
-          username: dto.username,
+          identifier_type: dto.username.includes('@') ? 'email' : 'username',
         },
       });
       throw new UnauthorizedException('Invalid credentials');
@@ -157,6 +173,7 @@ export class AuthService {
         sid: sessionId,
         jti: accessJti,
         email: user.email,
+        ...(user.patient_id ? { patient_id: user.patient_id } : {}),
       },
       {
         secret: this.jwtSecret,
@@ -200,7 +217,6 @@ export class AuthService {
       context: {
         action: 'USER_LOGGED_IN',
         user_id: user.id,
-        username: user.username,
         role: user.role,
         session_id: sessionId,
       },
@@ -270,9 +286,7 @@ export class AuthService {
         context: {
           action: 'REFRESH_TOKEN_REUSE_DETECTED',
           user_id: payload.sub,
-          session_id: payload.sid,
-          attempted_jti: payload.jti,
-          expected_jti: session.refreshTokenJti,
+          detection: 'refresh_jti_mismatch',
         },
       });
       await this.redisService.revokeAllUserSessions(payload.sub);
@@ -302,6 +316,7 @@ export class AuthService {
         sid: payload.sid,
         jti: newAccessJti,
         email: user.email,
+        ...(user.patient_id ? { patient_id: user.patient_id } : {}),
       },
       {
         secret: this.jwtSecret,
@@ -391,6 +406,7 @@ export class AuthService {
       first_name: user.first_name,
       last_name: user.last_name,
       role: user.role,
+      patient_id: user.patient_id ?? null,
       is_active: user.is_active,
       created_at: user.created_at,
       updated_at: user.updated_at,

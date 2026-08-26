@@ -3,6 +3,8 @@ import {
   Controller,
   Get,
   Headers,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -11,12 +13,20 @@ import {
   ApiBearerAuth,
   ApiHeader,
   ApiNotFoundResponse,
-  ApiOkResponse,
   ApiOperation,
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
-import { RequirePermission, ResourceType, Roles, UserRole } from '@app/common';
+import {
+  CheckResourceOwnership,
+  CurrentUser,
+  RequirePermission,
+  ResourceType,
+  Roles,
+  ApiSuccessResponse,
+  UserRole,
+} from '@app/common';
+import type { AuthenticatedUser } from '@app/common';
 import { InvoicesService } from '../services/invoices.service';
 import { PayInvoiceDTO } from '../dto/pay-invoice.dto';
 
@@ -28,17 +38,20 @@ export class InvoicesController {
   constructor(private readonly invoicesService: InvoicesService) {}
 
   @Get()
+  @HttpCode(HttpStatus.OK)
   @Roles(UserRole.ADMIN, UserRole.FINANCE_STAFF)
   @RequirePermission('invoice:read')
   @ApiOperation({ summary: 'Retrieve all invoices' })
-  @ApiOkResponse({ description: 'List of all invoices' })
+  @ApiSuccessResponse({ description: 'List of all invoices' })
   findAll() {
     return this.invoicesService.findAll();
   }
 
   @Get(':visitId')
+  @HttpCode(HttpStatus.OK)
   @Roles(UserRole.ADMIN, UserRole.FINANCE_STAFF, UserRole.PATIENT)
   @RequirePermission('invoice:read')
+  @CheckResourceOwnership('invoice', 'visitId')
   @ApiOperation({ summary: 'Retrieve invoices by visit ID' })
   @ApiParam({
     name: 'visitId',
@@ -46,14 +59,20 @@ export class InvoicesController {
     type: 'string',
     format: 'uuid',
   })
-  @ApiOkResponse({ description: 'List of invoices for the specified visit' })
+  @ApiSuccessResponse({
+    description: 'List of invoices for the specified visit',
+  })
   findByVisitId(
     @Param('visitId', new ParseUUIDPipe({ version: '4' })) visitId: string,
+    @CurrentUser() user?: AuthenticatedUser,
   ) {
-    return this.invoicesService.findByVisitId(visitId);
+    return user
+      ? this.invoicesService.findByVisitId(visitId, user)
+      : this.invoicesService.findByVisitId(visitId);
   }
 
   @Patch(':id/pay')
+  @HttpCode(HttpStatus.OK)
   @Roles(UserRole.ADMIN, UserRole.FINANCE_STAFF)
   @RequirePermission('invoice:pay')
   @ApiOperation({
@@ -75,7 +94,9 @@ export class InvoicesController {
     description: 'Trace ID for distributed tracing',
     required: false,
   })
-  @ApiOkResponse({ description: 'Invoice payment processed successfully' })
+  @ApiSuccessResponse({
+    description: 'Invoice payment processed successfully',
+  })
   @ApiNotFoundResponse({ description: 'Invoice not found' })
   pay(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,

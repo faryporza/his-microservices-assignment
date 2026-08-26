@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { RmqOptions, Transport } from '@nestjs/microservices';
+import { connect } from 'amqplib';
+import {
+  rabbitMqBindings,
+  rabbitMqDlxExchange,
+  rabbitMqDlqQueues,
+} from '@app/contracts';
 
 /**
  * Builds {@link RmqOptions} for the NestJS RabbitMQ microservice transport.
@@ -64,6 +70,53 @@ export class RabbitMqOptionsService {
         maxConnectionAttempts: -1,
       },
     };
+  }
+
+  /**
+   * Declares the complete broker topology. Nest's RMQ transport declares the
+   * consuming queue, but it does not create the dead-letter exchange, DLQ, or
+   * bindings required when a message is rejected.
+   */
+  async ensureTopology(queue: string): Promise<void> {
+    const connection = await connect(this.getUrl());
+    const channel = await connection.createChannel();
+    const exchange = this.getExchange();
+    const dlx = this.config.get<string>(
+      'RABBITMQ_DLX_EXCHANGE',
+      rabbitMqDlxExchange,
+    );
+    const dlq = this.getDlqName(queue);
+
+    try {
+      await channel.assertExchange(exchange, 'topic', { durable: true });
+      await channel.assertExchange(dlx, 'direct', { durable: true });
+      await channel.assertQueue(queue, {
+        durable: true,
+        autoDelete: false,
+        arguments: {
+          'x-dead-letter-exchange': dlx,
+          'x-dead-letter-routing-key': `${queue}.dlq`,
+        },
+      });
+      await channel.assertQueue(dlq, { durable: true, autoDelete: false });
+      await channel.bindQueue(dlq, dlx, `${queue}.dlq`);
+
+      for (const [routingKey, boundQueue] of Object.entries(rabbitMqBindings)) {
+        if (boundQueue === queue) {
+          await channel.bindQueue(queue, exchange, routingKey);
+        }
+      }
+    } finally {
+      await channel.close();
+      await connection.close();
+    }
+  }
+
+  private getDlqName(queue: string): string {
+    const knownQueue = Object.entries(rabbitMqDlqQueues).find(
+      ([, value]) => value.replace('.dlq', '') === queue,
+    );
+    return knownQueue?.[1] ?? `${queue}.dlq`;
   }
 
   /**

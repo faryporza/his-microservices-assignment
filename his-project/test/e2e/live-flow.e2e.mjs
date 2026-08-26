@@ -9,14 +9,22 @@ const baseUrls = {
   finance: process.env.FINANCE_BASE_URL ?? 'http://127.0.0.1:3002',
   iam: process.env.IAM_BASE_URL ?? 'http://127.0.0.1:3003',
 };
+const apiPrefix = (process.env.API_PREFIX ?? 'api/v1').replace(/^\/+|\/+$/g, '');
+const apiBaseUrls = Object.fromEntries(
+  Object.entries(baseUrls).map(([name, url]) => [
+    name,
+    apiPrefix ? `${url}/${apiPrefix}` : url,
+  ]),
+);
 const stateFile = process.env.FLOW_STATE_FILE ?? '/tmp/his-flow-state.json';
 
 const redisHost = process.env.REDIS_HOST ?? '127.0.0.1';
 const redisPort = Number(process.env.REDIS_PORT ?? 6379);
 const redisPassword = process.env.REDIS_PASSWORD || undefined;
-const jwtSecret =
-  process.env.JWT_SECRET ??
-  'his-secret-jwt-key-for-development-change-in-production';
+const jwtSecret = process.env.JWT_SECRET;
+if (!jwtSecret) {
+  throw new Error('JWT_SECRET must be set for the live flow');
+}
 
 const redis = new Redis({
   host: redisHost,
@@ -33,26 +41,22 @@ async function getAuthHeaders() {
   currentSessionId = `session-live-${randomUUID().slice(0, 8)}`;
   const jti = `jti-live-${randomUUID().slice(0, 8)}`;
 
-  try {
-    if (redis.status !== 'ready' && redis.status !== 'connecting') {
-      await redis.connect();
-    }
-    const sessionKey = `auth:session:${currentUserId}:${currentSessionId}`;
-    const userSessionsKey = `auth:user_sessions:${currentUserId}`;
-    const sessionMeta = {
-      userId: currentUserId,
-      username: 'live_admin',
-      role: 'ADMIN',
-      refreshTokenJti: `refresh-jti-live-${randomUUID().slice(0, 8)}`,
-      createdAt: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + 86400000).toISOString(),
-    };
-    await redis.set(sessionKey, JSON.stringify(sessionMeta), 'EX', 86400);
-    await redis.sadd(userSessionsKey, currentSessionId);
-    await redis.expire(userSessionsKey, 86400);
-  } catch {
-    // Redis might be already connected or running in isolated env
+  if (redis.status !== 'ready' && redis.status !== 'connecting') {
+    await redis.connect();
   }
+  const sessionKey = `auth:session:${currentUserId}:${currentSessionId}`;
+  const userSessionsKey = `auth:user_sessions:${currentUserId}`;
+  const sessionMeta = {
+    userId: currentUserId,
+    username: 'live_admin',
+    role: 'ADMIN',
+    refreshTokenJti: `refresh-jti-live-${randomUUID().slice(0, 8)}`,
+    createdAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 86400000).toISOString(),
+  };
+  await redis.set(sessionKey, JSON.stringify(sessionMeta), 'EX', 86400);
+  await redis.sadd(userSessionsKey, currentSessionId);
+  await redis.expire(userSessionsKey, 86400);
 
   const token = jwt.sign(
     {
@@ -122,7 +126,7 @@ async function createVisit() {
   await waitForService('OPD', baseUrls.opd);
   const authHeaders = await getAuthHeaders();
   const suffix = randomUUID().replaceAll('-', '').slice(0, 12);
-  const patientRes = await requestJson(`${baseUrls.opd}/patients`, {
+  const patientRes = await requestJson(`${apiBaseUrls.opd}/patients`, {
     method: 'POST',
     headers: authHeaders,
     body: JSON.stringify({
@@ -133,7 +137,7 @@ async function createVisit() {
     }),
   });
   const patientId = patientRes.data.id;
-  const visitRes = await requestJson(`${baseUrls.opd}/visits`, {
+  const visitRes = await requestJson(`${apiBaseUrls.opd}/visits`, {
     method: 'POST',
     headers: authHeaders,
     body: JSON.stringify({ patient_id: patientId }),
@@ -154,7 +158,7 @@ async function completeVisit(visitId) {
 
   const recordsRes = await waitFor('EMR waiting record', async () => {
     const value = await requestJson(
-      `${baseUrls.emr}/records/visit/${visitId}`,
+      `${apiBaseUrls.emr}/records/visit/${visitId}`,
       { headers: authHeaders },
     );
     const list = Array.isArray(value?.data) ? value.data : undefined;
@@ -163,7 +167,7 @@ async function completeVisit(visitId) {
   const record = recordsRes[0];
   const recordId = record.id;
   const completedRes = await requestJson(
-    `${baseUrls.emr}/records/${recordId}`,
+    `${apiBaseUrls.emr}/records/${recordId}`,
     {
       method: 'PATCH',
       headers: authHeaders,
@@ -183,7 +187,7 @@ async function completeVisit(visitId) {
 
   const invoicesRes = await waitFor('Finance pending invoice', async () => {
     const value = await requestJson(
-      `${baseUrls.finance}/invoices/${visitId}`,
+      `${apiBaseUrls.finance}/invoices/${visitId}`,
       { headers: authHeaders },
     );
     const list = Array.isArray(value?.data) ? value.data : undefined;
@@ -192,7 +196,7 @@ async function completeVisit(visitId) {
   const invoice = invoicesRes[0];
   const invoiceId = invoice.id;
   const paidRes = await requestJson(
-    `${baseUrls.finance}/invoices/${invoiceId}/pay`,
+    `${apiBaseUrls.finance}/invoices/${invoiceId}/pay`,
     {
       method: 'PATCH',
       headers: authHeaders,
@@ -205,7 +209,7 @@ async function completeVisit(visitId) {
   }
 
   const closedVisitRes = await waitFor('OPD closed visit', async () => {
-    const value = await requestJson(`${baseUrls.opd}/visits/${visitId}`, {
+    const value = await requestJson(`${apiBaseUrls.opd}/visits/${visitId}`, {
       headers: authHeaders,
     });
     const status = value?.data?.attributes?.status;

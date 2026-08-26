@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -10,6 +11,8 @@ import {
   IdempotencyService,
   OutboxEventsService,
   StructuredLogger,
+  AuthenticatedUser,
+  UserRole,
 } from '@app/common';
 import { CreateInvoiceDTO } from '../dto/create-invoice.dto';
 import { Invoice, InvoiceStatus } from '../entities/invoice.entity';
@@ -44,7 +47,10 @@ export class InvoicesService {
     return invoice;
   }
 
-  async findByVisitId(visitId: string): Promise<Invoice[]> {
+  async findByVisitId(
+    visitId: string,
+    actor?: AuthenticatedUser,
+  ): Promise<Invoice[]> {
     const invoices = await this.invoiceRepository.find({
       where: { visit_id: visitId },
       order: { created_at: 'DESC' },
@@ -52,6 +58,16 @@ export class InvoicesService {
 
     if (invoices.length === 0) {
       throw new NotFoundException(`Invoice for visit '${visitId}' not found`);
+    }
+
+    if (
+      actor?.role === UserRole.PATIENT &&
+      (!actor.patient_id ||
+        invoices.some((invoice) => invoice.patient_id !== actor.patient_id))
+    ) {
+      throw new ForbiddenException(
+        'Access denied: resource belongs to another patient',
+      );
     }
 
     return invoices;

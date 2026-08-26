@@ -1,13 +1,17 @@
 # HIS Microservices
 
-Hospital Information System implemented as a NestJS monorepo with three
-bounded contexts conforming to the [Enterprise Backend Blueprint](https://iots1.github.io/enterprise-backend-blueprint/):
+Hospital Information System implemented as a NestJS monorepo with four bounded
+contexts aligned with the [Enterprise Backend Blueprint](https://iots1.github.io/enterprise-backend-blueprint/):
 
 | Service | HTTP base URL           | Swagger UI               | Database     | Owns                  |
 | ------- | ----------------------- | ------------------------ | ------------ | --------------------- |
-| OPD     | `http://localhost:3000` | `http://localhost:3000/docs` | `opd_db`     | patients and visits   |
-| EMR     | `http://localhost:3001` | `http://localhost:3001/docs` | `emr_db`     | medical records       |
-| Finance | `http://localhost:3002` | `http://localhost:3002/docs` | `finance_db` | invoices and payments |
+| IAM     | `http://localhost:3003/api/v1` | `http://localhost:3003/docs` | `iam_db` | identity and access-audit records |
+| OPD     | `http://localhost:3000/api/v1` | `http://localhost:3000/docs` | `opd_db` | patients and visits |
+| EMR     | `http://localhost:3001/api/v1` | `http://localhost:3001/docs` | `emr_db` | medical records |
+| Finance | `http://localhost:3002/api/v1` | `http://localhost:3002/docs` | `finance_db` | invoices and payments |
+
+Health probes remain at `/`; HTTP APIs use the configured `API_PREFIX` (the
+default is `/api/v1`).
 
 ## Event flow
 
@@ -96,6 +100,11 @@ Content-Type: application/json
 }
 ```
 
+Privileged verification users are not part of production migrations. Create
+them only in a test environment with the guarded `npm run seed:test` command.
+Patient accounts must be linked to an OPD patient identity by an administrator
+before patient-scoped reads can succeed.
+
 ### Create a visit
 
 ```http
@@ -181,5 +190,5 @@ npm run test:e2e
 npm run build
 ```
 
-Configure database and RabbitMQ values in `.env`; use `.env.example` as the
-template. Do not commit `.env`.
+Configure database, RabbitMQ, Redis, and both required JWT secrets in `.env`;
+use `.env.example` as the template. Do not commit `.env`.

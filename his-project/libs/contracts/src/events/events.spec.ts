@@ -123,16 +123,18 @@ describe('event trace metadata validation', () => {
 // ---------------------------------------------------------------------------
 
 describe('EventRoutingKey', () => {
-  it('should accept the three known routing keys', () => {
+  it('should accept the known routing keys', () => {
     const keys: EventRoutingKey[] = [
       'visit.created',
       'treatment.completed',
       'invoice.paid',
+      'access.audit',
     ];
-    expect(keys).toHaveLength(3);
+    expect(keys).toHaveLength(4);
     expect(keys).toContain('visit.created');
     expect(keys).toContain('treatment.completed');
     expect(keys).toContain('invoice.paid');
+    expect(keys).toContain('access.audit');
   });
 });
 
@@ -318,9 +320,10 @@ describe('RabbitMQ topology constants', () => {
       expect(rabbitMqQueues.finance).toBe('finance.events');
     });
 
-    it('should have exactly three queues', () => {
+    it('should have one queue for each bounded context', () => {
       const queueNames = Object.values(rabbitMqQueues);
-      expect(queueNames).toHaveLength(3);
+      expect(queueNames).toHaveLength(4);
+      expect(queueNames).toContain('iam.events');
     });
   });
 
@@ -333,9 +336,10 @@ describe('RabbitMQ topology constants', () => {
       expect(rabbitMqRoutingKeys.invoicePaid).toBe('invoice.paid');
     });
 
-    it('should have exactly three routing keys', () => {
+    it('should have one routing key for each event contract', () => {
       const keys = Object.values(rabbitMqRoutingKeys);
-      expect(keys).toHaveLength(3);
+      expect(keys).toHaveLength(4);
+      expect(keys).toContain('access.audit');
     });
   });
 
@@ -354,12 +358,13 @@ describe('RabbitMQ topology constants', () => {
       expect(rabbitMqBindings['invoice.paid']).toBe(rabbitMqQueues.opd);
     });
 
-    it('should have bindings for all three routing keys', () => {
+    it('should have bindings for all routing keys', () => {
       const bindingKeys = Object.keys(rabbitMqBindings);
-      expect(bindingKeys).toHaveLength(3);
+      expect(bindingKeys).toHaveLength(4);
       expect(bindingKeys).toContain(rabbitMqRoutingKeys.visitCreated);
       expect(bindingKeys).toContain(rabbitMqRoutingKeys.treatmentCompleted);
       expect(bindingKeys).toContain(rabbitMqRoutingKeys.invoicePaid);
+      expect(bindingKeys).toContain(rabbitMqRoutingKeys.accessAudit);
     });
 
     it('should bind each event to a distinct queue matching the event flow', () => {

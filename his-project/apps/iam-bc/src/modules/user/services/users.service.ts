@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -67,5 +68,31 @@ export class UsersService {
     const user = await this.findById(id);
     user.role = role;
     return this.userRepository.save(user);
+  }
+
+  async updatePatientId(id: string, patientId: string): Promise<User> {
+    const user = await this.findById(id);
+    if (user.role !== UserRole.PATIENT) {
+      throw new BadRequestException(
+        'Only a PATIENT account can be linked to a patient identity',
+      );
+    }
+    user.patient_id = patientId;
+    try {
+      return await this.userRepository.save(user);
+    } catch (error: unknown) {
+      if (this.isUniqueViolation(error)) {
+        throw new ConflictException('Patient is already linked to a user');
+      }
+      throw error;
+    }
+  }
+
+  private isUniqueViolation(error: unknown): boolean {
+    return (
+      typeof error === 'object' &&
+      error !== null &&
+      (error as { code?: unknown }).code === '23505'
+    );
   }
 }

@@ -20,6 +20,7 @@ interface JwtPayload {
   sid?: string;
   jti?: string;
   email?: string;
+  patient_id?: string | null;
 }
 
 @Injectable()
@@ -72,26 +73,30 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException('Invalid or expired token');
     }
 
+    if (
+      !payload.sub ||
+      !payload.username ||
+      !payload.sid ||
+      !payload.jti ||
+      !Object.values(UserRole).includes(payload.role)
+    ) {
+      throw new UnauthorizedException('Invalid authentication claims');
+    }
+
     try {
-      if (payload.jti) {
-        const isBlacklisted = await this.redisService.isAccessTokenBlacklisted(
-          payload.jti,
-        );
-        if (isBlacklisted) {
-          throw new UnauthorizedException('Session has been revoked');
-        }
+      const isBlacklisted = await this.redisService.isAccessTokenBlacklisted(
+        payload.jti,
+      );
+      if (isBlacklisted) {
+        throw new UnauthorizedException('Session has been revoked');
       }
 
-      if (payload.sub && payload.sid) {
-        const session = await this.redisService.getSession(
-          payload.sub,
-          payload.sid,
-        );
-        if (!session) {
-          throw new UnauthorizedException(
-            'Session has been revoked or expired',
-          );
-        }
+      const session = await this.redisService.getSession(
+        payload.sub,
+        payload.sid,
+      );
+      if (!session) {
+        throw new UnauthorizedException('Session has been revoked or expired');
       }
     } catch (err: unknown) {
       if (err instanceof UnauthorizedException) {
@@ -115,6 +120,9 @@ export class JwtAuthGuard implements CanActivate {
       jti: payload.jti,
       email: payload.email,
     };
+    if (payload.patient_id) {
+      request.user.patient_id = payload.patient_id;
+    }
 
     return true;
   }

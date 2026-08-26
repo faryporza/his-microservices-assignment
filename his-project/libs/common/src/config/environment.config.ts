@@ -2,6 +2,7 @@ import { ConfigService } from '@nestjs/config';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { RenameUniqueConstraints20260805000000 } from '../migrations/rename-unique-constraints.migration';
 import { RenameMigrationsPrimaryKey20260805000100 } from '../migrations/rename-migrations-primary-key.migration';
+import { AddSchemaComments20260826000000 } from '../migrations/20260826000000-add-schema-comments.migration';
 
 export function getRequiredString(config: ConfigService, key: string): string {
   return config.getOrThrow<string>(key);
@@ -83,6 +84,7 @@ export function createPostgresOptions(
     migrations: overrides?.migrations ?? [
       RenameUniqueConstraints20260805000000,
       RenameMigrationsPrimaryKey20260805000100,
+      AddSchemaComments20260826000000,
     ],
     migrationsRun: true,
   };

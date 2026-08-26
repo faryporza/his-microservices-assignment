@@ -1,32 +1,20 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
 import { AuditService } from './audit.service';
-import { AuditLog, AuditOutcome } from './entities/audit-log.entity';
+import { AuditOutcome } from './entities/audit-log.entity';
+import { OutboxEventsService } from '../outbox/outbox-events.service';
 
 describe('AuditService', () => {
   let service: AuditService;
-  let mockAuditRepository: {
-    create: jest.Mock;
-    save: jest.Mock;
-  };
+  let mockOutbox: jest.Mocked<OutboxEventsService>;
 
   beforeEach(async () => {
-    mockAuditRepository = {
-      create: jest.fn().mockImplementation((dto) => dto),
-      save: jest.fn().mockResolvedValue({ id: 'audit-log-1' }),
-    };
-
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        AuditService,
-        {
-          provide: getRepositoryToken(AuditLog),
-          useValue: mockAuditRepository,
-        },
-      ],
-    }).compile();
-
-    service = module.get<AuditService>(AuditService);
+    mockOutbox = {
+      runInTransaction: jest
+        .fn()
+        .mockImplementation(async (work) => work({} as never)),
+      enqueue: jest.fn().mockResolvedValue({}),
+      publishPending: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<OutboxEventsService>;
+    service = new AuditService(mockOutbox);
   });
 
   it('should be defined', () => {
@@ -43,21 +31,25 @@ describe('AuditService', () => {
       outcome: AuditOutcome.GRANTED,
     });
 
-    expect(mockAuditRepository.create).toHaveBeenCalledWith({
-      actor_id: 'user-1',
-      actor_role: 'DOCTOR',
-      action: 'READ_MEDICAL_RECORD',
-      resource_type: 'medical_record',
-      resource_id: 'rec-1',
-      ip_address: null,
-      outcome: AuditOutcome.GRANTED,
-      metadata: null,
-    });
-    expect(mockAuditRepository.save).toHaveBeenCalled();
+    expect(mockOutbox.enqueue).toHaveBeenCalledWith(
+      expect.anything(),
+      'access.audit',
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          actorId: 'user-1',
+          actorRole: 'DOCTOR',
+          action: 'READ_MEDICAL_RECORD',
+          resourceType: 'medical_record',
+          resourceId: 'rec-1',
+          outcome: AuditOutcome.GRANTED,
+        }),
+      }),
+    );
+    expect(mockOutbox.publishPending).toHaveBeenCalled();
   });
 
-  it('handles database write failure safely without throwing', async () => {
-    mockAuditRepository.save.mockRejectedValueOnce(
+  it('propagates outbox failure so sensitive data is not served without a durable audit', async () => {
+    mockOutbox.runInTransaction.mockRejectedValueOnce(
       new Error('DB connection refused'),
     );
 
@@ -70,6 +62,6 @@ describe('AuditService', () => {
         resourceId: 'rec-1',
         outcome: AuditOutcome.DENIED,
       }),
-    ).resolves.not.toThrow();
+    ).rejects.toThrow('DB connection refused');
   });
 });

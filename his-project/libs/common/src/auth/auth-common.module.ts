@@ -3,6 +3,9 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule, JwtModuleOptions } from '@nestjs/jwt';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
+import { PermissionsGuard } from './guards/permissions.guard';
+import { ResourceOwnershipGuard } from './guards/resource-ownership.guard';
+import { RateLimitGuard } from '../throttler/rate-limit.guard';
 import { RedisModule } from '../redis/redis.module';
 import { getRequiredSecret } from '../config/environment.config';
 
@@ -25,7 +28,21 @@ import { getRequiredSecret } from '../config/environment.config';
       }),
     }),
   ],
-  providers: [JwtAuthGuard, RolesGuard],
-  exports: [JwtModule, JwtAuthGuard, RolesGuard, RedisModule],
+  providers: [
+    JwtAuthGuard,
+    RolesGuard,
+    PermissionsGuard,
+    ResourceOwnershipGuard,
+    RateLimitGuard,
+  ],
+  exports: [
+    JwtModule,
+    JwtAuthGuard,
+    RolesGuard,
+    PermissionsGuard,
+    ResourceOwnershipGuard,
+    RateLimitGuard,
+    RedisModule,
+  ],
 })
 export class AuthCommonModule {}

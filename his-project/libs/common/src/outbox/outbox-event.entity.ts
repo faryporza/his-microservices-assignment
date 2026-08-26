@@ -7,7 +7,10 @@ import {
   Unique,
 } from 'typeorm';
 
-@Entity('outbox_events')
+// PostgreSQL keeps this service-local table in the active connection. The
+// symbolic database metadata makes that boundary explicit without qualifying
+// the table to one bounded context's database.
+@Entity({ name: 'outbox_events', database: 'service_local' })
 @Unique('uq_outbox_events_event_id', ['event_id'])
 @Index('idx_outbox_events_published_at', ['published_at'])
 export class OutboxEvent {

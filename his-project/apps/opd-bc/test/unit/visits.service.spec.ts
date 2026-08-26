@@ -1,6 +1,11 @@
-import { NotFoundException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { EntityManager, Repository } from 'typeorm';
-import { OutboxEventsService, IdempotencyService } from '@app/common';
+import {
+  AuthenticatedUser,
+  OutboxEventsService,
+  IdempotencyService,
+  UserRole,
+} from '@app/common';
 import { Patient } from '@apps/opd-bc/modules/patient/entities/patient.entity';
 import {
   Visit,
@@ -109,6 +114,21 @@ describe('VisitsService (Unit)', () => {
     await expect(service.closeAfterPayment(visit.id)).resolves.toBe(visit);
     await expect(service.findOne('missing')).rejects.toBeInstanceOf(
       NotFoundException,
+    );
+  });
+
+  it('denies a patient account access to another patient visit', async () => {
+    const visit = createMockVisit();
+    visitRepository.findOne.mockResolvedValue(visit);
+    const actor: AuthenticatedUser = {
+      id: 'iam-patient-user',
+      username: 'patient_user',
+      role: UserRole.PATIENT,
+      patient_id: 'another-patient-id',
+    };
+
+    await expect(service.findOne(visit.id, actor)).rejects.toBeInstanceOf(
+      ForbiddenException,
     );
   });
 });

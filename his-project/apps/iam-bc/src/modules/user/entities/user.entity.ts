@@ -50,6 +50,15 @@ export class User implements ITimestamp {
   })
   last_name: string;
 
+  @Index('idx_users_patient_id')
+  @Column({
+    type: 'uuid',
+    nullable: true,
+    comment:
+      'Scalar UUID mapping to the patient identity in OPD; no cross-database foreign key',
+  })
+  patient_id?: string | null;
+
   @Index('idx_users_role')
   @Column({
     type: 'enum',

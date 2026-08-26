@@ -1,7 +1,12 @@
-import { Injectable, Optional } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { AuditLog, AuditOutcome } from './entities/audit-log.entity';
+import { Injectable } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+import {
+  AccessAuditEvent,
+  accessAuditEventName,
+  accessAuditEventVersion,
+} from '@app/contracts';
+import { OutboxEventsService } from '../outbox/outbox-events.service';
+import { AuditOutcome } from './entities/audit-log.entity';
 import { StructuredLogger } from '../logging/structured.logger';
 
 export interface LogAccessParams {
@@ -19,49 +24,43 @@ export interface LogAccessParams {
 export class AuditService {
   private readonly logger = new StructuredLogger('audit-service');
 
-  constructor(
-    @Optional()
-    @InjectRepository(AuditLog)
-    private readonly auditRepository?: Repository<AuditLog>,
-  ) {}
+  constructor(private readonly outboxEvents: OutboxEventsService) {}
 
   async logAccess(params: LogAccessParams): Promise<void> {
-    try {
-      if (this.auditRepository) {
-        const logEntry = this.auditRepository.create({
-          actor_id: params.actorId,
-          actor_role: params.actorRole,
-          action: params.action,
-          resource_type: params.resourceType,
-          resource_id: params.resourceId,
-          ip_address: params.ipAddress ?? null,
-          outcome: params.outcome,
-          metadata: params.metadata ?? null,
-        });
-        await this.auditRepository.save(logEntry);
-      }
+    const event: AccessAuditEvent = {
+      metadata: {
+        eventId: randomUUID(),
+        eventName: accessAuditEventName,
+        version: accessAuditEventVersion,
+        occurredAt: new Date().toISOString(),
+      },
+      payload: {
+        actorId: params.actorId,
+        actorRole: params.actorRole,
+        action: params.action,
+        resourceType: params.resourceType,
+        resourceId: params.resourceId,
+        ipAddress: params.ipAddress ?? null,
+        outcome: params.outcome,
+        metadata: params.metadata ?? null,
+      },
+    };
 
-      this.logger.log({
-        message: 'PHI/Billing access audited',
-        context: {
-          action: params.action,
-          actor_id: params.actorId,
-          actor_role: params.actorRole,
-          resource_type: params.resourceType,
-          resource_id: params.resourceId,
-          outcome: params.outcome,
-        },
-      });
-    } catch (error: unknown) {
-      // Non-blocking fail-safe: log structured warning without crashing calling workflow
-      this.logger.warn({
-        message: 'Failed to write audit log entry',
-        context: {
-          action: params.action,
-          resource_id: params.resourceId,
-        },
-        error,
-      });
-    }
+    await this.outboxEvents.runInTransaction(async (manager) => {
+      await this.outboxEvents.enqueue(manager, accessAuditEventName, event);
+    });
+    await this.outboxEvents.publishPending();
+
+    this.logger.log({
+      message: 'Access audit event queued',
+      context: {
+        action: 'QUEUE_ACCESS_AUDIT',
+        actor_id: params.actorId,
+        actor_role: params.actorRole,
+        resource_type: params.resourceType,
+        resource_id: params.resourceId,
+        outcome: params.outcome,
+      },
+    });
   }
 }

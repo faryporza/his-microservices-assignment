@@ -5,4 +5,5 @@ export * from './events/event-validation.util';
 export * from './events/visit-created.event';
 export * from './events/treatment-completed.event';
 export * from './events/invoice-paid.event';
+export * from './events/access-audit.event';
 export * from './rabbitmq.constants';

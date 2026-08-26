@@ -45,7 +45,7 @@ describe('environment configuration helpers', () => {
 
     expect(
       createPostgresOptions(config, 'OPD_DATABASE').migrations,
-    ).toHaveLength(2);
+    ).toHaveLength(3);
   });
 
   it('rejects an invalid numeric environment value', () => {

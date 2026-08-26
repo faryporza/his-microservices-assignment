@@ -20,8 +20,8 @@
     "start:emr": "nest start emr-bc",
     "start:finance": "nest start finance-bc",
     "start:iam": "nest start iam-bc",
-    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
-    "lint:check": "eslint \"{src,apps,libs,test}/**/*.ts\"",
+    "lint": "eslint \"{src,apps,libs,test,scripts}/**/*.ts\" --fix",
+    "lint:check": "eslint \"{src,apps,libs,test,scripts}/**/*.ts\"",
     "test": "jest",
     "test:opd": "jest --config apps/opd-bc/jest.config.js",
     "test:emr": "jest --config apps/emr-bc/jest.config.js",
@@ -33,7 +33,11 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./apps/opd-bc/test/jest-e2e.json && jest --config ./apps/emr-bc/test/jest-e2e.json && jest --config ./apps/finance-bc/test/jest-e2e.json && jest --config ./apps/iam-bc/test/jest-e2e.json",
     "test:flow": "node test/e2e/live-flow.e2e.mjs",
-    "test:postman": "newman run ../docs/postman/his.postman_collection.json --bail"
+    "test:postman": "newman run ../docs/postman/his.postman_collection.json --bail",
+    "test:integration:live": "RUN_LIVE_INTEGRATION=true jest --runInBand test/integration/rabbitmq-dlq-replay.integration-spec.ts",
+    "test:integration:db": "RUN_LIVE_INTEGRATION=true jest --runInBand test/integration/concurrency-idempotency.integration-spec.ts",
+    "seed:test": "ts-node --files -r tsconfig-paths/register scripts/seed-test-users.ts",
+    "audit:prod": "npm audit --omit=dev --audit-level=high"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

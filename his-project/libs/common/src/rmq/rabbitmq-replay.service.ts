@@ -79,6 +79,7 @@ export class RabbitMqReplayService {
         context: { queue: dlqQueueName },
         error,
       });
+      throw error;
     } finally {
       if (channel) {
         await channel.close().catch(() => {});

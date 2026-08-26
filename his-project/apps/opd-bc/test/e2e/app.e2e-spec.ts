@@ -42,6 +42,17 @@ describe('HealthChecksController (OPD e2e)', () => {
       .expect('Hello World!');
   });
 
+  it('serves OpenAPI from the booted OPD application module', async () => {
+    const response = await request(app.getHttpServer() as App)
+      .get('/docs-json')
+      .expect(200);
+
+    expect(response.body.openapi).toMatch(/^3\./);
+    expect(response.body.paths['/patients']).toBeDefined();
+    expect(response.body.paths['/patients/{id}']).toBeDefined();
+    expect(response.body.components.securitySchemes).toBeDefined();
+  });
+
   it('rejects missing and non-whitelisted patient fields with Blueprint validation format', async () => {
     const missingRes = await request(app.getHttpServer() as App)
       .post('/patients')

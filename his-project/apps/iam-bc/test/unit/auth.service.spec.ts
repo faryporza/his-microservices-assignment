@@ -141,6 +141,20 @@ describe('AuthService', () => {
         }),
       ).rejects.toThrow(ConflictException);
     });
+
+    it('rejects legacy privileged test-account identifiers from public registration', async () => {
+      await expect(
+        service.register({
+          username: 'admin_test_user',
+          email: 'new-address@hospital.local',
+          password: 'Password123!',
+          first_name: 'Reserved',
+          last_name: 'Account',
+        }),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(passwordHashService.hashPassword).not.toHaveBeenCalled();
+      expect(usersService.create).not.toHaveBeenCalled();
+    });
   });
 
   describe('login', () => {

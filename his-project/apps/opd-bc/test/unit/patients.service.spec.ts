@@ -1,8 +1,13 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Repository, DeleteResult } from 'typeorm';
 import { PatientsService } from '@apps/opd-bc/modules/patient/services/patients.service';
 import { Patient } from '@apps/opd-bc/modules/patient/entities/patient.entity';
 import { createMockPatient } from '../mocks/mock-patients';
+import { UserRole } from '@app/common';
 
 describe('PatientsService (Unit)', () => {
   const repository = {
@@ -140,5 +145,19 @@ describe('PatientsService (Unit)', () => {
     await expect(service.delete('missing')).rejects.toBeInstanceOf(
       NotFoundException,
     );
+  });
+
+  it('denies a patient account access to another patient profile', async () => {
+    const otherPatient = createMockPatient();
+
+    await expect(
+      service.findOne(otherPatient.id, {
+        id: 'iam-patient-user',
+        username: 'patient_user',
+        role: UserRole.PATIENT,
+        patient_id: 'owned-patient-id',
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(repository.findOne).not.toHaveBeenCalled();
   });
 });

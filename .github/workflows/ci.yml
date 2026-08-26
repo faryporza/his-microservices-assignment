@@ -30,13 +30,16 @@ jobs:
       OPD_RABBITMQ_QUEUE: opd.events
       EMR_RABBITMQ_QUEUE: emr.events
       FINANCE_RABBITMQ_QUEUE: finance.events
+      IAM_RABBITMQ_QUEUE: iam.events
       RABBITMQ_URL: amqp://guest:guest@localhost:5672
       RABBITMQ_EXCHANGE: his.events
+      RABBITMQ_DLX_EXCHANGE: his.events.dlx
+      API_PREFIX: api/v1
       REDIS_HOST: 127.0.0.1
       REDIS_PORT: 6379
       REDIS_PASSWORD: ''
-      JWT_SECRET: his-secret-jwt-key-for-development-change-in-production
-      JWT_REFRESH_SECRET: his-refresh-secret-jwt-key-for-development
+      JWT_SECRET: ci-access-secret-change-me-012345678901234567890123
+      JWT_REFRESH_SECRET: ci-refresh-secret-change-me-012345678901234567890123
       JWT_ACCESS_EXPIRES_IN: 15m
       JWT_REFRESH_EXPIRES_IN: 7d
     services:
@@ -101,7 +104,7 @@ jobs:
 
       - name: Security audit dependencies
         working-directory: his-project
-        run: npm audit --audit-level=high
+        run: npm run audit:prod
 
       - name: Run ESLint
         working-directory: his-project
@@ -115,9 +118,25 @@ jobs:
         working-directory: his-project
         run: npm run build
 
+      - name: Verify RabbitMQ DLQ on live broker
+        working-directory: his-project
+        run: npm run test:integration:live
+
       - name: Run end-to-end tests
         working-directory: his-project
         run: npm run test:e2e
+
+      - name: Verify concurrent idempotency on PostgreSQL
+        working-directory: his-project
+        run: npm run test:integration:db
+
+      - name: Seed test-only IAM users
+        working-directory: his-project
+        env:
+          NODE_ENV: test
+          ALLOW_TEST_SEED: true
+          TEST_SEED_PASSWORD: Password123!
+        run: npm run seed:test
 
       - name: Run live event flow with deferred consumers
         working-directory: his-project

@@ -6,11 +6,16 @@ import {
   createPostgresOptions,
   CommonModule,
   AuthCommonModule,
+  AuditModule,
   JwtAuthGuard,
   RolesGuard,
+  PermissionsGuard,
+  ResourceOwnershipGuard,
+  RateLimitGuard,
   OutboxEvent,
   ProcessedEvent,
   InitEmr1000000000000,
+  AddSchemaComments20260826000000,
 } from '@app/common';
 import { EmrHealthChecksController } from './health-checks.controller';
 import { EmrHealthChecksService } from './health-checks.service';
@@ -29,12 +34,13 @@ import { MedicalRecord } from '@apps/emr-bc/modules/medical-record/entities/medi
       useFactory: (configService: ConfigService) =>
         createPostgresOptions(configService, 'EMR_DATABASE', {
           entities: [MedicalRecord, OutboxEvent, ProcessedEvent],
-          migrations: [InitEmr1000000000000],
+          migrations: [InitEmr1000000000000, AddSchemaComments20260826000000],
           synchronize: false,
         }),
     }),
     CommonModule,
     AuthCommonModule,
+    AuditModule,
     MedicalRecordModule,
   ],
   controllers: [EmrHealthChecksController],
@@ -47,6 +53,18 @@ import { MedicalRecord } from '@apps/emr-bc/modules/medical-record/entities/medi
     {
       provide: APP_GUARD,
       useClass: RolesGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: PermissionsGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ResourceOwnershipGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RateLimitGuard,
     },
   ],
 })

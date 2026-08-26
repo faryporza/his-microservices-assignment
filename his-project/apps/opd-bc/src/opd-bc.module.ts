@@ -6,11 +6,16 @@ import {
   createPostgresOptions,
   CommonModule,
   AuthCommonModule,
+  AuditModule,
   JwtAuthGuard,
   RolesGuard,
+  PermissionsGuard,
+  ResourceOwnershipGuard,
+  RateLimitGuard,
   OutboxEvent,
   ProcessedEvent,
   InitOpd1000000000000,
+  AddSchemaComments20260826000000,
 } from '@app/common';
 import { OpdHealthChecksController } from './health-checks.controller';
 import { OpdHealthChecksService } from './health-checks.service';
@@ -31,12 +36,13 @@ import { Visit } from '@apps/opd-bc/modules/visit/entities/visit.entity';
       useFactory: (configService: ConfigService) =>
         createPostgresOptions(configService, 'OPD_DATABASE', {
           entities: [Patient, Visit, OutboxEvent, ProcessedEvent],
-          migrations: [InitOpd1000000000000],
+          migrations: [InitOpd1000000000000, AddSchemaComments20260826000000],
           synchronize: false,
         }),
     }),
     CommonModule,
     AuthCommonModule,
+    AuditModule,
     PatientModule,
     VisitModule,
   ],
@@ -50,6 +56,18 @@ import { Visit } from '@apps/opd-bc/modules/visit/entities/visit.entity';
     {
       provide: APP_GUARD,
       useClass: RolesGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: PermissionsGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ResourceOwnershipGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RateLimitGuard,
     },
   ],
 })

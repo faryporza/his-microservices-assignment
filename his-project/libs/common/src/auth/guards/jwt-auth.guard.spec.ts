@@ -116,6 +116,40 @@ describe('JwtAuthGuard', () => {
     );
   });
 
+  it('should reject a verified token that is missing stateful auth claims', async () => {
+    jwtService.verifyAsync.mockResolvedValueOnce({
+      ...mockPayload,
+      sid: undefined,
+    });
+    const { context } = createMockExecutionContext({
+      authorization: 'Bearer structurally-valid-but-incomplete-token',
+    });
+
+    await expect(guard.canActivate(context)).rejects.toThrow(
+      new UnauthorizedException('Invalid authentication claims'),
+    );
+    expect(redisService.getSession).not.toHaveBeenCalled();
+  });
+
+  it('should forward the mapped patient identity from the token', async () => {
+    jwtService.verifyAsync.mockResolvedValueOnce({
+      ...mockPayload,
+      role: UserRole.PATIENT,
+      patient_id: 'patient-uuid-1',
+    });
+    const { context, request } = createMockExecutionContext({
+      authorization: 'Bearer patient-token',
+    });
+
+    await expect(guard.canActivate(context)).resolves.toBe(true);
+    expect(request.user).toEqual(
+      expect.objectContaining({
+        role: UserRole.PATIENT,
+        patient_id: 'patient-uuid-1',
+      }),
+    );
+  });
+
   it('should throw UnauthorizedException when token JTI is blacklisted in Redis', async () => {
     redisService.isAccessTokenBlacklisted.mockResolvedValueOnce(true);
     const { context } = createMockExecutionContext({

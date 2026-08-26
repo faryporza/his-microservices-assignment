@@ -15,6 +15,7 @@ export function ApiSuccessResponse(options?: ApiSuccessResponseOptions) {
     ApiResponse({
       status,
       description,
+      ...(options?.type ? { type: options.type } : {}),
     }),
   );
 }

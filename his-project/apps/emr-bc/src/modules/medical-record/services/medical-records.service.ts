@@ -1,5 +1,6 @@
 import {
   Injectable,
+  ForbiddenException,
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
@@ -9,6 +10,8 @@ import {
   IdempotencyService,
   OutboxEventsService,
   StructuredLogger,
+  AuthenticatedUser,
+  UserRole,
 } from '@app/common';
 import { MedicalRecord, RecordStatus } from '../entities/medical-record.entity';
 import { CreateMedicalRecordDTO } from '../dto/create-medical-record.dto';
@@ -68,20 +71,51 @@ export class MedicalRecordsService {
     return await this.medicalRecordRepository.find();
   }
 
-  async findOne(id: string): Promise<MedicalRecord> {
+  async findOne(id: string, actor?: AuthenticatedUser): Promise<MedicalRecord> {
     const record = await this.medicalRecordRepository.findOne({
       where: { id },
     });
     if (!record) {
       throw new NotFoundException(`Medical record with ID '${id}' not found`);
     }
+    this.assertPatientCanAccess(record.patient_id, actor);
     return record;
   }
 
-  async findByVisitId(visitId: string): Promise<MedicalRecord[]> {
-    return await this.medicalRecordRepository.find({
+  async findByVisitId(
+    visitId: string,
+    actor?: AuthenticatedUser,
+  ): Promise<MedicalRecord[]> {
+    const records = await this.medicalRecordRepository.find({
       where: { visit_id: visitId },
     });
+    if (actor?.role === UserRole.PATIENT) {
+      if (
+        !actor.patient_id ||
+        records.length === 0 ||
+        records.some((record) => record.patient_id !== actor.patient_id)
+      ) {
+        throw new ForbiddenException(
+          'Access denied: resource belongs to another patient',
+        );
+      }
+    }
+    return records;
+  }
+
+  private assertPatientCanAccess(
+    patientId: string | null | undefined,
+    actor?: AuthenticatedUser,
+  ): void {
+    if (actor?.role !== UserRole.PATIENT) {
+      return;
+    }
+
+    if (!actor.patient_id || patientId !== actor.patient_id) {
+      throw new ForbiddenException(
+        'Access denied: resource belongs to another patient',
+      );
+    }
   }
 
   async update(

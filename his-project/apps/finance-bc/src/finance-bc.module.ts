@@ -6,11 +6,16 @@ import {
   createPostgresOptions,
   CommonModule,
   AuthCommonModule,
+  AuditModule,
   JwtAuthGuard,
   RolesGuard,
+  PermissionsGuard,
+  ResourceOwnershipGuard,
+  RateLimitGuard,
   OutboxEvent,
   ProcessedEvent,
   InitFinance1000000000000,
+  AddSchemaComments20260826000000,
 } from '@app/common';
 import { FinanceHealthChecksController } from './health-checks.controller';
 import { FinanceHealthChecksService } from './health-checks.service';
@@ -29,12 +34,16 @@ import { Invoice } from '@apps/finance-bc/modules/invoice/entities/invoice.entit
       useFactory: (configService: ConfigService) =>
         createPostgresOptions(configService, 'FINANCE_DATABASE', {
           entities: [Invoice, OutboxEvent, ProcessedEvent],
-          migrations: [InitFinance1000000000000],
+          migrations: [
+            InitFinance1000000000000,
+            AddSchemaComments20260826000000,
+          ],
           synchronize: false,
         }),
     }),
     CommonModule,
     AuthCommonModule,
+    AuditModule,
     InvoiceModule,
   ],
   controllers: [FinanceHealthChecksController],
@@ -47,6 +56,18 @@ import { Invoice } from '@apps/finance-bc/modules/invoice/entities/invoice.entit
     {
       provide: APP_GUARD,
       useClass: RolesGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: PermissionsGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ResourceOwnershipGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RateLimitGuard,
     },
   ],
 })

@@ -1,4 +1,8 @@
-import { ExecutionContext, HttpException } from '@nestjs/common';
+import {
+  ExecutionContext,
+  HttpException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { RateLimitGuard } from './rate-limit.guard';
 import { RedisService } from '../redis/redis.service';
@@ -73,7 +77,7 @@ describe('RateLimitGuard', () => {
     expect(headers['Retry-After']).toBe(60);
   });
 
-  it('falls through safely on Redis communication error', async () => {
+  it('fails closed on Redis communication error', async () => {
     jest
       .spyOn(reflector, 'getAllAndOverride')
       .mockReturnValue({ limit: 5, ttlSeconds: 60 });
@@ -82,7 +86,8 @@ describe('RateLimitGuard', () => {
     );
     const { context } = createMockContext();
 
-    const result = await guard.canActivate(context);
-    expect(result).toBe(true);
+    await expect(guard.canActivate(context)).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
   });
 });

@@ -1,9 +1,15 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { EntityManager, Repository } from 'typeorm';
 import {
   IdempotencyService,
   OutboxEvent,
   OutboxEventsService,
+  AuthenticatedUser,
+  UserRole,
 } from '@app/common';
 import {
   MedicalRecord,
@@ -117,5 +123,20 @@ describe('MedicalRecordsService (Unit)', () => {
         treatment_cost: -1,
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('denies a patient account access to another visit record', async () => {
+    const record = createMockMedicalRecord();
+    repository.find.mockResolvedValue([record]);
+    const actor: AuthenticatedUser = {
+      id: 'iam-patient-user',
+      username: 'patient_user',
+      role: UserRole.PATIENT,
+      patient_id: 'another-patient-id',
+    };
+
+    await expect(
+      service.findByVisitId(record.visit_id, actor),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });

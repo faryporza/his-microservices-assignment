@@ -57,6 +57,18 @@ describe('UsersController', () => {
       'user-uuid-1',
       UserRole.DOCTOR,
     );
-    expect(result).toEqual(sampleUser);
+    expect(result).toEqual({
+      id: sampleUser.id,
+      username: sampleUser.username,
+      email: sampleUser.email,
+      first_name: sampleUser.first_name,
+      last_name: sampleUser.last_name,
+      role: sampleUser.role,
+      is_active: sampleUser.is_active,
+      patient_id: null,
+      created_at: sampleUser.created_at,
+      updated_at: sampleUser.updated_at,
+    });
+    expect(result).not.toHaveProperty('password_hash');
   });
 });

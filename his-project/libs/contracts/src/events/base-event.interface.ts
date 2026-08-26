@@ -15,7 +15,7 @@
  * `invoice.paid`        — published by Finance, consumed by OPD
  */
 export type EventRoutingKey =
-  'visit.created' | 'treatment.completed' | 'invoice.paid';
+  'visit.created' | 'treatment.completed' | 'invoice.paid' | 'access.audit';
 
 /**
  * Envelope metadata attached to every event. Consumers must treat `eventId` as

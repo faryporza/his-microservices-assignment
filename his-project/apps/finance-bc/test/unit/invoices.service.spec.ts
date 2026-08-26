@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
 import { EntityManager, Repository } from 'typeorm';
@@ -9,6 +10,8 @@ import {
   IdempotencyService,
   OutboxEvent,
   OutboxEventsService,
+  AuthenticatedUser,
+  UserRole,
 } from '@app/common';
 import { of } from 'rxjs';
 import {
@@ -146,5 +149,25 @@ describe('InvoicesService', () => {
     );
     expect(repository.save).not.toHaveBeenCalled();
     expect(client.emit).not.toHaveBeenCalled();
+  });
+
+  it('denies a patient account access to another visit invoice', async () => {
+    repository.find.mockResolvedValue([
+      {
+        id: 'invoice-id',
+        visit_id: 'other-visit-id',
+        patient_id: 'other-patient-id',
+      } as Invoice,
+    ]);
+    const actor: AuthenticatedUser = {
+      id: 'iam-patient-user',
+      username: 'patient_user',
+      role: UserRole.PATIENT,
+      patient_id: 'owned-patient-id',
+    };
+
+    await expect(
+      service.findByVisitId('other-visit-id', actor),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });

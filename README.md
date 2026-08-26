@@ -8,7 +8,7 @@
 [![Redis](https://img.shields.io/badge/redis-7.0-dc382d.svg)](https://redis.io/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-A production-grade, event-driven Hospital Information System (HIS) built with **NestJS 11**, **PostgreSQL 16**, **RabbitMQ 3**, and **Redis 7** in a clean monorepo architecture, fully conforming to the [Enterprise Backend Blueprint](https://iots1.github.io/enterprise-backend-blueprint/) and the [HIS Assignment Specifications](https://gist.github.com/iots1/e5d1b5c19b39171a96b236af4a0a7f27).
+A reference event-driven Hospital Information System (HIS) built with **NestJS 11**, **PostgreSQL 16**, **RabbitMQ 3**, and **Redis 7** in a clean monorepo architecture. The implementation and its verification status are documented here against the [Enterprise Backend Blueprint](https://iots1.github.io/enterprise-backend-blueprint/) and the [HIS Assignment Specifications](https://gist.github.com/iots1/e5d1b5c19b39171a96b236af4a0a7f27).
 
 ---
 
@@ -51,7 +51,7 @@ The monorepo (`his-project/apps/`) decomposes the hospital healthcare domain int
 
 | Service | Bounded Context | HTTP Port | Database | Primary Queue | Dead-Letter Queue | Swagger UI |
 | :--- | :--- | :---: | :--- | :--- | :--- | :--- |
-| **`iam-bc`** | Identity & Access Management | `3003` | `iam_db` | — | — | [http://localhost:3003/docs](http://localhost:3003/docs) |
+| **`iam-bc`** | Identity & Access Management | `3003` | `iam_db` | `iam.events` | `iam.events.dlq` | [http://localhost:3003/docs](http://localhost:3003/docs) |
 | **`opd-bc`** | Outpatient Department | `3000` | `opd_db` | `opd.events` | `opd.events.dlq` | [http://localhost:3000/docs](http://localhost:3000/docs) |
 | **`emr-bc`** | Electronic Medical Records | `3001` | `emr_db` | `emr.events` | `emr.events.dlq` | [http://localhost:3001/docs](http://localhost:3001/docs) |
 | **`finance-bc`** | Billing & Invoicing | `3002` | `finance_db` | `finance.events` | `finance.events.dlq` | [http://localhost:3002/docs](http://localhost:3002/docs) |
@@ -98,14 +98,15 @@ sequenceDiagram
 ```
 
 ### 🔹 Transactional Outbox Pattern
-To prevent distributed dual-write inconsistencies, state changes and outgoing domain events are written to the database within a single local transaction using TypeORM. A background worker polls and dispatches pending events from `outbox_events` to RabbitMQ with exponential backoff.
+To prevent distributed dual-write inconsistencies, state changes and outgoing domain events are written to the database within a single local transaction using TypeORM. A background worker polls and dispatches pending events from `outbox_events` to RabbitMQ; failed rows remain pending for a later retry.
 
 ### 🔹 Atomic Idempotency & Duplicate Suppression
 Event consumers check and atomically reserve message execution in `processed_events` (`event_id` UNIQUE). Duplicate deliveries from network retries or RabbitMQ redelivery are acknowledged without re-executing business logic.
 
 ### 🔹 Dead-Letter Exchange (DLX) & Replay Subsystem
 - **Exchange**: `his.events.dlx` (Direct exchange).
-- **Dead-Letter Queues**: `opd.events.dlq`, `emr.events.dlq`, `finance.events.dlq`.
+- **Dead-Letter Queues**: `opd.events.dlq`, `emr.events.dlq`, `finance.events.dlq`, `iam.events.dlq`.
+- **Runtime declaration**: every service bootstrap asserts the primary exchange, DLX, main queue, DLQ, and bindings before starting its RabbitMQ consumer. A broker configuration mismatch fails startup instead of silently dropping rejected messages.
 - **Operator Replay**: Failed poison messages routed to the DLQ can be safely replayed to the main exchange via `RabbitMqReplayService`.
 
 ---
@@ -147,7 +148,9 @@ flowchart TD
 - **Fail-Closed Circuit Breaker**: If Redis experiences an outage, `JwtAuthGuard` returns `503 Service Unavailable` rather than allowing unauthenticated requests.
 - **BOLA Protection (`@CheckResourceOwnership`)**: `ResourceOwnershipGuard` ensures patients can only access their own clinical records and invoices.
 - **Authentication Rate Limiting (`@RateLimit`)**: Redis-backed sliding counter throttler protecting authentication endpoints against brute-force attacks (`429 Too Many Requests`).
-- **PHI / Billing Access Auditing**: `AuditService` logs every sensitive healthcare record access to the `audit_logs` table in `iam_db`.
+- **PHI / Billing Access Auditing**: the global access interceptor writes durable `access.audit` events to the local outbox; IAM consumes them and persists append-only access records in `audit_logs`.
+- **Patient ownership**: IAM JWTs carry an explicit `patient_id` projection. Patient-scoped resource services enforce that mapping and return `403` for another patient's resource. An administrator links an account with `PATCH /api/v1/users/:id/patient`.
+- **Test accounts**: privileged test users are never created by production migrations. CI/local verification creates them only with `NODE_ENV=test ALLOW_TEST_SEED=true TEST_SEED_PASSWORD=... npm run seed:test`.
 
 ### 🔹 Role & Permission Matrix
 
@@ -231,72 +234,73 @@ All logs emit single-line structured JSON with distributed tracing headers (`x-c
 ## 5. Service Catalog & API Specifications
 
 ### 🔹 IAM Microservice (`iam-bc` — Port `3003`)
-- `POST /auth/register` (`@Public`, `@RateLimit`): Register new account (defaults to `PATIENT`).
-- `POST /auth/login` (`@Public`, `@RateLimit`): Authenticate and issue Stateful JWT pair.
-- `POST /auth/refresh` (`@Public`, `@RateLimit`): Rotate refresh token and issue new token pair.
-- `POST /auth/logout` (`Authenticated`): Invalidate session and blacklist access token JTI.
-- `GET /auth/me` (`Authenticated`): Get profile of the current user.
-- `PATCH /users/:id/role` (`ADMIN` only): Promote/change user role.
+- `POST /api/v1/auth/register` (`@Public`, `@RateLimit`): Register new account (defaults to `PATIENT`).
+- `POST /api/v1/auth/login` (`@Public`, `@RateLimit`): Authenticate and issue Stateful JWT pair.
+- `POST /api/v1/auth/refresh` (`@Public`, `@RateLimit`): Rotate refresh token and issue new token pair.
+- `POST /api/v1/auth/logout` (`Authenticated`): Invalidate session and blacklist access token JTI.
+- `GET /api/v1/auth/me` (`Authenticated`): Get profile of the current user.
+- `PATCH /api/v1/users/:id/role` (`ADMIN` only): Promote/change user role.
+- `PATCH /api/v1/users/:id/patient` (`ADMIN` only): Link a patient account to its OPD patient identity.
 
 ### 🔹 OPD Microservice (`opd-bc` — Port `3000`)
-- `POST /patients`: Register new patient record.
-- `GET /patients`: List patients (paginated).
-- `GET /patients/:id`: Get patient details.
-- `PATCH /patients/:id`: Update patient demographics.
-- `DELETE /patients/:id`: Soft/hard delete patient.
-- `POST /visits`: Check in patient and open visit (`visit.created` emitted).
-- `GET /visits`: List visits.
-- `GET /visits/:id`: Get visit details by ID.
-- `GET /patients/:patientId/visits`: Get visit history for patient.
+- `POST /api/v1/patients`: Register new patient record.
+- `GET /api/v1/patients`: List patients (paginated).
+- `GET /api/v1/patients/:id`: Get patient details.
+- `PATCH /api/v1/patients/:id`: Update patient demographics.
+- `DELETE /api/v1/patients/:id`: Soft/hard delete patient.
+- `POST /api/v1/visits`: Check in patient and open visit (`visit.created` emitted).
+- `GET /api/v1/visits`: List visits.
+- `GET /api/v1/visits/:id`: Get visit details by ID.
+- `GET /api/v1/patients/:patientId/visits`: Get visit history for patient.
 
 ### 🔹 EMR Microservice (`emr-bc` — Port `3001`)
-- `POST /records`: Create medical record draft (`DOCTOR`).
-- `GET /records`: List medical records.
-- `GET /records/:id`: Get medical record by ID.
-- `GET /records/visit/:visitId`: Retrieve medical records for visit.
-- `PATCH /records/:id`: Update clinical draft diagnosis / notes.
-- `PATCH /records/:id/complete`: Finalize diagnosis and treatment cost (`treatment.completed` emitted).
+- `POST /api/v1/records`: Create medical record draft (`DOCTOR`).
+- `GET /api/v1/records`: List medical records.
+- `GET /api/v1/records/:id`: Get medical record by ID.
+- `GET /api/v1/records/visit/:visitId`: Retrieve medical records for visit.
+- `PATCH /api/v1/records/:id`: Update clinical draft diagnosis / notes.
+- `PATCH /api/v1/records/:id/complete`: Finalize diagnosis and treatment cost (`treatment.completed` emitted).
 
 ### 🔹 Finance Microservice (`finance-bc` — Port `3002`)
-- `GET /invoices`: List invoices.
-- `GET /invoices/:visitId`: Get invoice for a specific visit.
-- `PATCH /invoices/:id/pay`: Process payment settlement (`invoice.paid` emitted).
+- `GET /api/v1/invoices`: List invoices.
+- `GET /api/v1/invoices/:visitId`: Get invoice for a specific visit.
+- `PATCH /api/v1/invoices/:id/pay`: Process payment settlement (`invoice.paid` emitted).
 
 ---
 
 ## 6. End-to-End Choreography Flow Walkthrough
 
 ```bash
-# 1. Login as Staff
-curl -X POST http://localhost:3003/auth/login \
+# 1. Login as Staff (after running the guarded test-only seed for local demos)
+curl -X POST http://localhost:3003/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"nurse_test_user","password":"Password123!"}'
 
 # 2. Register Patient & Open Visit (OPD)
-curl -X POST http://localhost:3000/patients \
+curl -X POST http://localhost:3000/api/v1/patients \
   -H "Authorization: Bearer <TOKEN>" \
   -H "Content-Type: application/json" \
   -d '{"hn":"HN-001","first_name":"Somchai","last_name":"Jaidee","id_card":"1234567890123"}'
 
-curl -X POST http://localhost:3000/visits \
+curl -X POST http://localhost:3000/api/v1/visits \
   -H "Authorization: Bearer <TOKEN>" \
   -H "Content-Type: application/json" \
   -d '{"patient_id":"<PATIENT_UUID>"}'
 
 # 3. Doctor Finalizes Treatment (EMR)
-curl -X PATCH http://localhost:3001/records/<RECORD_UUID>/complete \
+curl -X PATCH http://localhost:3001/api/v1/records/<RECORD_UUID>/complete \
   -H "Authorization: Bearer <DOCTOR_TOKEN>" \
   -H "Content-Type: application/json" \
   -d '{"doctor_id":"dr_watson","diagnosis":"Acute Bronchitis","treatment_note":"Antibiotics prescribed","treatment_cost":1500}'
 
 # 4. Settle Invoice Payment (Finance)
-curl -X PATCH http://localhost:3002/invoices/<INVOICE_UUID>/pay \
+curl -X PATCH http://localhost:3002/api/v1/invoices/<INVOICE_UUID>/pay \
   -H "Authorization: Bearer <FINANCE_TOKEN>" \
   -H "Content-Type: application/json" \
   -d '{"status":"PAID"}'
 
 # 5. Verify Visit Closed (OPD)
-curl -X GET http://localhost:3000/visits/<VISIT_UUID> \
+curl -X GET http://localhost:3000/api/v1/visits/<VISIT_UUID> \
   -H "Authorization: Bearer <TOKEN>"
 ```
 
@@ -324,13 +328,16 @@ Defined in `his-project/.env` (configured from `.env.example`):
 | `IAM_DATABASE` | `iam_db` | Logical database for IAM service |
 | `RABBITMQ_URL` | `amqp://guest:guest@localhost:5672` | RabbitMQ connection URL |
 | `RABBITMQ_EXCHANGE` | `his.events` | Primary topic exchange |
+| `RABBITMQ_DLX_EXCHANGE` | `his.events.dlx` | Durable direct dead-letter exchange |
 | `OPD_RABBITMQ_QUEUE` | `opd.events` | Durable queue for OPD |
 | `EMR_RABBITMQ_QUEUE` | `emr.events` | Durable queue for EMR |
 | `FINANCE_RABBITMQ_QUEUE` | `finance.events` | Durable queue for Finance |
+| `IAM_RABBITMQ_QUEUE` | `iam.events` | Durable queue for IAM access-audit events |
+| `API_PREFIX` | `api/v1` | Global HTTP API prefix; health and Swagger remain unprefixed |
 | `REDIS_HOST` | `localhost` | Redis server host |
 | `REDIS_PORT` | `6379` | Redis server port |
-| `JWT_SECRET` | `his-secret-jwt-key-for-development...` | 32+ character JWT access secret |
-| `JWT_REFRESH_SECRET` | `his-refresh-secret-jwt-key...` | 32+ character JWT refresh secret |
+| `JWT_SECRET` | *(required; no default)* | 32+ character JWT access secret |
+| `JWT_REFRESH_SECRET` | *(required; no default)* | 32+ character JWT refresh secret |
 | `JWT_ACCESS_EXPIRES_IN` | `15m` | Access token expiration duration |
 | `JWT_REFRESH_EXPIRES_IN` | `7d` | Refresh token & Redis session expiration duration |
 
@@ -395,22 +402,29 @@ npm run test:flow
 # 7. Run complete Postman/Newman test suite
 npm run test:postman
 
-# 8. Run production dependency security audit
-npm audit --omit=dev --audit-level=low
+# 8. Run production dependency security audit (the CI policy)
+npm run audit:prod
+
+# 9. Verify RabbitMQ topology and rejection-to-DLQ behavior against a broker
+npm run test:integration:live
+
+# 10. Verify concurrent idempotency against PostgreSQL
+npm run test:integration:db
 ```
 
 ### 🔹 Verified Test Evidence
-- **Unit & Integration Tests**: **61 test suites, 281 tests passed (100%)**
-- **End-to-End Tests**: **4 test suites, 18 tests passed (100%)**
-- **Live Choreography Flow**: **`visit.created` $\to$ `treatment.completed` $\to$ `invoice.paid` $\to$ `CLOSED`**
-- **Newman Postman Suite**: **50 requests executed, 50 assertions passed (0 failed)**
-- **Dependency Security**: **0 vulnerabilities**
+- **Unit & Integration Tests**: local run **61 suites passed, 290 tests passed**; live broker/database suites are opt-in.
+- **End-to-End Tests**: CI runs the four service E2E suites against PostgreSQL, Redis, and RabbitMQ.
+- **Concurrent Idempotency**: CI runs the R8 PostgreSQL integration check with two concurrent transactions.
+- **Live Choreography Flow**: CI verifies **`visit.created` $\to$ `treatment.completed` $\to$ `invoice.paid` $\to$ `CLOSED`**.
+- **Newman Postman Suite**: the collection currently contains **54 requests** and requires the guarded test-only IAM seed.
+- **Dependency Security**: CI blocks on high/critical vulnerabilities in production dependencies with `npm run audit:prod`; development-tool advisories are audited separately during dependency maintenance.
 
 ---
 
 ## 10. Postman & Newman Verification
 
-A comprehensive Postman test collection is located at [`docs/postman/his.postman_collection.json`](file:///Users/tanakitchuchoed/Documents/GitHub/his-microservices-assignment/docs/postman/his.postman_collection.json).
+A comprehensive Postman test collection is located at [`docs/postman/his.postman_collection.json`](docs/postman/his.postman_collection.json).
 
 ### Running via Newman CLI
 ```bash
@@ -419,7 +433,7 @@ npm run test:postman
 ```
 
 ### Postman Test Suite Coverage
-1. **IAM**: Registration, Login, Token Refresh, Admin Role Update (`PATCH /users/:id/role`), Session Revocation.
+1. **IAM**: Registration, Login, Token Refresh, Admin Role Update (`PATCH /api/v1/users/:id/role`), Patient Identity Link (`PATCH /api/v1/users/:id/patient`), Session Revocation.
 2. **OPD**: Patient CRUD, Visit Management, Strict DTO Validation.
 3. **EMR**: Medical Records Preparation, Treatment Completion.
 4. **Finance**: Invoice Generation, Payment Processing.
@@ -432,7 +446,7 @@ npm run test:postman
 
 The following intentional architectural decisions and approved exceptions are documented:
 
-- **AE-1 (Direct Root Routes)**: Root endpoints (`/patients`, `/visits`, `/records`, `/invoices`, `/invoices/:id/pay`, `/docs`) are preserved without global prefixing `/opd-bc/v1` to adhere strictly to the HIS Assignment Gist contract.
+- **AE-1 (Configurable API Prefix)**: HTTP APIs use `API_PREFIX` (default `/api/v1`) consistently across all services; health probes and Swagger remain at `/` and `/docs`.
 - **AE-2 (`iam-bc` Uniform Monorepo Naming)**: `iam-bc` is used for monorepo consistency across all four services.
 - **AE-3 (RabbitMQ Topic Messaging Transport)**: RabbitMQ topic exchange message choreography (`his.events`) is preserved over generic TCP transport as specified by the HIS assignment.
 

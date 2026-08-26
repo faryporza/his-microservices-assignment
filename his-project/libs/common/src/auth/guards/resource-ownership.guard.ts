@@ -46,9 +46,11 @@ export class ResourceOwnershipGuard implements CanActivate {
       return true;
     }
 
-    // For PATIENT role, enforce strict ownership matching
+    // For PATIENT role, enforce strict ownership matching. A patient identity
+    // must be explicitly mapped by IAM; falling back to the IAM user ID would
+    // allow an unrelated UUID to be treated as a domain patient ID.
     if (user.role === UserRole.PATIENT) {
-      const actorPatientId = user.patient_id || user.id;
+      const actorPatientId = user.patient_id;
       const paramKey = options.paramKey ?? 'id';
       const resourceId =
         request.params?.[paramKey] ??
@@ -78,6 +80,11 @@ export class ResourceOwnershipGuard implements CanActivate {
           'Access denied: resource belongs to another patient',
         );
       }
+
+      // For visit, medical-record, and invoice IDs the owning patient is
+      // resolved by the bounded-context service after the guard. The guard
+      // still fails closed when no identity mapping exists and checks any
+      // explicit patient_id supplied in the route/query.
     }
 
     return true;

@@ -24,8 +24,10 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     'patient:read',
     'patient:create',
     'patient:update',
+    'patient:update',
     'visit:read',
     'visit:create',
+    'medical-record:read',
   ],
   [UserRole.FINANCE_STAFF]: [
     'patient:read',

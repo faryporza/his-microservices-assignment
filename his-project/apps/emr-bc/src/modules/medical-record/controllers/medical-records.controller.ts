@@ -3,6 +3,8 @@ import {
   Controller,
   Get,
   Headers,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -10,15 +12,22 @@ import {
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
-  ApiCreatedResponse,
   ApiHeader,
   ApiNotFoundResponse,
-  ApiOkResponse,
   ApiOperation,
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
-import { RequirePermission, ResourceType, Roles, UserRole } from '@app/common';
+import {
+  CheckResourceOwnership,
+  CurrentUser,
+  RequirePermission,
+  ResourceType,
+  Roles,
+  ApiSuccessResponse,
+  UserRole,
+} from '@app/common';
+import type { AuthenticatedUser } from '@app/common';
 import { MedicalRecordsService } from '../services/medical-records.service';
 import { CreateMedicalRecordDTO } from '../dto/create-medical-record.dto';
 import { UpdateMedicalRecordDTO } from '../dto/update-medical-record.dto';
@@ -32,25 +41,33 @@ export class MedicalRecordsController {
   constructor(private readonly medicalRecordsService: MedicalRecordsService) {}
 
   @Post()
+  @HttpCode(HttpStatus.CREATED)
   @Roles(UserRole.ADMIN, UserRole.DOCTOR)
   @RequirePermission('medical-record:create')
   @ApiOperation({ summary: 'Create a new medical record' })
-  @ApiCreatedResponse({ description: 'Medical record successfully created' })
+  @ApiSuccessResponse({
+    status: HttpStatus.CREATED,
+    description: 'Medical record successfully created',
+  })
   create(@Body() createDto: CreateMedicalRecordDTO) {
     return this.medicalRecordsService.create(createDto);
   }
 
   @Get()
+  @HttpCode(HttpStatus.OK)
   @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE)
   @RequirePermission('medical-record:read')
   @ApiOperation({ summary: 'Retrieve all medical records' })
-  @ApiOkResponse({ description: 'List of all medical records' })
+  @ApiSuccessResponse({ description: 'List of all medical records' })
   findAll() {
     return this.medicalRecordsService.findAll();
   }
 
   @Get(':id')
+  @HttpCode(HttpStatus.OK)
   @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.PATIENT)
+  @RequirePermission('medical-record:read')
+  @CheckResourceOwnership('medical_record', 'id')
   @ApiOperation({ summary: 'Retrieve a medical record by ID' })
   @ApiParam({
     name: 'id',
@@ -58,14 +75,22 @@ export class MedicalRecordsController {
     type: 'string',
     format: 'uuid',
   })
-  @ApiOkResponse({ description: 'Medical record found' })
+  @ApiSuccessResponse({ description: 'Medical record found' })
   @ApiNotFoundResponse({ description: 'Medical record not found' })
-  findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string) {
-    return this.medicalRecordsService.findOne(id);
+  findOne(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @CurrentUser() user?: AuthenticatedUser,
+  ) {
+    return user
+      ? this.medicalRecordsService.findOne(id, user)
+      : this.medicalRecordsService.findOne(id);
   }
 
   @Get('visit/:visitId')
+  @HttpCode(HttpStatus.OK)
   @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.PATIENT)
+  @RequirePermission('medical-record:read')
+  @CheckResourceOwnership('medical_record', 'visitId')
   @ApiOperation({ summary: 'Retrieve medical records by visit ID' })
   @ApiParam({
     name: 'visitId',
@@ -73,15 +98,22 @@ export class MedicalRecordsController {
     type: 'string',
     format: 'uuid',
   })
-  @ApiOkResponse({ description: 'List of medical records for the visit' })
+  @ApiSuccessResponse({
+    description: 'List of medical records for the visit',
+  })
   findByVisitId(
     @Param('visitId', new ParseUUIDPipe({ version: '4' })) visitId: string,
+    @CurrentUser() user?: AuthenticatedUser,
   ) {
-    return this.medicalRecordsService.findByVisitId(visitId);
+    return user
+      ? this.medicalRecordsService.findByVisitId(visitId, user)
+      : this.medicalRecordsService.findByVisitId(visitId);
   }
 
   @Patch(':id')
+  @HttpCode(HttpStatus.OK)
   @Roles(UserRole.ADMIN, UserRole.DOCTOR)
+  @RequirePermission('medical-record:update')
   @ApiOperation({ summary: 'Update a medical record by ID' })
   @ApiParam({
     name: 'id',
@@ -99,7 +131,7 @@ export class MedicalRecordsController {
     description: 'Trace ID for distributed tracing',
     required: false,
   })
-  @ApiOkResponse({ description: 'Medical record successfully updated' })
+  @ApiSuccessResponse({ description: 'Medical record successfully updated' })
   @ApiNotFoundResponse({ description: 'Medical record not found' })
   update(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
@@ -116,7 +148,9 @@ export class MedicalRecordsController {
   }
 
   @Patch(':id/complete')
+  @HttpCode(HttpStatus.OK)
   @Roles(UserRole.ADMIN, UserRole.DOCTOR)
+  @RequirePermission('medical-record:update')
   @ApiOperation({
     summary: 'Complete medical treatment and trigger billing event',
   })
@@ -136,7 +170,7 @@ export class MedicalRecordsController {
     description: 'Trace ID for distributed tracing',
     required: false,
   })
-  @ApiOkResponse({ description: 'Treatment completed successfully' })
+  @ApiSuccessResponse({ description: 'Treatment completed successfully' })
   @ApiNotFoundResponse({ description: 'Medical record not found' })
   completeTreatment(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,

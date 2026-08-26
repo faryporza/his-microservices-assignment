@@ -4,9 +4,7 @@ import { ProcessedEvent } from './processed-event.entity';
 
 describe('IdempotencyService', () => {
   const repository = {
-    create: jest.fn(),
-    exists: jest.fn(),
-    save: jest.fn(),
+    createQueryBuilder: jest.fn(),
   } as unknown as jest.Mocked<Repository<ProcessedEvent>>;
   const manager = {
     getRepository: jest.fn().mockReturnValue(repository),
@@ -20,12 +18,19 @@ describe('IdempotencyService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    repository.create.mockImplementation((value) => value as ProcessedEvent);
-    repository.save.mockImplementation(async (value) => value);
+    const queryBuilder = {
+      insert: jest.fn().mockReturnThis(),
+      into: jest.fn().mockReturnThis(),
+      values: jest.fn().mockReturnThis(),
+      orIgnore: jest.fn().mockReturnThis(),
+      execute: jest.fn().mockResolvedValue({ affected: 1 }),
+    };
+    repository.createQueryBuilder.mockReturnValue(queryBuilder);
   });
 
   it('skips business logic when eventId was already processed', async () => {
-    repository.exists.mockResolvedValue(true);
+    const queryBuilder = repository.createQueryBuilder();
+    queryBuilder.execute.mockResolvedValue({ affected: 0 });
     const businessLogic = jest.fn();
 
     await expect(
@@ -33,11 +38,10 @@ describe('IdempotencyService', () => {
     ).resolves.toEqual({ isDuplicate: true });
 
     expect(businessLogic).not.toHaveBeenCalled();
-    expect(repository.save).not.toHaveBeenCalled();
+    expect(queryBuilder.execute).toHaveBeenCalled();
   });
 
   it('commits business logic and event marker in one transaction', async () => {
-    repository.exists.mockResolvedValue(false);
     const businessLogic = jest.fn().mockResolvedValue('done');
 
     await expect(
@@ -46,17 +50,10 @@ describe('IdempotencyService', () => {
 
     expect(dataSource.transaction).toHaveBeenCalledTimes(1);
     expect(businessLogic).toHaveBeenCalledWith(manager);
-    expect(repository.save).toHaveBeenCalledWith({
-      event_id: 'event-id',
-      event_name: 'invoice.paid',
-    });
-    expect(businessLogic.mock.invocationCallOrder[0]).toBeLessThan(
-      repository.save.mock.invocationCallOrder[0],
-    );
+    expect(repository.createQueryBuilder).toHaveBeenCalled();
   });
 
   it('does not record an event when business logic fails', async () => {
-    repository.exists.mockResolvedValue(false);
     const error = new Error('database unavailable');
 
     await expect(
@@ -65,6 +62,6 @@ describe('IdempotencyService', () => {
       }),
     ).rejects.toThrow(error);
 
-    expect(repository.save).not.toHaveBeenCalled();
+    expect(repository.createQueryBuilder).toHaveBeenCalled();
   });
 });

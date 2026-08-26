@@ -3,29 +3,32 @@ import {
   Controller,
   Get,
   Headers,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseUUIDPipe,
   Post,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
-  ApiCreatedResponse,
   ApiHeader,
   ApiNotFoundResponse,
-  ApiOkResponse,
   ApiOperation,
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
 import {
   CheckResourceOwnership,
+  CurrentUser,
   RequirePermission,
   ResourceType,
   Roles,
+  ApiSuccessResponse,
   UserRole,
 } from '@app/common';
 import { VisitsService } from '../services/visits.service';
 import { CreateVisitDTO } from '../dto/create-visit.dto';
+import type { AuthenticatedUser } from '@app/common';
 
 @ApiTags('Visits')
 @ApiBearerAuth()
@@ -35,10 +38,14 @@ export class VisitsController {
   constructor(private readonly visitsService: VisitsService) {}
 
   @Post('visits')
+  @HttpCode(HttpStatus.CREATED)
   @Roles(UserRole.ADMIN, UserRole.NURSE)
   @RequirePermission('visit:create')
   @ApiOperation({ summary: 'Create and open a new patient visit' })
-  @ApiCreatedResponse({ description: 'Visit successfully created' })
+  @ApiSuccessResponse({
+    status: HttpStatus.CREATED,
+    description: 'Visit successfully created',
+  })
   @ApiHeader({
     name: 'x-correlation-id',
     description: 'Correlation ID for distributed tracing',
@@ -58,17 +65,20 @@ export class VisitsController {
   }
 
   @Get('visits')
+  @HttpCode(HttpStatus.OK)
   @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE)
   @RequirePermission('visit:read')
   @ApiOperation({ summary: 'Retrieve all visits' })
-  @ApiOkResponse({ description: 'List of all visits' })
+  @ApiSuccessResponse({ description: 'List of all visits' })
   findAll() {
     return this.visitsService.findAll();
   }
 
   @Get('visits/:id')
+  @HttpCode(HttpStatus.OK)
   @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.PATIENT)
   @RequirePermission('visit:read')
+  @CheckResourceOwnership('visit', 'id')
   @ApiOperation({ summary: 'Retrieve a visit by ID' })
   @ApiParam({
     name: 'id',
@@ -76,13 +86,19 @@ export class VisitsController {
     type: 'string',
     format: 'uuid',
   })
-  @ApiOkResponse({ description: 'Visit record found' })
+  @ApiSuccessResponse({ description: 'Visit record found' })
   @ApiNotFoundResponse({ description: 'Visit not found' })
-  findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string) {
-    return this.visitsService.findOne(id);
+  findOne(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @CurrentUser() user?: AuthenticatedUser,
+  ) {
+    return user
+      ? this.visitsService.findOne(id, user)
+      : this.visitsService.findOne(id);
   }
 
   @Get('patients/:patientId/visits')
+  @HttpCode(HttpStatus.OK)
   @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.PATIENT)
   @RequirePermission('visit:read')
   @CheckResourceOwnership('patient', 'patientId')
@@ -93,10 +109,15 @@ export class VisitsController {
     type: 'string',
     format: 'uuid',
   })
-  @ApiOkResponse({ description: 'List of visits for the specified patient' })
+  @ApiSuccessResponse({
+    description: 'List of visits for the specified patient',
+  })
   findByPatientId(
     @Param('patientId', new ParseUUIDPipe({ version: '4' })) patientId: string,
+    @CurrentUser() user?: AuthenticatedUser,
   ) {
-    return this.visitsService.findByPatientId(patientId);
+    return user
+      ? this.visitsService.findByPatientId(patientId, user)
+      : this.visitsService.findByPatientId(patientId);
   }
 }

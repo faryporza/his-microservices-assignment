@@ -1,10 +1,16 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import {
   IdempotencyService,
   OutboxEventsService,
   StructuredLogger,
+  AuthenticatedUser,
+  UserRole,
 } from '@app/common';
 import { Visit, VisitStatus } from '../entities/visit.entity';
 import { Patient } from '@apps/opd-bc/modules/patient/entities/patient.entity';
@@ -103,7 +109,7 @@ export class VisitsService {
   }
 
   // ดึงข้อมูล visit ตาม id
-  async findOne(id: string): Promise<Visit> {
+  async findOne(id: string, actor?: AuthenticatedUser): Promise<Visit> {
     const visit = await this.visitRepository.findOne({
       where: { id },
       relations: { patient: true },
@@ -111,11 +117,16 @@ export class VisitsService {
     if (!visit) {
       throw new NotFoundException(`Visit with ID '${id}' not found`);
     }
+    this.assertPatientCanAccess(visit.patient_id, actor);
     return visit;
   }
 
   // ดึงข้อมูล visit ตาม patientId
-  async findByPatientId(patientId: string): Promise<Visit[]> {
+  async findByPatientId(
+    patientId: string,
+    actor?: AuthenticatedUser,
+  ): Promise<Visit[]> {
+    this.assertPatientCanAccess(patientId, actor);
     const patient = await this.patientRepository.findOne({
       where: { id: patientId },
     });
@@ -126,6 +137,21 @@ export class VisitsService {
       where: { patient_id: patientId },
       relations: { patient: true },
     });
+  }
+
+  private assertPatientCanAccess(
+    patientId: string,
+    actor?: AuthenticatedUser,
+  ): void {
+    if (actor?.role !== UserRole.PATIENT) {
+      return;
+    }
+
+    if (!actor.patient_id || actor.patient_id !== patientId) {
+      throw new ForbiddenException(
+        'Access denied: resource belongs to another patient',
+      );
+    }
   }
 
   async processInvoicePaid(event: InvoicePaidEvent): Promise<void> {

@@ -1,19 +1,20 @@
 {
   "info": {
     "name": "HIS Microservices — Complete Suite & RBAC Flow",
-    "description": "Comprehensive Postman collection for Hospital Information System (HIS) Microservices covering IAM, OPD, EMR, Finance, Security/RBAC Tests, and Repeatable End-to-End Choreography Flow.",
+    "description": "Comprehensive Postman collection for Hospital Information System (HIS) Microservices covering IAM, OPD, EMR, Finance, Security/RBAC Tests, and Repeatable End-to-End Choreography Flow. Run the guarded test-only IAM seed before executing this collection.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "iam_base_url", "value": "http://localhost:3003" },
-    { "key": "opd_base_url", "value": "http://localhost:3000" },
-    { "key": "emr_base_url", "value": "http://localhost:3001" },
-    { "key": "finance_base_url", "value": "http://localhost:3002" },
+    { "key": "iam_base_url", "value": "http://localhost:3003/api/v1" },
+    { "key": "opd_base_url", "value": "http://localhost:3000/api/v1" },
+    { "key": "emr_base_url", "value": "http://localhost:3001/api/v1" },
+    { "key": "finance_base_url", "value": "http://localhost:3002/api/v1" },
     { "key": "admin_access_token", "value": "" },
     { "key": "doctor_access_token", "value": "" },
     { "key": "nurse_access_token", "value": "" },
     { "key": "finance_access_token", "value": "" },
     { "key": "patient_access_token", "value": "" },
+    { "key": "patient_user_id", "value": "" },
     { "key": "admin_refresh_token", "value": "" },
     { "key": "doctor_refresh_token", "value": "" },
     { "key": "finance_refresh_token", "value": "" },
@@ -345,6 +346,29 @@
           }
         },
         {
+          "name": "Get Patient Profile for Identity Link",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Patient profile retrieved for identity linking', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.data.attributes.role).to.eql('PATIENT');",
+                  "  pm.collectionVariables.set('patient_user_id', body.data.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{patient_access_token}}" }],
+            "url": "{{iam_base_url}}/auth/me"
+          }
+        },
+        {
           "name": "Update User Role (Admin Only)",
           "event": [
             {
@@ -439,6 +463,61 @@
               "raw": "{\n  \"hn\": \"HN-OPD-{{$timestamp}}\",\n  \"first_name\": \"Somchai\",\n  \"last_name\": \"Jaidee\",\n  \"id_card\": \"ID-OPD-{{$timestamp}}\"\n}"
             },
             "url": "{{opd_base_url}}/patients"
+          }
+        },
+        {
+          "name": "Link Patient Test Account (Admin Only)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Patient identity linked', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.data.attributes.patient_id).to.eql(pm.collectionVariables.get('patient_id'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient_id\": \"{{patient_id}}\"\n}"
+            },
+            "url": "{{iam_base_url}}/users/{{patient_user_id}}/patient"
+          }
+        },
+        {
+          "name": "Login as Mapped Patient",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Mapped patient logged in successfully', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('patient_access_token', body.data.attributes.access_token);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"patient_test_user\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": "{{iam_base_url}}/auth/login"
           }
         },
         {

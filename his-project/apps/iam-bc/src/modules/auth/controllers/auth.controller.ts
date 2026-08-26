@@ -6,13 +6,15 @@ import {
   HttpStatus,
   Post,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
-import { CurrentUser, Public, ResourceType } from '@app/common';
+  ApiStandardErrorResponse,
+  ApiSuccessResponse,
+  CurrentUser,
+  Public,
+  RateLimit,
+  ResourceType,
+} from '@app/common';
 import type { AuthenticatedUser } from '@app/common';
 import { AuthService, UserResponse } from '../services/auth.service';
 import { RegisterUserDTO } from '../dto/register-user.dto';
@@ -27,18 +29,19 @@ export class AuthController {
 
   @Public()
   @Post('register')
+  @RateLimit({ limit: 5, ttlSeconds: 60 })
   @HttpCode(HttpStatus.CREATED)
   @ResourceType('users')
   @ApiOperation({ summary: 'Register a new user' })
-  @ApiResponse({
+  @ApiSuccessResponse({
     status: HttpStatus.CREATED,
     description: 'User registered successfully',
   })
-  @ApiResponse({
+  @ApiStandardErrorResponse({
     status: HttpStatus.CONFLICT,
     description: 'Username or email already registered',
   })
-  @ApiResponse({
+  @ApiStandardErrorResponse({
     status: HttpStatus.BAD_REQUEST,
     description: 'Validation failed',
   })
@@ -48,14 +51,15 @@ export class AuthController {
 
   @Public()
   @Post('login')
+  @RateLimit({ limit: 5, ttlSeconds: 60 })
   @HttpCode(HttpStatus.OK)
   @ResourceType('tokens')
   @ApiOperation({ summary: 'Authenticate user and issue token pair' })
-  @ApiResponse({
+  @ApiSuccessResponse({
     status: HttpStatus.OK,
     description: 'User authenticated successfully',
   })
-  @ApiResponse({
+  @ApiStandardErrorResponse({
     status: HttpStatus.UNAUTHORIZED,
     description: 'Invalid credentials or disabled account',
   })
@@ -65,14 +69,15 @@ export class AuthController {
 
   @Public()
   @Post('refresh')
+  @RateLimit({ limit: 10, ttlSeconds: 60 })
   @HttpCode(HttpStatus.OK)
   @ResourceType('tokens')
   @ApiOperation({ summary: 'Rotate refresh token and issue new token pair' })
-  @ApiResponse({
+  @ApiSuccessResponse({
     status: HttpStatus.OK,
     description: 'Token pair refreshed successfully',
   })
-  @ApiResponse({
+  @ApiStandardErrorResponse({
     status: HttpStatus.UNAUTHORIZED,
     description: 'Invalid, expired, or reused refresh token',
   })
@@ -85,11 +90,11 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ResourceType('auth')
   @ApiOperation({ summary: 'Revoke active session and blacklist access token' })
-  @ApiResponse({
+  @ApiSuccessResponse({
     status: HttpStatus.OK,
     description: 'Logged out successfully',
   })
-  @ApiResponse({
+  @ApiStandardErrorResponse({
     status: HttpStatus.UNAUTHORIZED,
     description: 'Missing or invalid token',
   })
@@ -100,14 +105,15 @@ export class AuthController {
   }
 
   @Get('me')
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ResourceType('users')
   @ApiOperation({ summary: 'Get profile of currently authenticated user' })
-  @ApiResponse({
+  @ApiSuccessResponse({
     status: HttpStatus.OK,
     description: 'Profile retrieved successfully',
   })
-  @ApiResponse({
+  @ApiStandardErrorResponse({
     status: HttpStatus.UNAUTHORIZED,
     description: 'Missing or invalid token',
   })

@@ -103,6 +103,52 @@ export class RedisService implements OnModuleDestroy {
     await this.client.del(userSessionsKey);
   }
 
+  /**
+   * Removes sessions whose stored identity matches a retired/legacy username.
+   * This is intentionally scan-based because the username is metadata and is
+   * not part of the Redis key. It is used by one-time security cleanup, not by
+   * request-path authentication.
+   */
+  async revokeSessionsByUsernames(
+    usernames: ReadonlySet<string>,
+  ): Promise<number> {
+    let cursor = '0';
+    let revoked = 0;
+
+    do {
+      const [nextCursor, keys] = await this.client.scan(
+        cursor,
+        'MATCH',
+        'auth:session:*',
+        'COUNT',
+        '100',
+      );
+      cursor = nextCursor;
+
+      for (const key of keys) {
+        const match = /^auth:session:([^:]+):(.+)$/.exec(key);
+        if (!match) continue;
+
+        const raw = await this.client.get(key);
+        if (!raw) continue;
+
+        let metadata: SessionMetadata;
+        try {
+          metadata = JSON.parse(raw) as SessionMetadata;
+        } catch {
+          continue;
+        }
+
+        if (!usernames.has(metadata.username)) continue;
+
+        await this.revokeSession(metadata.userId, match[2]);
+        revoked += 1;
+      }
+    } while (cursor !== '0');
+
+    return revoked;
+  }
+
   async blacklistAccessToken(jti: string, ttlSeconds: number): Promise<void> {
     const blacklistKey = this.getBlacklistKey(jti);
     const ttl = Math.max(1, Math.floor(ttlSeconds));

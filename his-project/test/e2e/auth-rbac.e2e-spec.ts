@@ -75,6 +75,7 @@ describe('Auth & Cross-Service RBAC (e2e)', () => {
     isAccessTokenBlacklisted: jest.fn().mockImplementation((jti: string) => {
       return Promise.resolve(blacklistedTokens.has(jti));
     }),
+    incrementRateLimitCounter: jest.fn().mockResolvedValue(1),
   };
 
   beforeAll(async () => {
@@ -147,6 +148,23 @@ describe('Auth & Cross-Service RBAC (e2e)', () => {
         .get('/')
         .expect(200)
         .expect('Hello World!');
+    });
+
+    it('serves OpenAPI from the booted application modules', async () => {
+      const responses = await Promise.all([
+        request(iamApp.getHttpServer() as App).get('/docs-json'),
+        request(opdApp.getHttpServer() as App).get('/docs-json'),
+        request(emrApp.getHttpServer() as App).get('/docs-json'),
+        request(financeApp.getHttpServer() as App).get('/docs-json'),
+      ]);
+
+      expect(responses.map((response) => response.status)).toEqual([
+        200, 200, 200, 200,
+      ]);
+      expect(responses[0].body.paths['/auth/register']).toBeDefined();
+      expect(responses[1].body.paths['/patients/{id}']).toBeDefined();
+      expect(responses[2].body.paths['/records/visit/{visitId}']).toBeDefined();
+      expect(responses[3].body.paths['/invoices/{visitId}']).toBeDefined();
     });
   });
 
