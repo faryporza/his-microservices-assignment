@@ -426,6 +426,58 @@ npm run test:integration:db
 
 A comprehensive Postman test collection is located at [`docs/postman/his.postman_collection.json`](docs/postman/his.postman_collection.json).
 
+### Running via Postman Desktop
+
+The collection uses collection variables for the local service URLs, so no Postman environment is required. Start the infrastructure and services first:
+
+```bash
+# From the repository root
+docker compose up -d
+
+# Terminal 1
+cd his-project
+npm run start:all
+```
+
+After the services have started and applied their migrations, create the privileged accounts in the explicitly guarded test-only seed. Run this in a second terminal. If the database settings differ from the defaults, loading `.env` makes them available to the seed script:
+
+```bash
+cd his-project
+set -a
+source .env
+set +a
+NODE_ENV=test \
+ALLOW_TEST_SEED=true \
+TEST_SEED_PASSWORD='Password123!' \
+npm run seed:test
+```
+
+The command should print `Seeded 4 test-only IAM users`. These accounts are never created by a production migration and must not be seeded in a production environment.
+
+In Postman:
+
+1. Select **Import** → **Files** and choose `docs/postman/his.postman_collection.json`.
+2. Open the collection and select **Run collection**.
+3. Run the requests in their existing order with one iteration. The test scripts store access tokens and resource IDs in collection variables automatically.
+
+The first four requests under **1. IAM (Identity & Access Management)** intentionally return `409 Conflict`. A successful response includes:
+
+```json
+{
+  "status": { "code": 409, "message": "Conflict" },
+  "errors": [
+    {
+      "code": "409",
+      "title": "Conflict",
+      "detail": "Username or email is reserved"
+    }
+  ],
+  "links": { "self": "/api/v1/auth/register" }
+}
+```
+
+The complete run covers authentication, RBAC/BOLA checks, patient and visit management, RabbitMQ choreography, invoice payment, token rotation, and logout. The expected final business state is `visit.status = CLOSED`. If staff login returns `401`, run the guarded test-only seed and repeat the collection after confirming IAM is available on port `3003`.
+
 ### Running via Newman CLI
 ```bash
 cd his-project
