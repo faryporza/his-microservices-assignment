@@ -2,7 +2,9 @@ import { ConfigService } from '@nestjs/config';
 import {
   createPostgresOptions,
   getRequiredInteger,
+  getRequiredSecret,
   getRequiredString,
+  parseDurationToSeconds,
 } from './environment.config';
 
 describe('environment configuration helpers', () => {
@@ -52,5 +54,26 @@ describe('environment configuration helpers', () => {
       'POSTGRES_PORT must be a positive integer',
     );
     values.POSTGRES_PORT = '5432';
+  });
+
+  it('validates secret entropy requiring at least 32 characters', () => {
+    values.JWT_SECRET = 'short-secret';
+    expect(() => getRequiredSecret(config, 'JWT_SECRET')).toThrow(
+      'Environment variable JWT_SECRET must have at least 32 characters',
+    );
+
+    values.JWT_SECRET = 'a-very-strong-secret-key-that-exceeds-32-chars-long';
+    expect(getRequiredSecret(config, 'JWT_SECRET')).toBe(
+      'a-very-strong-secret-key-that-exceeds-32-chars-long',
+    );
+  });
+
+  it('parses duration strings into seconds correctly', () => {
+    expect(parseDurationToSeconds('15m', 900)).toBe(900);
+    expect(parseDurationToSeconds('1h', 3600)).toBe(3600);
+    expect(parseDurationToSeconds('7d', 604800)).toBe(604800);
+    expect(parseDurationToSeconds('30s', 30)).toBe(30);
+    expect(parseDurationToSeconds('120', 120)).toBe(120);
+    expect(parseDurationToSeconds('invalid', 900)).toBe(900);
   });
 });
