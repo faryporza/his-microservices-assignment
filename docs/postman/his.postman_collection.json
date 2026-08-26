@@ -40,7 +40,7 @@
                   "    const body = pm.response.json();",
                   "    pm.expect(body.status.code).to.eql(201000);",
                   "    pm.expect(body.data.type).to.eql('users');",
-                  "    pm.expect(body.data.attributes.role).to.eql('ADMIN');",
+                  "    pm.expect(body.data.attributes.role).to.eql('PATIENT');",
                   "  }",
                   "});"
                 ]
@@ -52,7 +52,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"admin_test_user\",\n  \"email\": \"admin_test@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"Super\",\n  \"last_name\": \"Admin\",\n  \"role\": \"ADMIN\"\n}"
+              "raw": "{\n  \"username\": \"admin_test_user\",\n  \"email\": \"admin_test@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"Super\",\n  \"last_name\": \"Admin\"\n}"
             },
             "url": "{{iam_base_url}}/auth/register"
           }
@@ -69,7 +69,8 @@
                   "  if (pm.response.code === 201) {",
                   "    const body = pm.response.json();",
                   "    pm.expect(body.status.code).to.eql(201000);",
-                  "    pm.expect(body.data.attributes.role).to.eql('DOCTOR');",
+                  "    pm.expect(body.data.type).to.eql('users');",
+                  "    pm.expect(body.data.attributes.role).to.eql('PATIENT');",
                   "  }",
                   "});"
                 ]
@@ -81,7 +82,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"doctor_test_user\",\n  \"email\": \"doctor_test@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"John\",\n  \"last_name\": \"Watson\",\n  \"role\": \"DOCTOR\"\n}"
+              "raw": "{\n  \"username\": \"doctor_test_user\",\n  \"email\": \"doctor_test@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"John\",\n  \"last_name\": \"Watson\"\n}"
             },
             "url": "{{iam_base_url}}/auth/register"
           }
@@ -98,7 +99,8 @@
                   "  if (pm.response.code === 201) {",
                   "    const body = pm.response.json();",
                   "    pm.expect(body.status.code).to.eql(201000);",
-                  "    pm.expect(body.data.attributes.role).to.eql('NURSE');",
+                  "    pm.expect(body.data.type).to.eql('users');",
+                  "    pm.expect(body.data.attributes.role).to.eql('PATIENT');",
                   "  }",
                   "});"
                 ]
@@ -110,7 +112,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"nurse_test_user\",\n  \"email\": \"nurse_test@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"Florence\",\n  \"last_name\": \"Nightingale\",\n  \"role\": \"NURSE\"\n}"
+              "raw": "{\n  \"username\": \"nurse_test_user\",\n  \"email\": \"nurse_test@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"Florence\",\n  \"last_name\": \"Nightingale\"\n}"
             },
             "url": "{{iam_base_url}}/auth/register"
           }
@@ -127,7 +129,8 @@
                   "  if (pm.response.code === 201) {",
                   "    const body = pm.response.json();",
                   "    pm.expect(body.status.code).to.eql(201000);",
-                  "    pm.expect(body.data.attributes.role).to.eql('FINANCE_STAFF');",
+                  "    pm.expect(body.data.type).to.eql('users');",
+                  "    pm.expect(body.data.attributes.role).to.eql('PATIENT');",
                   "  }",
                   "});"
                 ]
@@ -139,7 +142,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"finance_test_user\",\n  \"email\": \"finance_test@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"Penny\",\n  \"last_name\": \"Accountant\",\n  \"role\": \"FINANCE_STAFF\"\n}"
+              "raw": "{\n  \"username\": \"finance_test_user\",\n  \"email\": \"finance_test@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"Penny\",\n  \"last_name\": \"Accountant\"\n}"
             },
             "url": "{{iam_base_url}}/auth/register"
           }
@@ -156,6 +159,7 @@
                   "  if (pm.response.code === 201) {",
                   "    const body = pm.response.json();",
                   "    pm.expect(body.status.code).to.eql(201000);",
+                  "    pm.expect(body.data.type).to.eql('users');",
                   "    pm.expect(body.data.attributes.role).to.eql('PATIENT');",
                   "  }",
                   "});"
@@ -168,7 +172,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"patient_test_user\",\n  \"email\": \"patient_test@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"Somchai\",\n  \"last_name\": \"Jaidee\",\n  \"role\": \"PATIENT\"\n}"
+              "raw": "{\n  \"username\": \"patient_test_user\",\n  \"email\": \"patient_test@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"Somchai\",\n  \"last_name\": \"Jaidee\"\n}"
             },
             "url": "{{iam_base_url}}/auth/register"
           }
@@ -913,7 +917,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"admin_test_user\",\n  \"email\": \"another_admin@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"Super\",\n  \"last_name\": \"Admin\",\n  \"role\": \"ADMIN\"\n}"
+              "raw": "{\n  \"username\": \"admin_test_user\",\n  \"email\": \"another_admin@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"Super\",\n  \"last_name\": \"Admin\"\n}"
             },
             "url": "{{iam_base_url}}/auth/register"
           }
@@ -1018,7 +1022,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"nurse_test_user\",\n  \"email\": \"nurse_test@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"Florence\",\n  \"last_name\": \"Nightingale\",\n  \"role\": \"NURSE\"\n}"
+              "raw": "{\n  \"username\": \"nurse_test_user\",\n  \"email\": \"nurse_test@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"Florence\",\n  \"last_name\": \"Nightingale\"\n}"
             },
             "url": "{{iam_base_url}}/auth/register"
           }
@@ -1042,7 +1046,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"doctor_test_user\",\n  \"email\": \"doctor_test@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"John\",\n  \"last_name\": \"Watson\",\n  \"role\": \"DOCTOR\"\n}"
+              "raw": "{\n  \"username\": \"doctor_test_user\",\n  \"email\": \"doctor_test@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"John\",\n  \"last_name\": \"Watson\"\n}"
             },
             "url": "{{iam_base_url}}/auth/register"
           }
@@ -1066,7 +1070,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"finance_test_user\",\n  \"email\": \"finance_test@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"Penny\",\n  \"last_name\": \"Accountant\",\n  \"role\": \"FINANCE_STAFF\"\n}"
+              "raw": "{\n  \"username\": \"finance_test_user\",\n  \"email\": \"finance_test@hospital.local\",\n  \"password\": \"Password123!\",\n  \"first_name\": \"Penny\",\n  \"last_name\": \"Accountant\"\n}"
             },
             "url": "{{iam_base_url}}/auth/register"
           }

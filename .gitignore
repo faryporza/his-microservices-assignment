@@ -31,6 +31,7 @@ coverage/
 
 # Antigravity / locally installed Agent Skills
 .agent/
+.agents/
 
 # .agents/ is intentionally tracked
 # because project-level skills are stored here.

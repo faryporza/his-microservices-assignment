@@ -25,27 +25,30 @@ const redis = new Redis({
   lazyConnect: true,
 });
 
+let currentUserId = null;
+let currentSessionId = null;
+
 async function getAuthHeaders() {
-  const userId = 'admin-live-flow-user';
-  const sessionId = 'session-live-flow';
+  currentUserId = `admin-live-${randomUUID().slice(0, 8)}`;
+  currentSessionId = `session-live-${randomUUID().slice(0, 8)}`;
   const jti = `jti-live-${randomUUID().slice(0, 8)}`;
 
   try {
     if (redis.status !== 'ready' && redis.status !== 'connecting') {
       await redis.connect();
     }
-    const sessionKey = `auth:session:${userId}:${sessionId}`;
-    const userSessionsKey = `auth:user_sessions:${userId}`;
+    const sessionKey = `auth:session:${currentUserId}:${currentSessionId}`;
+    const userSessionsKey = `auth:user_sessions:${currentUserId}`;
     const sessionMeta = {
-      userId,
+      userId: currentUserId,
       username: 'live_admin',
       role: 'ADMIN',
-      refreshTokenJti: 'refresh-jti-live',
+      refreshTokenJti: `refresh-jti-live-${randomUUID().slice(0, 8)}`,
       createdAt: new Date().toISOString(),
       expiresAt: new Date(Date.now() + 86400000).toISOString(),
     };
     await redis.set(sessionKey, JSON.stringify(sessionMeta), 'EX', 86400);
-    await redis.sadd(userSessionsKey, sessionId);
+    await redis.sadd(userSessionsKey, currentSessionId);
     await redis.expire(userSessionsKey, 86400);
   } catch {
     // Redis might be already connected or running in isolated env
@@ -53,10 +56,10 @@ async function getAuthHeaders() {
 
   const token = jwt.sign(
     {
-      sub: userId,
+      sub: currentUserId,
       username: 'live_admin',
       role: 'ADMIN',
-      sid: sessionId,
+      sid: currentSessionId,
       jti,
     },
     jwtSecret,
@@ -230,6 +233,16 @@ try {
     await completeVisit(visitId);
   }
 } finally {
+  try {
+    if (currentUserId && currentSessionId) {
+      const sessionKey = `auth:session:${currentUserId}:${currentSessionId}`;
+      const userSessionsKey = `auth:user_sessions:${currentUserId}`;
+      await redis.del(sessionKey);
+      await redis.srem(userSessionsKey, currentSessionId);
+    }
+  } catch {
+    // ignore
+  }
   try {
     redis.disconnect();
   } catch {

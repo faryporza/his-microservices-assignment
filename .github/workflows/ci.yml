@@ -36,6 +36,7 @@ jobs:
       REDIS_PORT: 6379
       REDIS_PASSWORD: ''
       JWT_SECRET: his-secret-jwt-key-for-development-change-in-production
+      JWT_REFRESH_SECRET: his-refresh-secret-jwt-key-for-development
       JWT_ACCESS_EXPIRES_IN: 15m
       JWT_REFRESH_EXPIRES_IN: 7d
     services:
@@ -98,6 +99,10 @@ jobs:
           psql -h 127.0.0.1 -U postgres -d postgres -c 'CREATE DATABASE finance_db;'
           psql -h 127.0.0.1 -U postgres -d postgres -c 'CREATE DATABASE iam_db;'
 
+      - name: Security audit dependencies
+        working-directory: his-project
+        run: npm audit --audit-level=high
+
       - name: Run ESLint
         working-directory: his-project
         run: npm run lint:check
@@ -143,3 +148,7 @@ jobs:
           npm run start:prod:finance > /tmp/finance-bc.log 2>&1 &
           finance_pid=$!
           npm run test:flow -- complete
+
+      - name: Run Postman Newman API verification suite
+        working-directory: his-project
+        run: npx newman run ../docs/postman/his.postman_collection.json --bail
