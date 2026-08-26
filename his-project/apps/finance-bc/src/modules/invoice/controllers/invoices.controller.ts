@@ -16,7 +16,7 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
-import { ResourceType, Roles, UserRole } from '@app/common';
+import { RequirePermission, ResourceType, Roles, UserRole } from '@app/common';
 import { InvoicesService } from '../services/invoices.service';
 import { PayInvoiceDTO } from '../dto/pay-invoice.dto';
 
@@ -29,6 +29,7 @@ export class InvoicesController {
 
   @Get()
   @Roles(UserRole.ADMIN, UserRole.FINANCE_STAFF)
+  @RequirePermission('invoice:read')
   @ApiOperation({ summary: 'Retrieve all invoices' })
   @ApiOkResponse({ description: 'List of all invoices' })
   findAll() {
@@ -37,6 +38,7 @@ export class InvoicesController {
 
   @Get(':visitId')
   @Roles(UserRole.ADMIN, UserRole.FINANCE_STAFF, UserRole.PATIENT)
+  @RequirePermission('invoice:read')
   @ApiOperation({ summary: 'Retrieve invoices by visit ID' })
   @ApiParam({
     name: 'visitId',
@@ -53,6 +55,7 @@ export class InvoicesController {
 
   @Patch(':id/pay')
   @Roles(UserRole.ADMIN, UserRole.FINANCE_STAFF)
+  @RequirePermission('invoice:pay')
   @ApiOperation({
     summary: 'Process invoice payment and trigger paid event',
   })

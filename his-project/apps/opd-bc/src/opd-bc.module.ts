@@ -8,11 +8,16 @@ import {
   AuthCommonModule,
   JwtAuthGuard,
   RolesGuard,
+  OutboxEvent,
+  ProcessedEvent,
+  InitOpd1000000000000,
 } from '@app/common';
 import { OpdHealthChecksController } from './health-checks.controller';
 import { OpdHealthChecksService } from './health-checks.service';
 import { PatientModule } from '@apps/opd-bc/modules/patient/patient.module';
 import { VisitModule } from '@apps/opd-bc/modules/visit/visit.module';
+import { Patient } from '@apps/opd-bc/modules/patient/entities/patient.entity';
+import { Visit } from '@apps/opd-bc/modules/visit/entities/visit.entity';
 
 @Module({
   imports: [
@@ -24,7 +29,11 @@ import { VisitModule } from '@apps/opd-bc/modules/visit/visit.module';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) =>
-        createPostgresOptions(configService, 'OPD_DATABASE'),
+        createPostgresOptions(configService, 'OPD_DATABASE', {
+          entities: [Patient, Visit, OutboxEvent, ProcessedEvent],
+          migrations: [InitOpd1000000000000],
+          synchronize: false,
+        }),
     }),
     CommonModule,
     AuthCommonModule,

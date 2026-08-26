@@ -22,6 +22,15 @@ export class CreateInvoiceDTO {
   @IsUUID('4')
   record_id?: string;
 
+  @ApiPropertyOptional({
+    description: 'Patient UUID',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+    format: 'uuid',
+  })
+  @IsOptional()
+  @IsUUID('4')
+  patient_id?: string;
+
   // Event payloads may deserialize a JSON number. The service normalizes its
   // string representation without doing floating-point arithmetic.
   @ApiProperty({

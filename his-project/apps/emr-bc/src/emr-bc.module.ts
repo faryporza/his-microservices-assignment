@@ -8,10 +8,14 @@ import {
   AuthCommonModule,
   JwtAuthGuard,
   RolesGuard,
+  OutboxEvent,
+  ProcessedEvent,
+  InitEmr1000000000000,
 } from '@app/common';
 import { EmrHealthChecksController } from './health-checks.controller';
 import { EmrHealthChecksService } from './health-checks.service';
 import { MedicalRecordModule } from '@apps/emr-bc/modules/medical-record/medical-record.module';
+import { MedicalRecord } from '@apps/emr-bc/modules/medical-record/entities/medical-record.entity';
 
 @Module({
   imports: [
@@ -23,7 +27,11 @@ import { MedicalRecordModule } from '@apps/emr-bc/modules/medical-record/medical
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) =>
-        createPostgresOptions(configService, 'EMR_DATABASE'),
+        createPostgresOptions(configService, 'EMR_DATABASE', {
+          entities: [MedicalRecord, OutboxEvent, ProcessedEvent],
+          migrations: [InitEmr1000000000000],
+          synchronize: false,
+        }),
     }),
     CommonModule,
     AuthCommonModule,

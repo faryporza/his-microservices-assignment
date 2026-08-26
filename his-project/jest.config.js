@@ -6,8 +6,9 @@ module.exports = {
     '<rootDir>/apps/finance-bc/test/unit',
     '<rootDir>/apps/iam-bc/test/unit',
     '<rootDir>/libs',
+    '<rootDir>/test',
   ],
-  testMatch: ['**/*.spec.ts'],
+  testMatch: ['**/*.spec.ts', '**/*.integration-spec.ts'],
   testEnvironment: 'node',
   transform: {
     '^.+\\.(t|j)s$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }],

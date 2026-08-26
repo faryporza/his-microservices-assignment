@@ -8,6 +8,7 @@ import {
   JoinColumn,
   Index,
 } from 'typeorm';
+import { ITimestamp } from '@app/common';
 import { Patient } from '@apps/opd-bc/modules/patient/entities/patient.entity';
 
 export enum VisitStatus {
@@ -15,13 +16,13 @@ export enum VisitStatus {
   CLOSED = 'CLOSED',
 }
 
-@Entity('visits')
+@Entity({ name: 'visits', database: 'opd_db' })
 @Index('idx_visits_patient_id', ['patient_id'])
-export class Visit {
+export class Visit implements ITimestamp {
   @PrimaryGeneratedColumn('uuid', { primaryKeyConstraintName: 'pk_visits' })
   id!: string;
 
-  @Column()
+  @Column({ type: 'uuid', comment: 'Patient UUID foreign key' })
   patient_id!: string;
 
   @ManyToOne(() => Patient, (patient) => patient.visits, {
@@ -33,16 +34,29 @@ export class Visit {
   })
   patient!: Patient;
 
-  @CreateDateColumn()
+  @CreateDateColumn({
+    type: 'timestamptz',
+    comment: 'Visit creation timestamp',
+  })
+  created_at!: Date;
+
+  @CreateDateColumn({
+    type: 'timestamptz',
+    comment: 'Date and time of visit check-in',
+  })
   visit_date!: Date;
 
   @Column({
     type: 'enum',
     enum: VisitStatus,
     default: VisitStatus.OPEN,
+    comment: 'Status of the outpatient visit (OPEN or CLOSED)',
   })
   status!: VisitStatus;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({
+    type: 'timestamptz',
+    comment: 'Timestamp when visit record was last updated',
+  })
   updated_at!: Date;
 }

@@ -18,7 +18,7 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
-import { ResourceType, Roles, UserRole } from '@app/common';
+import { RequirePermission, ResourceType, Roles, UserRole } from '@app/common';
 import { MedicalRecordsService } from '../services/medical-records.service';
 import { CreateMedicalRecordDTO } from '../dto/create-medical-record.dto';
 import { UpdateMedicalRecordDTO } from '../dto/update-medical-record.dto';
@@ -33,6 +33,7 @@ export class MedicalRecordsController {
 
   @Post()
   @Roles(UserRole.ADMIN, UserRole.DOCTOR)
+  @RequirePermission('medical-record:create')
   @ApiOperation({ summary: 'Create a new medical record' })
   @ApiCreatedResponse({ description: 'Medical record successfully created' })
   create(@Body() createDto: CreateMedicalRecordDTO) {
@@ -41,6 +42,7 @@ export class MedicalRecordsController {
 
   @Get()
   @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE)
+  @RequirePermission('medical-record:read')
   @ApiOperation({ summary: 'Retrieve all medical records' })
   @ApiOkResponse({ description: 'List of all medical records' })
   findAll() {

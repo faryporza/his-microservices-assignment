@@ -216,6 +216,7 @@ export class MedicalRecordsService {
         recordId: record.id,
         treatmentCost:
           record.treatment_cost != null ? Number(record.treatment_cost) : 0,
+        patientId: record.patient_id ?? '',
       },
     };
 

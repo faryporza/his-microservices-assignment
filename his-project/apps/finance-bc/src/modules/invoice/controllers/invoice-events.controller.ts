@@ -124,6 +124,7 @@ export class InvoiceEventsController {
       ) &&
       isUuidV4(payload?.visitId) &&
       isUuidV4(payload?.recordId) &&
+      (payload?.patientId ? isUuidV4(payload.patientId) : true) &&
       typeof payload?.treatmentCost === 'number' &&
       Number.isFinite(payload.treatmentCost) &&
       payload.treatmentCost >= 0

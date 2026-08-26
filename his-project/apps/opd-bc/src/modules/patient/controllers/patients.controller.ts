@@ -20,7 +20,13 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
-import { ResourceType, Roles, UserRole } from '@app/common';
+import {
+  CheckResourceOwnership,
+  RequirePermission,
+  ResourceType,
+  Roles,
+  UserRole,
+} from '@app/common';
 import { PatientsService } from '../services/patients.service';
 import { CreatePatientDTO } from '../dto/create-patient.dto';
 import { UpdatePatientDTO } from '../dto/update-patient.dto';
@@ -34,6 +40,7 @@ export class PatientsController {
 
   @Post()
   @Roles(UserRole.ADMIN, UserRole.NURSE)
+  @RequirePermission('patient:create')
   @ApiOperation({ summary: 'Register a new patient' })
   @ApiCreatedResponse({ description: 'Patient successfully registered' })
   create(@Body() createPatientDto: CreatePatientDTO) {
@@ -42,6 +49,7 @@ export class PatientsController {
 
   @Get()
   @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE)
+  @RequirePermission('patient:read')
   @ApiOperation({ summary: 'Retrieve all patients' })
   @ApiOkResponse({ description: 'List of all registered patients' })
   findAll() {
@@ -50,6 +58,8 @@ export class PatientsController {
 
   @Get(':id')
   @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.PATIENT)
+  @RequirePermission('patient:read')
+  @CheckResourceOwnership('patient', 'id')
   @ApiOperation({ summary: 'Retrieve a patient by ID' })
   @ApiParam({
     name: 'id',

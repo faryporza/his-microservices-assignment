@@ -17,7 +17,13 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
-import { ResourceType, Roles, UserRole } from '@app/common';
+import {
+  CheckResourceOwnership,
+  RequirePermission,
+  ResourceType,
+  Roles,
+  UserRole,
+} from '@app/common';
 import { VisitsService } from '../services/visits.service';
 import { CreateVisitDTO } from '../dto/create-visit.dto';
 
@@ -30,6 +36,7 @@ export class VisitsController {
 
   @Post('visits')
   @Roles(UserRole.ADMIN, UserRole.NURSE)
+  @RequirePermission('visit:create')
   @ApiOperation({ summary: 'Create and open a new patient visit' })
   @ApiCreatedResponse({ description: 'Visit successfully created' })
   @ApiHeader({
@@ -52,6 +59,7 @@ export class VisitsController {
 
   @Get('visits')
   @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE)
+  @RequirePermission('visit:read')
   @ApiOperation({ summary: 'Retrieve all visits' })
   @ApiOkResponse({ description: 'List of all visits' })
   findAll() {
@@ -60,6 +68,7 @@ export class VisitsController {
 
   @Get('visits/:id')
   @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.PATIENT)
+  @RequirePermission('visit:read')
   @ApiOperation({ summary: 'Retrieve a visit by ID' })
   @ApiParam({
     name: 'id',
@@ -75,6 +84,8 @@ export class VisitsController {
 
   @Get('patients/:patientId/visits')
   @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.PATIENT)
+  @RequirePermission('visit:read')
+  @CheckResourceOwnership('patient', 'patientId')
   @ApiOperation({ summary: 'Retrieve visits by patient ID' })
   @ApiParam({
     name: 'patientId',

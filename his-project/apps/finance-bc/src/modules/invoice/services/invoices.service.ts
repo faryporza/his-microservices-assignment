@@ -132,6 +132,7 @@ export class InvoicesService {
           {
             visit_id: event.payload.visitId,
             record_id: event.payload.recordId,
+            patient_id: event.payload.patientId,
             total_amount: event.payload.treatmentCost,
           },
           manager,
@@ -161,6 +162,7 @@ export class InvoicesService {
     const invoiceData: Partial<Invoice> = {
       visit_id: createDto.visit_id,
       record_id: createDto.record_id,
+      patient_id: createDto.patient_id,
       total_amount: totalAmount,
       status: InvoiceStatus.PENDING,
     };
