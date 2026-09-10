@@ -124,6 +124,16 @@ async function waitForService(name, baseUrl) {
 
 async function createVisit() {
   await waitForService('OPD', baseUrls.opd);
+  try {
+    const iamBody = await requestJson(`${baseUrls.iam}/`);
+    if (iamBody === 'Hello World!') {
+      console.log('IAM service health probe verified (port 3003)');
+    }
+  } catch {
+    if (process.env.REQUIRE_IAM === 'true') {
+      throw new Error(`IAM service required on ${baseUrls.iam} but unreachable`);
+    }
+  }
   const authHeaders = await getAuthHeaders();
   const suffix = randomUUID().replaceAll('-', '').slice(0, 12);
   const patientRes = await requestJson(`${apiBaseUrls.opd}/patients`, {

@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   NotFoundException,
   BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
@@ -135,6 +136,14 @@ export class MedicalRecordsService {
         }
 
         this.validateTreatmentCost(updateDto.treatment_cost);
+        if (
+          record.status === RecordStatus.COMPLETED &&
+          updateDto.status === RecordStatus.WAITING
+        ) {
+          throw new ConflictException(
+            `Cannot transition medical record with ID '${id}' from COMPLETED to WAITING`,
+          );
+        }
         const previousStatus = record.status;
         Object.assign(record, updateDto);
         const saved = await repository.save(record);

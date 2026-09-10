@@ -197,5 +197,47 @@ describe('Auth & IAM Service (e2e)', () => {
         .set('Authorization', `Bearer ${accessToken}`)
         .expect(401);
     });
+
+    describe('Replay Attack Prevention (IAM-005)', () => {
+      it('detects refresh token reuse and revokes all user sessions', async () => {
+        // 1. Log in fresh
+        const loginRes = await request(iamApp.getHttpServer() as App)
+          .post('/auth/login')
+          .send({
+            username: testUsername,
+            password: testPassword,
+          })
+          .expect(200);
+
+        const initialRefreshToken = loginRes.body.data.attributes.refresh_token;
+
+        // 2. Refresh once (valid rotation)
+        const refreshRes = await request(iamApp.getHttpServer() as App)
+          .post('/auth/refresh')
+          .send({ refresh_token: initialRefreshToken })
+          .expect(200);
+
+        expect(refreshRes.body.data.attributes.refresh_token).not.toBe(
+          initialRefreshToken,
+        );
+
+        // 3. Attempt to reuse initialRefreshToken (replay attack)
+        const reuseRes = await request(iamApp.getHttpServer() as App)
+          .post('/auth/refresh')
+          .send({ refresh_token: initialRefreshToken })
+          .expect(401);
+
+        expect(reuseRes.body.status.code).toBe(401);
+        expect(mockRedis.revokeAllUserSessions).toHaveBeenCalled();
+
+        // 4. Verify all sessions were revoked: rotated refresh token should now fail
+        await request(iamApp.getHttpServer() as App)
+          .post('/auth/refresh')
+          .send({
+            refresh_token: refreshRes.body.data.attributes.refresh_token,
+          })
+          .expect(401);
+      });
+    });
   });
 });

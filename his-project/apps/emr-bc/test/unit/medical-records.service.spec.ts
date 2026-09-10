@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
@@ -108,6 +109,16 @@ describe('MedicalRecordsService (Unit)', () => {
     await service.update(record.id, { diagnosis: 'Updated' });
 
     expect(outbox.enqueue).not.toHaveBeenCalled();
+  });
+
+  it('rejects transitioning a completed record back to WAITING', async () => {
+    const record = createMockMedicalRecord();
+    record.status = RecordStatus.COMPLETED;
+    repository.findOne.mockResolvedValue(record);
+
+    await expect(
+      service.update(record.id, { status: RecordStatus.WAITING }),
+    ).rejects.toBeInstanceOf(ConflictException);
   });
 
   it('validates missing records and negative costs', async () => {
